@@ -1,0 +1,44 @@
+{
+    "name": "@smart-error-tracker/node",
+    "version": "0.1.0",
+    "description": "Node.js SDK for Smart Error Tracker — Express middleware & manual capture",
+    "type": "module",
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+        "dev": "tsup src/index.ts --format esm,cjs --dts --watch"
+    },
+    "devDependencies": {
+        "@types/express": "^5.0.0",
+        "tsup": "^8.0.0",
+        "typescript": "^5.7.0"
+    },
+    "peerDependencies": {
+        "express": ">=4.0.0"
+    },
+    "peerDependenciesMeta": {
+        "express": {
+            "optional": true
+        }
+    },
+    "keywords": [
+        "error-tracking",
+        "sentry",
+        "monitoring",
+        "node",
+        "express"
+    ],
+    "license": "MIT"
+}

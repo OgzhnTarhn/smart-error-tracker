@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+package-lock.json
 
 # Build output
 dist/
@@ -24,3 +25,6 @@ apps/api/prisma/*.db-journal
 # Logs
 *.log
 npm-debug.log*
+
+# Gemini
+.gemini/
