@@ -16,6 +16,7 @@ model ErrorGroup {
   firstSeenAt DateTime @default(now())
   lastSeenAt  DateTime @default(now())
   sample      Json?
+  aiAnalysis  Json? // Stores {rootCause, suggestedFix, severity} from AI
 
   project Project @relation(fields: [projectId], references: [id])
   events  Event[]

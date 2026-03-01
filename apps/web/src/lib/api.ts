@@ -26,3 +26,6 @@ export const getGroupDetail = (id: string) => apiFetch(`/groups/${id}`);
 export type StatusAction = 'resolve' | 'open' | 'ignore';
 export const setGroupStatus = (id: string, action: StatusAction) =>
     apiFetch(`/groups/${id}/${action}`, { method: 'POST' });
+
+export const analyzeEvent = (eventId: string) =>
+    apiFetch(`/events/${eventId}/analyze`, { method: 'POST' });

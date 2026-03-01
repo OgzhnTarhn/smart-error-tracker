@@ -1,6 +1,15 @@
-import { Body, Controller, Get, Headers, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { createHash } from 'crypto';
+import { GoogleGenAI } from '@google/genai';
 
 type ErrorEventIn = {
   source: 'frontend' | 'backend';
@@ -122,9 +131,7 @@ export class EventsController {
   }
 
   @Get('stats')
-  async getStats(
-    @Headers('x-api-key') apiKey: string | undefined,
-  ) {
+  async getStats(@Headers('x-api-key') apiKey: string | undefined) {
     const projectId = await this.resolveProjectIdFromApiKey(apiKey);
     if (!projectId) return { ok: false, error: 'unauthorized' };
 
@@ -133,8 +140,12 @@ export class EventsController {
       await Promise.all([
         this.prisma.errorGroup.count({ where: { projectId } }),
         this.prisma.errorGroup.count({ where: { projectId, status: 'open' } }),
-        this.prisma.errorGroup.count({ where: { projectId, status: 'resolved' } }),
-        this.prisma.errorGroup.count({ where: { projectId, status: 'ignored' } }),
+        this.prisma.errorGroup.count({
+          where: { projectId, status: 'resolved' },
+        }),
+        this.prisma.errorGroup.count({
+          where: { projectId, status: 'ignored' },
+        }),
         this.prisma.event.count({ where: { projectId } }),
       ]);
 
@@ -185,7 +196,13 @@ export class EventsController {
 
     return {
       ok: true,
-      counts: { totalGroups, open: openCount, resolved: resolvedCount, ignored: ignoredCount, totalEvents },
+      counts: {
+        totalGroups,
+        open: openCount,
+        resolved: resolvedCount,
+        ignored: ignoredCount,
+        totalEvents,
+      },
       dailyTrend,
       topIssues,
     };
@@ -226,7 +243,7 @@ export class EventsController {
         eventCount: true,
         firstSeenAt: true,
         lastSeenAt: true,
-      }
+      },
     });
 
     const hasMore = groups.length > take;
@@ -258,7 +275,8 @@ export class EventsController {
         eventCount: true,
         firstSeenAt: true,
         lastSeenAt: true,
-      }
+        aiAnalysis: true,
+      },
     });
     if (!group) return { ok: false, error: 'not_found' };
 
@@ -275,13 +293,13 @@ export class EventsController {
         releaseVersion: true,
         level: true,
         timestamp: true,
-      }
+      },
     });
 
     return {
       ok: true,
       group,
-      events: events.map(e => ({
+      events: events.map((e) => ({
         id: e.id,
         message: e.message,
         stack: e.stack,
@@ -292,6 +310,77 @@ export class EventsController {
         createdAt: e.timestamp,
       })),
     };
+  }
+
+  @Post('events/:id/analyze')
+  async analyzeEvent(
+    @Headers('x-api-key') apiKey: string | undefined,
+    @Param('id') eventId: string,
+  ) {
+    const projectId = await this.resolveProjectIdFromApiKey(apiKey);
+    if (!projectId) return { ok: false, error: 'unauthorized' };
+
+    const event = await this.prisma.event.findFirst({
+      where: { id: eventId, projectId },
+      include: { group: true },
+    });
+    if (!event) return { ok: false, error: 'not_found' };
+
+    // If already analyzed, return cached result
+    if (event.group.aiAnalysis) {
+      return { ok: true, aiAnalysis: event.group.aiAnalysis };
+    }
+
+    const aiKey = process.env.GEMINI_API_KEY;
+    if (!aiKey) {
+      return { ok: false, error: 'ai_not_configured' };
+    }
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: aiKey });
+
+      const prompt = `You are an expert software engineer and debugger.
+Analyze this error event and provide a strictly formatted JSON response.
+
+Context:
+- Message: ${event.message}
+- Environment: ${event.environment || 'unknown'}
+- Release: ${event.releaseVersion || 'unknown'}
+- Route/Context: ${JSON.stringify(event.context || {})}
+
+Stack Trace:
+${event.stack || 'No stack trace provided.'}
+
+Provide your response in this EXACT JSON format (no markdown code blocks, just raw JSON):
+{
+  "rootCause": "A concise explanation of why this error occurred (max 2 sentences)",
+  "suggestedFix": "A short, actionable fix or code snippet to resolve the issue",
+  "severity": "high" | "medium" | "low"
+}`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      });
+
+      const text = response.text || '{}';
+      // Clean up markdown ticks if AI mistakenly added them
+      const cleanJson = text
+        .replace(/^```json/i, '')
+        .replace(/```$/i, '')
+        .trim();
+      const aiAnalysis = JSON.parse(cleanJson);
+
+      await this.prisma.errorGroup.update({
+        where: { id: event.groupId },
+        data: { aiAnalysis },
+      });
+
+      return { ok: true, aiAnalysis };
+    } catch (err: any) {
+      console.error('AI Analysis failed:', err);
+      return { ok: false, error: 'ai_analysis_failed' };
+    }
   }
 
   @Post('groups/:id/resolve')
@@ -318,7 +407,11 @@ export class EventsController {
     return this.updateGroupStatus(apiKey, id, 'ignored');
   }
 
-  private async updateGroupStatus(apiKey: string | undefined, id: string, status: string) {
+  private async updateGroupStatus(
+    apiKey: string | undefined,
+    id: string,
+    status: string,
+  ) {
     const projectId = await this.resolveProjectIdFromApiKey(apiKey);
     if (!projectId) return { ok: false, error: 'unauthorized' };
 
@@ -330,7 +423,12 @@ export class EventsController {
     if (group.status === status) {
       return {
         ok: true,
-        group: { id: group.id, status: group.status, lastSeenAt: group.lastSeenAt, eventCount: group.eventCount }
+        group: {
+          id: group.id,
+          status: group.status,
+          lastSeenAt: group.lastSeenAt,
+          eventCount: group.eventCount,
+        },
       };
     }
 
@@ -341,7 +439,12 @@ export class EventsController {
 
     return {
       ok: true,
-      group: { id: updated.id, status: updated.status, lastSeenAt: updated.lastSeenAt, eventCount: updated.eventCount }
+      group: {
+        id: updated.id,
+        status: updated.status,
+        lastSeenAt: updated.lastSeenAt,
+        eventCount: updated.eventCount,
+      },
     };
   }
 }

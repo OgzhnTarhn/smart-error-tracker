@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getGroupDetail, setGroupStatus, type StatusAction } from '../lib/api';
+import { getGroupDetail, setGroupStatus, type StatusAction, analyzeEvent } from '../lib/api';
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -24,6 +24,11 @@ type GroupDetail = {
     eventCount: number;
     firstSeenAt: string;
     lastSeenAt: string;
+    aiAnalysis?: {
+        rootCause: string;
+        suggestedFix: string;
+        severity: string;
+    };
 };
 
 type EventTab = 'stack' | 'context' | 'raw';
@@ -86,6 +91,7 @@ export default function IssueDetailPage() {
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
     const [stackCopied, setStackCopied] = useState(false);
+    const [aiAnalyzing, setAiAnalyzing] = useState(false);
 
     const fetchDetail = async () => {
         if (!id) return;
@@ -133,6 +139,23 @@ export default function IssueDetailPage() {
         await navigator.clipboard.writeText(selectedEvent.stack);
         setStackCopied(true);
         setTimeout(() => setStackCopied(false), 2000);
+    };
+
+    const handleAnalyze = async () => {
+        if (!selectedEvent?.id || !group) return;
+        setAiAnalyzing(true);
+        try {
+            const data = await analyzeEvent(selectedEvent.id);
+            if (data.ok && data.aiAnalysis) {
+                setGroup({ ...group, aiAnalysis: data.aiAnalysis });
+            } else {
+                alert(data.error || 'AI Analysis failed');
+            }
+        } catch (err: any) {
+            alert(err.message || 'AI Analysis failed');
+        } finally {
+            setAiAnalyzing(false);
+        }
     };
 
     // Loading
@@ -405,27 +428,46 @@ export default function IssueDetailPage() {
                                         <p className="text-xs text-slate-500">Analyze root cause and get fix suggestions</p>
                                     </div>
                                 </div>
-                                <button
-                                    disabled
-                                    className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-violet-600 to-blue-600 text-white rounded-lg opacity-60 cursor-not-allowed flex items-center gap-2"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                    Analyze — Coming Soon
-                                </button>
+                                {!group.aiAnalysis && (
+                                    <button
+                                        onClick={handleAnalyze}
+                                        disabled={aiAnalyzing || !selectedEvent}
+                                        className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-violet-600 to-blue-600 text-white rounded-lg hover:from-violet-500 hover:to-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                        {aiAnalyzing ? <Spinner /> : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
+                                        {aiAnalyzing ? 'Analyzing...' : 'Analyze with AI'}
+                                    </button>
+                                )}
                             </div>
                             <div className="px-5 pb-4">
-                                <div className="flex gap-3">
+                                <div className="flex flex-col sm:flex-row gap-3">
                                     <div className="flex-1 bg-slate-800/30 border border-slate-700/30 rounded-lg px-3 py-2">
                                         <div className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider mb-0.5">Root Cause</div>
-                                        <div className="text-xs text-slate-500 italic">AI will analyze error patterns…</div>
+                                        {group.aiAnalysis ? (
+                                            <div className="text-sm text-slate-200">{group.aiAnalysis.rootCause}</div>
+                                        ) : (
+                                            <div className="text-xs text-slate-500 italic">AI will analyze error patterns…</div>
+                                        )}
                                     </div>
                                     <div className="flex-1 bg-slate-800/30 border border-slate-700/30 rounded-lg px-3 py-2">
                                         <div className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider mb-0.5">Suggested Fix</div>
-                                        <div className="text-xs text-slate-500 italic">Code suggestions will appear here…</div>
+                                        {group.aiAnalysis ? (
+                                            <div className="text-sm text-slate-200 whitespace-pre-wrap font-mono bg-slate-900/50 p-2 rounded mt-1 border border-slate-700/50">{group.aiAnalysis.suggestedFix}</div>
+                                        ) : (
+                                            <div className="text-xs text-slate-500 italic">Code suggestions will appear here…</div>
+                                        )}
                                     </div>
-                                    <div className="flex-1 bg-slate-800/30 border border-slate-700/30 rounded-lg px-3 py-2">
+                                    <div className="sm:w-32 bg-slate-800/30 border border-slate-700/30 rounded-lg px-3 py-2 flex flex-col justify-center">
                                         <div className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider mb-0.5">Severity</div>
-                                        <div className="text-xs text-slate-500 italic">Auto-classified severity…</div>
+                                        {group.aiAnalysis ? (
+                                            <div className={`text-sm font-bold uppercase ${group.aiAnalysis.severity === 'high' ? 'text-red-400' :
+                                                group.aiAnalysis.severity === 'medium' ? 'text-amber-400' : 'text-blue-400'
+                                                }`}>
+                                                {group.aiAnalysis.severity}
+                                            </div>
+                                        ) : (
+                                            <div className="text-xs text-slate-500 italic">Pending…</div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
