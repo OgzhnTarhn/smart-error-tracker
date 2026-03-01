@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { captureException, captureMessage } from '@smart-error-tracker/browser';
+import { captureException, captureMessage } from '../../../packages/sdk-browser/src/index';
 
 export default function App() {
     const [log, setLog] = useState<string[]>([]);

@@ -8,9 +8,4 @@ export default defineConfig({
         port: 5180,
         fs: { allow: ['../..'] },
     },
-    resolve: {
-        alias: {
-            '@smart-error-tracker/browser': '../../packages/sdk-browser/src/index.ts',
-        },
-    },
 });
