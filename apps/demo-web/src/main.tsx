@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { init, installGlobalHandlers } from '../../packages/sdk-browser/src/index';
+import { init, installGlobalHandlers } from '@smart-error-tracker/browser';
 import App from './App';
 import './index.css';
 

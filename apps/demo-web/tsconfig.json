@@ -19,7 +19,12 @@
         "noUnusedLocals": false,
         "noUnusedParameters": false,
         "noFallthroughCasesInSwitch": true,
-        "noUncheckedSideEffectImports": true
+        "noUncheckedSideEffectImports": true,
+        "paths": {
+            "@smart-error-tracker/browser": [
+                "../../packages/sdk-browser/src/index.ts"
+            ]
+        }
     },
     "include": [
         "src"
