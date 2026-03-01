@@ -20,7 +20,7 @@ function normalizeMessage(msg: string) {
     .replace(/\b[0-9a-f]{8,}\b/gi, '<hex>')
     .replace(/\b[0-9a-f-]{32,}\b/gi, '<id>')
     .trim()
-    .slice(0, 200);
+    .slice(0, 120);
 }
 
 function topFrame(stack?: string) {
@@ -37,7 +37,7 @@ function makeFingerprint(ev: ErrorEventIn) {
 
 @Controller()
 export class EventsController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   private async resolveProjectIdFromApiKey(apiKey: string | undefined) {
     if (!apiKey) return null;
@@ -72,14 +72,14 @@ export class EventsController {
         projectId,
         fingerprint: fp,
         title: normalizeMessage(body.message) || 'Unknown error',
-        count: 1,
-        firstSeen: ts,
-        lastSeen: ts,
+        eventCount: 1,
+        firstSeenAt: ts,
+        lastSeenAt: ts,
         sample: body as any,
       },
       update: {
-        count: { increment: 1 },
-        lastSeen: ts,
+        eventCount: { increment: 1 },
+        lastSeenAt: ts,
       },
     });
 
@@ -118,17 +118,26 @@ export class EventsController {
   @Get('groups')
   async listGroups(
     @Headers('x-api-key') apiKey: string | undefined,
-    @Query('limit') limit?: string,
   ) {
     const projectId = await this.resolveProjectIdFromApiKey(apiKey);
-    if (!projectId) return { error: 'invalid_or_missing_api_key' };
+    if (!projectId) return { ok: false, error: 'invalid_or_missing_api_key' };
 
-    const n = Math.min(Number(limit ?? 50) || 50, 200);
-    return this.prisma.errorGroup.findMany({
+    const groups = await this.prisma.errorGroup.findMany({
       where: { projectId },
-      take: n,
-      orderBy: [{ count: 'desc' }, { lastSeen: 'desc' }],
+      take: 50,
+      orderBy: { lastSeenAt: 'desc' },
+      select: {
+        id: true,
+        fingerprint: true,
+        title: true,
+        status: true,
+        eventCount: true,
+        firstSeenAt: true,
+        lastSeenAt: true,
+      }
     });
+
+    return { ok: true, groups };
   }
 
   @Get('groups/detail')

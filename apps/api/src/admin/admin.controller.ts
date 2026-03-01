@@ -8,7 +8,7 @@ function sha256(input: string) {
 
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   private checkAdminToken(token: string | undefined): boolean {
     if (process.env.NODE_ENV === 'production') return false; // Dev/Local only

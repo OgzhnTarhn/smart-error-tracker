@@ -11,9 +11,10 @@ model ErrorGroup {
   projectId   String
   fingerprint String
   title       String
-  count       Int      @default(0)
-  firstSeen   DateTime @default(now())
-  lastSeen    DateTime @default(now())
+  status      String   @default("open")
+  eventCount  Int      @default(0)
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
   sample      Json?
 
   project Project @relation(fields: [projectId], references: [id])
