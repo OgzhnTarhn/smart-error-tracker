@@ -53,11 +53,11 @@ export default function OverviewPage() {
     const { counts, dailyTrend, topIssues } = data;
 
     const statCards = [
-        { label: 'Total Events', value: counts.totalEvents, color: 'from-blue-500 to-blue-600', icon: '📊' },
-        { label: 'Total Issues', value: counts.totalGroups, color: 'from-violet-500 to-violet-600', icon: '🐛' },
-        { label: 'Open', value: counts.open, color: 'from-red-500 to-red-600', icon: '🔴' },
-        { label: 'Resolved', value: counts.resolved, color: 'from-emerald-500 to-emerald-600', icon: '✅' },
-        { label: 'Ignored', value: counts.ignored, color: 'from-amber-500 to-amber-600', icon: '🔕' },
+        { label: 'Total Events', value: counts.totalEvents, color: 'text-blue-400', bgBorder: 'bg-gradient-to-br from-blue-500/20 to-blue-600/5 border-blue-500/20', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg> },
+        { label: 'Total Issues', value: counts.totalGroups, color: 'text-violet-400', bgBorder: 'bg-gradient-to-br from-violet-500/20 to-violet-600/5 border-violet-500/20', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg> },
+        { label: 'Open', value: counts.open, color: 'text-red-400', bgBorder: 'bg-gradient-to-br from-red-500/20 to-red-600/5 border-red-500/20', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
+        { label: 'Resolved', value: counts.resolved, color: 'text-emerald-400', bgBorder: 'bg-gradient-to-br from-emerald-500/20 to-emerald-600/5 border-emerald-500/20', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
+        { label: 'Ignored', value: counts.ignored, color: 'text-amber-400', bgBorder: 'bg-gradient-to-br from-amber-500/20 to-amber-600/5 border-amber-500/20', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg> },
     ];
 
     const statusColor: Record<string, string> = {
@@ -66,7 +66,7 @@ export default function OverviewPage() {
         ignored: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
     };
 
-    const formatDate = (d: string) => {
+    const formatDate = (d: any) => {
         const dt = new Date(d + 'T00:00:00');
         return dt.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
     };
@@ -107,17 +107,20 @@ export default function OverviewPage() {
 
             <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
                 {/* Stat Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                     {statCards.map(card => (
                         <div
                             key={card.label}
-                            className="relative overflow-hidden bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5"
+                            className="bg-slate-800/40 border border-slate-700/50 hover:bg-slate-800/60 transition-colors rounded-2xl p-5 flex flex-col justify-between"
                         >
-                            <div className={`absolute inset-0 bg-gradient-to-br ${card.color} opacity-5`} />
-                            <div className="relative">
-                                <span className="text-lg">{card.icon}</span>
-                                <div className="text-3xl font-bold mt-2">{card.value.toLocaleString()}</div>
-                                <div className="text-xs text-slate-500 mt-1 uppercase tracking-wider">{card.label}</div>
+                            <div className="flex flex-col gap-3">
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-sm ${card.bgBorder} ${card.color}`}>
+                                    {card.icon}
+                                </div>
+                                <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{card.label}</div>
+                            </div>
+                            <div className="mt-3">
+                                <div className="text-3xl font-bold text-slate-100">{card.value.toLocaleString()}</div>
                             </div>
                         </div>
                     ))}

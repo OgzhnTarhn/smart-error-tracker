@@ -136,7 +136,7 @@ export class EventsController {
     if (!projectId) return { ok: false, error: 'unauthorized' };
 
     // 1) Group counts by status
-    const [totalGroups, openCount, resolvedCount, ignoredCount, totalEvents] =
+    const [totalGroups, openCount, resolvedCount, ignoredCount, eventAgg] =
       await Promise.all([
         this.prisma.errorGroup.count({ where: { projectId } }),
         this.prisma.errorGroup.count({ where: { projectId, status: 'open' } }),
@@ -146,8 +146,13 @@ export class EventsController {
         this.prisma.errorGroup.count({
           where: { projectId, status: 'ignored' },
         }),
-        this.prisma.event.count({ where: { projectId } }),
+        this.prisma.errorGroup.aggregate({
+          where: { projectId },
+          _sum: { eventCount: true }
+        }),
       ]);
+
+    const totalEvents = eventAgg._sum.eventCount || 0;
 
     // 2) Daily event trend (last 7 days)
     const now = new Date();
