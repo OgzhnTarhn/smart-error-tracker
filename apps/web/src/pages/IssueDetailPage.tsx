@@ -32,7 +32,7 @@ type GroupDetail = {
     };
 };
 
-type EventTab = 'stack' | 'context' | 'raw' | 'ai';
+type EventTab = 'stack' | 'context' | 'raw';
 
 const formatDate = (d: string) =>
     new Date(d).toLocaleDateString('en-US', {
@@ -86,7 +86,7 @@ export default function IssueDetailPage() {
     const [group, setGroup] = useState<GroupDetail | null>(null);
     const [events, setEvents] = useState<EventItem[]>([]);
     const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
-    const [activeTab, setActiveTab] = useState<EventTab>('ai');
+    const [activeTab, setActiveTab] = useState<EventTab>('stack');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -338,7 +338,7 @@ export default function IssueDetailPage() {
                     <div className="lg:col-span-3 space-y-6">
 
                         {/* Event Detail Panel */}
-                        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden sticky top-6">
+                        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
                             <div className="px-5 py-3 border-b border-slate-700/50 flex items-center justify-between">
                                 <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Event Detail</h2>
                                 <div className="flex items-center gap-2">
@@ -370,7 +370,7 @@ export default function IssueDetailPage() {
                                 <>
                                     {/* Tabs */}
                                     <div className="flex gap-1 px-5 pt-4 pb-2">
-                                        {(['stack', 'context', 'raw', 'ai'] as EventTab[]).map((tab) => (
+                                        {(['stack', 'context', 'raw'] as EventTab[]).map((tab) => (
                                             <button
                                                 key={tab}
                                                 onClick={() => setActiveTab(tab)}
@@ -379,109 +379,120 @@ export default function IssueDetailPage() {
                                                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
                                                     }`}
                                             >
-                                                {tab === 'ai' ? '✨ AI Analysis' : tab}
+                                                {tab}
                                             </button>
                                         ))}
                                     </div>
 
                                     {/* Tab Content */}
                                     <div className="px-5 pb-5">
-                                        {activeTab !== 'ai' && (
-                                            <div className="bg-slate-900/50 border border-slate-700 rounded-xl overflow-auto max-h-[400px]">
-                                                {activeTab === 'stack' && (
-                                                    <pre className="p-4 text-sm font-mono whitespace-pre-wrap break-words text-slate-300 leading-relaxed">
-                                                        {selectedEvent.stack || 'No stack trace available'}
-                                                    </pre>
-                                                )}
-                                                {activeTab === 'context' && (
-                                                    contextPairs.length > 0 ? (
-                                                        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                            {contextPairs.map(({ key, value }) => (
-                                                                <div key={key} className="bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 py-2">
-                                                                    <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-0.5">{key}</div>
-                                                                    <div className="text-sm font-mono text-slate-300 break-all">{value}</div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    ) : (
-                                                        <div className="p-4 text-sm text-slate-500">No context available</div>
-                                                    )
-                                                )}
-                                                {activeTab === 'raw' && (
-                                                    <pre className="p-4 text-sm font-mono whitespace-pre-wrap break-words text-slate-300 leading-relaxed">
-                                                        {JSON.stringify(selectedEvent, null, 2)}
-                                                    </pre>
-                                                )}
-                                            </div>
-                                        )}
-                                        {activeTab === 'ai' && (
-                                            <div className="flex flex-col gap-4">
-                                                {!group.aiAnalysis ? (
-                                                    <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-8 text-center flex flex-col items-center justify-center min-h-[300px]">
-                                                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-blue-500/20 border border-violet-500/30 flex items-center justify-center text-3xl mb-4">
-                                                            🤖
-                                                        </div>
-                                                        <h3 className="text-lg font-semibold text-slate-200 mb-2">AI Error Analysis</h3>
-                                                        <p className="text-sm text-slate-400 max-w-sm mb-6">
-                                                            Get a detailed breakdown of the root cause and actionable code fixes directly from Gemini AI.
-                                                            <br /><br />
-                                                            <span className="text-xs opacity-70 italic">Analyzes are cached in the database so you won't consume quota repeatedly for the same error.</span>
-                                                        </p>
-                                                        <button
-                                                            onClick={handleAnalyze}
-                                                            disabled={aiAnalyzing || !selectedEvent}
-                                                            className="px-6 py-2.5 text-sm font-semibold bg-gradient-to-r from-violet-600 to-blue-600 text-white rounded-xl shadow-lg shadow-violet-500/20 hover:from-violet-500 hover:to-blue-500 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center gap-2"
-                                                        >
-                                                            {aiAnalyzing ? <Spinner /> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
-                                                            {aiAnalyzing ? 'Analyzing...' : 'Analyze with AI'}
-                                                        </button>
+                                        <div className="bg-slate-900/50 border border-slate-700 rounded-xl overflow-auto max-h-[400px]">
+                                            {activeTab === 'stack' && (
+                                                <pre className="p-4 text-sm font-mono whitespace-pre-wrap break-words text-slate-300 leading-relaxed">
+                                                    {selectedEvent.stack || 'No stack trace available'}
+                                                </pre>
+                                            )}
+                                            {activeTab === 'context' && (
+                                                contextPairs.length > 0 ? (
+                                                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                        {contextPairs.map(({ key, value }) => (
+                                                            <div key={key} className="bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 py-2">
+                                                                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-0.5">{key}</div>
+                                                                <div className="text-sm font-mono text-slate-300 break-all">{value}</div>
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 ) : (
-                                                    <div className="space-y-4">
-                                                        <div className="flex gap-4 flex-col lg:flex-row">
-                                                            {/* Root Cause Card */}
-                                                            <div className="flex-1 bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
-                                                                <h4 className="flex items-center gap-2 text-xs font-bold text-violet-400 uppercase tracking-wider mb-3">
-                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                                                                    Root Cause
-                                                                </h4>
-                                                                <div className="text-sm text-slate-300 leading-relaxed">
-                                                                    {group.aiAnalysis.rootCause}
-                                                                </div>
-                                                            </div>
-                                                            {/* Severity Card */}
-                                                            <div className="w-full lg:w-48 shrink-0 bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm flex flex-col justify-center items-center text-center">
-                                                                <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                                                                    Severity Assessment
-                                                                </h4>
-                                                                <div className={`text-xl font-black uppercase tracking-widest ${group.aiAnalysis.severity === 'high' ? 'text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.5)]' :
-                                                                    group.aiAnalysis.severity === 'medium' ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]' : 'text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]'
-                                                                    }`}>
-                                                                    {group.aiAnalysis.severity}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Suggested Fix Card */}
-                                                        <div className="bg-gradient-to-br from-slate-900/80 to-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
-                                                            <h4 className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wider mb-4">
-                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
-                                                                Suggested Fix
-                                                            </h4>
-                                                            <div className="mt-2 text-sm text-slate-300 leading-relaxed font-mono whitespace-pre-wrap">
-                                                                <ReactMarkdown>
-                                                                    {group.aiAnalysis.suggestedFix}
-                                                                </ReactMarkdown>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
+                                                    <div className="p-4 text-sm text-slate-500">No context available</div>
+                                                )
+                                            )}
+                                            {activeTab === 'raw' && (
+                                                <pre className="p-4 text-sm font-mono whitespace-pre-wrap break-words text-slate-300 leading-relaxed">
+                                                    {JSON.stringify(selectedEvent, null, 2)}
+                                                </pre>
+                                            )}
+                                        </div>
                                     </div>
                                 </>
                             )}
                         </div>
+
+                        {/* ✨ NEW: AI Error Analysis Container (Below Tabs) */}
+                        {selectedEvent && (
+                            <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden shadow-lg border-t-2 border-t-violet-500/50 mt-6 md:mt-0">
+                                <div className="px-5 py-4 border-b border-slate-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-violet-500/10 to-transparent">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-violet-500/20 text-violet-400 flex items-center justify-center">✨</div>
+                                        <div>
+                                            <h2 className="text-sm font-bold text-slate-200">AI Error Analysis</h2>
+                                            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Powered by Gemini AI</p>
+                                        </div>
+                                    </div>
+                                    {!group.aiAnalysis && (
+                                        <button
+                                            onClick={handleAnalyze}
+                                            disabled={aiAnalyzing || !selectedEvent}
+                                            className="px-5 py-2 text-sm font-semibold bg-gradient-to-r from-violet-600 to-blue-600 text-white rounded-lg shadow-md hover:from-violet-500 hover:to-blue-500 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                                        >
+                                            {aiAnalyzing ? <Spinner /> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
+                                            {aiAnalyzing ? 'Analyzing...' : 'Analyze Now'}
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="p-5">
+                                    {!group.aiAnalysis ? (
+                                        <div className="text-center py-10 flex flex-col items-center">
+                                            <div className="w-16 h-16 rounded-2xl bg-slate-800/50 border border-slate-700/50 flex items-center justify-center text-3xl mb-4 grayscale opacity-50">
+                                                🤖
+                                            </div>
+                                            <h3 className="text-slate-300 font-medium mb-1">No analysis generated yet</h3>
+                                            <p className="text-sm text-slate-500 max-w-sm mx-auto">
+                                                Click the Analyze button above to get a root cause breakdown and suggested code fix.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <div className="flex gap-4 flex-col lg:flex-row">
+                                                {/* Root Cause Card */}
+                                                <div className="flex-1 bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
+                                                    <h4 className="flex items-center gap-2 text-xs font-bold text-violet-400 uppercase tracking-wider mb-3">
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                                        Root Cause
+                                                    </h4>
+                                                    <div className="text-sm text-slate-300 leading-relaxed">
+                                                        {group.aiAnalysis.rootCause}
+                                                    </div>
+                                                </div>
+                                                {/* Severity Card */}
+                                                <div className="w-full lg:w-48 shrink-0 bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm flex flex-col justify-center items-center text-center">
+                                                    <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                                        Severity Assessment
+                                                    </h4>
+                                                    <div className={`text-xl font-black uppercase tracking-widest ${group.aiAnalysis.severity === 'high' ? 'text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.5)]' :
+                                                        group.aiAnalysis.severity === 'medium' ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]' : 'text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]'
+                                                        }`}>
+                                                        {group.aiAnalysis.severity}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Suggested Fix Card */}
+                                            <div className="bg-gradient-to-br from-slate-900/80 to-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
+                                                <h4 className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wider mb-4">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+                                                    Suggested Fix
+                                                </h4>
+                                                <div className="mt-2 text-sm text-slate-300 leading-relaxed font-mono whitespace-pre-wrap">
+                                                    <ReactMarkdown>
+                                                        {group.aiAnalysis.suggestedFix}
+                                                    </ReactMarkdown>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
 
                     </div>
