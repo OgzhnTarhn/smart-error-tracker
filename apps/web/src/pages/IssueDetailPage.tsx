@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getGroupDetail, setGroupStatus, type StatusAction } from '../lib/api';
+import {
+    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+} from 'recharts';
 
 type EventItem = {
     id: string;
@@ -43,6 +46,34 @@ const statusColor: Record<string, string> = {
     ignored: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
 };
 
+// ─── Helper: build mini timeline from events ─────────────
+function buildTimeline(events: EventItem[]) {
+    const map: Record<string, number> = {};
+    const now = new Date();
+    for (let d = 6; d >= 0; d--) {
+        const dt = new Date(now);
+        dt.setDate(dt.getDate() - d);
+        map[dt.toISOString().slice(0, 10)] = 0;
+    }
+    for (const ev of events) {
+        const key = new Date(ev.createdAt).toISOString().slice(0, 10);
+        if (key in map) map[key]++;
+    }
+    return Object.entries(map).map(([date, count]) => ({
+        date: new Date(date + 'T00:00:00').toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }),
+        count,
+    }));
+}
+
+// ─── Helper: parse context into key-value pairs ──────────
+function parseContext(ctx: any): Array<{ key: string; value: string }> {
+    if (!ctx || typeof ctx !== 'object') return [];
+    return Object.entries(ctx).map(([key, val]) => ({
+        key,
+        value: typeof val === 'object' ? JSON.stringify(val) : String(val),
+    }));
+}
+
 export default function IssueDetailPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -54,6 +85,7 @@ export default function IssueDetailPage() {
     const [error, setError] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
+    const [stackCopied, setStackCopied] = useState(false);
 
     const fetchDetail = async () => {
         if (!id) return;
@@ -96,6 +128,13 @@ export default function IssueDetailPage() {
         setTimeout(() => setCopied(false), 2000);
     };
 
+    const copyStackTrace = async () => {
+        if (!selectedEvent?.stack) return;
+        await navigator.clipboard.writeText(selectedEvent.stack);
+        setStackCopied(true);
+        setTimeout(() => setStackCopied(false), 2000);
+    };
+
     // Loading
     if (loading) return (
         <div className="min-h-screen bg-slate-900 flex items-center justify-center">
@@ -120,6 +159,9 @@ export default function IssueDetailPage() {
             </div>
         </div>
     );
+
+    const timeline = buildTimeline(events);
+    const contextPairs = selectedEvent ? parseContext(selectedEvent.context) : [];
 
     return (
         <div className="min-h-screen bg-slate-900 text-slate-100">
@@ -172,7 +214,7 @@ export default function IssueDetailPage() {
             <main className="max-w-7xl mx-auto px-6 py-6">
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
-                    {/* Left: Overview + Events list */}
+                    {/* Left: Overview + Timeline + Events list */}
                     <div className="lg:col-span-2 space-y-6">
                         {/* Overview Card */}
                         <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
@@ -215,6 +257,25 @@ export default function IssueDetailPage() {
                             </div>
                         </div>
 
+                        {/* ✨ NEW: Event Timeline Mini Chart */}
+                        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
+                            <div className="px-5 py-3 border-b border-slate-700/50">
+                                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Event Frequency — Last 7 Days</h2>
+                            </div>
+                            <div className="px-3 py-4 h-36">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={timeline}>
+                                        <XAxis dataKey="date" stroke="#475569" fontSize={10} tickLine={false} axisLine={false} />
+                                        <YAxis stroke="#475569" fontSize={10} allowDecimals={false} tickLine={false} axisLine={false} width={20} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', fontSize: '12px' }}
+                                        />
+                                        <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Events" />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
                         {/* Events List */}
                         <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
                             <div className="px-5 py-3 border-b border-slate-700/50">
@@ -223,7 +284,7 @@ export default function IssueDetailPage() {
                             {events.length === 0 ? (
                                 <div className="px-5 py-12 text-center text-sm text-slate-500">No events recorded</div>
                             ) : (
-                                <ul className="max-h-[420px] overflow-y-auto divide-y divide-slate-700/30">
+                                <ul className="max-h-[320px] overflow-y-auto divide-y divide-slate-700/30">
                                     {events.map((ev) => (
                                         <li
                                             key={ev.id}
@@ -249,12 +310,32 @@ export default function IssueDetailPage() {
                         </div>
                     </div>
 
-                    {/* Right: Event Detail */}
-                    <div className="lg:col-span-3">
+                    {/* Right: Event Detail + Context + AI */}
+                    <div className="lg:col-span-3 space-y-6">
+
+                        {/* Event Detail Panel */}
                         <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden sticky top-6">
                             <div className="px-5 py-3 border-b border-slate-700/50 flex items-center justify-between">
                                 <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Event Detail</h2>
-                                {selectedEvent && <span className="text-xs text-slate-500 font-mono">{selectedEvent.id.slice(0, 12)}…</span>}
+                                <div className="flex items-center gap-2">
+                                    {/* ✨ NEW: Copy Stack Trace */}
+                                    {selectedEvent?.stack && (
+                                        <button
+                                            onClick={copyStackTrace}
+                                            className="px-2.5 py-1 text-xs font-medium text-slate-400 hover:text-slate-200 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors flex items-center gap-1.5"
+                                        >
+                                            {stackCopied ? (
+                                                <><span className="text-emerald-400">✓</span> Copied</>
+                                            ) : (
+                                                <>
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                                    Copy Stack
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
+                                    {selectedEvent && <span className="text-xs text-slate-500 font-mono">{selectedEvent.id.slice(0, 12)}…</span>}
+                                </div>
                             </div>
 
                             {!selectedEvent ? (
@@ -279,18 +360,27 @@ export default function IssueDetailPage() {
                                         ))}
                                     </div>
 
-                                    {/* Content */}
+                                    {/* Tab Content */}
                                     <div className="px-5 pb-5">
-                                        <div className="bg-slate-900/50 border border-slate-700 rounded-xl overflow-auto max-h-[500px]">
+                                        <div className="bg-slate-900/50 border border-slate-700 rounded-xl overflow-auto max-h-[400px]">
                                             {activeTab === 'stack' && (
                                                 <pre className="p-4 text-sm font-mono whitespace-pre-wrap break-words text-slate-300 leading-relaxed">
                                                     {selectedEvent.stack || 'No stack trace available'}
                                                 </pre>
                                             )}
                                             {activeTab === 'context' && (
-                                                <pre className="p-4 text-sm font-mono whitespace-pre-wrap break-words text-slate-300 leading-relaxed">
-                                                    {selectedEvent.context ? JSON.stringify(selectedEvent.context, null, 2) : 'No context available'}
-                                                </pre>
+                                                contextPairs.length > 0 ? (
+                                                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                        {contextPairs.map(({ key, value }) => (
+                                                            <div key={key} className="bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 py-2">
+                                                                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-0.5">{key}</div>
+                                                                <div className="text-sm font-mono text-slate-300 break-all">{value}</div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="p-4 text-sm text-slate-500">No context available</div>
+                                                )
                                             )}
                                             {activeTab === 'raw' && (
                                                 <pre className="p-4 text-sm font-mono whitespace-pre-wrap break-words text-slate-300 leading-relaxed">
@@ -301,6 +391,44 @@ export default function IssueDetailPage() {
                                     </div>
                                 </>
                             )}
+                        </div>
+
+                        {/* ✨ NEW: AI Analysis Placeholder */}
+                        <div className="bg-gradient-to-br from-violet-500/5 to-blue-500/5 border border-violet-500/20 rounded-2xl overflow-hidden">
+                            <div className="px-5 py-4 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center text-lg">
+                                        🤖
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-slate-200">AI Error Analysis</h3>
+                                        <p className="text-xs text-slate-500">Analyze root cause and get fix suggestions</p>
+                                    </div>
+                                </div>
+                                <button
+                                    disabled
+                                    className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-violet-600 to-blue-600 text-white rounded-lg opacity-60 cursor-not-allowed flex items-center gap-2"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                    Analyze — Coming Soon
+                                </button>
+                            </div>
+                            <div className="px-5 pb-4">
+                                <div className="flex gap-3">
+                                    <div className="flex-1 bg-slate-800/30 border border-slate-700/30 rounded-lg px-3 py-2">
+                                        <div className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider mb-0.5">Root Cause</div>
+                                        <div className="text-xs text-slate-500 italic">AI will analyze error patterns…</div>
+                                    </div>
+                                    <div className="flex-1 bg-slate-800/30 border border-slate-700/30 rounded-lg px-3 py-2">
+                                        <div className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider mb-0.5">Suggested Fix</div>
+                                        <div className="text-xs text-slate-500 italic">Code suggestions will appear here…</div>
+                                    </div>
+                                    <div className="flex-1 bg-slate-800/30 border border-slate-700/30 rounded-lg px-3 py-2">
+                                        <div className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider mb-0.5">Severity</div>
+                                        <div className="text-xs text-slate-500 italic">Auto-classified severity…</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
