@@ -20,3 +20,9 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
 
     return response.json();
 };
+
+export const getGroupDetail = (id: string) => apiFetch(`/groups/${id}`);
+
+export type StatusAction = 'resolve' | 'open' | 'ignore';
+export const setGroupStatus = (id: string, action: StatusAction) =>
+    apiFetch(`/groups/${id}/${action}`, { method: 'POST' });

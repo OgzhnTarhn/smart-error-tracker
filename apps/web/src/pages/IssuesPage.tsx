@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 
 type IssueStatus = 'all' | 'open' | 'resolved' | 'ignored';
@@ -14,6 +15,7 @@ type ErrorGroup = {
 };
 
 export default function IssuesPage() {
+    const navigate = useNavigate();
     const [issues, setIssues] = useState<ErrorGroup[]>([]);
     const [statusFilter, setStatusFilter] = useState<IssueStatus>('all');
     const [loading, setLoading] = useState(false);
@@ -77,8 +79,8 @@ export default function IssuesPage() {
                             key={status}
                             onClick={() => setStatusFilter(status)}
                             className={`px-4 py-1.5 rounded-md text-sm font-medium capitalize transition-all duration-200 ${statusFilter === status
-                                    ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600 dark:text-blue-400'
-                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50'
+                                ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600 dark:text-blue-400'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50'
                                 }`}
                         >
                             {status}
@@ -109,7 +111,7 @@ export default function IssuesPage() {
                     <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
                         <ul className="divide-y divide-slate-100 dark:divide-slate-700/50">
                             {issues.map((issue) => (
-                                <li key={issue.id} className="p-5 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors group">
+                                <li key={issue.id} onClick={() => navigate(`/issues/${issue.id}`)} className="p-5 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors group cursor-pointer">
                                     <div className="flex justify-between items-start gap-4">
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-3 mb-1.5">
