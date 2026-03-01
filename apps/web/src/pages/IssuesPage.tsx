@@ -88,28 +88,45 @@ export default function IssuesPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 p-8">
-            <div className="max-w-5xl mx-auto">
-                {/* Header */}
-                <div className="flex justify-between items-center mb-8">
+        <div className="min-h-screen bg-slate-900 text-slate-100">
+            {/* Header */}
+            <header className="border-b border-slate-800 px-6 py-4">
+                <div className="max-w-7xl mx-auto flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Issues</h1>
-                        <p className="text-slate-500 dark:text-slate-400 mt-1">Monitor and manage application errors</p>
+                        <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 via-violet-400 to-pink-400 bg-clip-text text-transparent">
+                            Smart Error Tracker
+                        </h1>
+                        <p className="text-sm text-slate-500 mt-0.5">Issues</p>
                     </div>
-                    <button
-                        onClick={() => fetchIssues(false)}
-                        disabled={loading}
-                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {loading ? (
-                            <svg className="animate-spin h-5 w-5 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
-                        ) : (
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                        )}
-                        <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
-                    </button>
+                    <div className="flex gap-2 items-center">
+                        <nav className="flex gap-2 mr-4">
+                            <button
+                                onClick={() => navigate('/')}
+                                className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors"
+                            >
+                                Overview
+                            </button>
+                            <span className="px-4 py-2 text-sm font-medium text-violet-400 bg-violet-500/10 border border-violet-500/30 rounded-lg">
+                                Issues
+                            </span>
+                        </nav>
+                        <button
+                            onClick={() => fetchIssues(false)}
+                            disabled={loading}
+                            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {loading ? (
+                                <svg className="animate-spin h-5 w-5 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
+                            ) : (
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            )}
+                            <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
+                        </button>
+                    </div>
                 </div>
+            </header>
 
+            <main className="max-w-7xl mx-auto px-6 py-8">
                 {/* Search + Filters */}
                 <div className="flex flex-col sm:flex-row gap-4 mb-6">
                     <div className="relative flex-1">
@@ -209,7 +226,7 @@ export default function IssuesPage() {
                         )}
                     </>
                 )}
-            </div>
+            </main>
         </div>
     );
 }
