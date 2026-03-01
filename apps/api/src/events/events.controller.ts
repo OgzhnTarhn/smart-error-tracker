@@ -8,6 +8,9 @@ type ErrorEventIn = {
   stack?: string;
   context?: any;
   timestamp?: string;
+  environment?: string;
+  releaseVersion?: string;
+  level?: string;
 };
 
 function sha256(input: string) {
@@ -92,6 +95,9 @@ export class EventsController {
         message: body.message,
         stack: body.stack,
         context: body.context ?? undefined,
+        environment: body.environment,
+        releaseVersion: body.releaseVersion,
+        level: body.level,
         timestamp: ts,
       },
     });
@@ -119,6 +125,9 @@ export class EventsController {
   async listGroups(
     @Headers('x-api-key') apiKey: string | undefined,
     @Query('status') status?: string,
+    @Query('q') q?: string,
+    @Query('offset') offset?: string,
+    @Query('limit') limit?: string,
   ) {
     const projectId = await this.resolveProjectIdFromApiKey(apiKey);
     if (!projectId) return { ok: false, error: 'unauthorized' };
@@ -127,10 +136,17 @@ export class EventsController {
     if (status) {
       whereClause.status = status;
     }
+    if (q) {
+      whereClause.title = { contains: q, mode: 'insensitive' };
+    }
+
+    const take = Math.min(Number(limit ?? 50) || 50, 100);
+    const skip = Math.max(Number(offset ?? 0) || 0, 0);
 
     const groups = await this.prisma.errorGroup.findMany({
       where: whereClause,
-      take: 50,
+      take: take + 1, // fetch one extra to detect hasMore
+      skip,
       orderBy: { lastSeenAt: 'desc' },
       select: {
         id: true,
@@ -143,7 +159,14 @@ export class EventsController {
       }
     });
 
-    return { ok: true, groups };
+    const hasMore = groups.length > take;
+    const items = hasMore ? groups.slice(0, take) : groups;
+
+    return {
+      ok: true,
+      groups: items,
+      page: { limit: take, offset: skip, hasMore },
+    };
   }
 
   @Get('groups/:id')
@@ -178,6 +201,9 @@ export class EventsController {
         message: true,
         stack: true,
         context: true,
+        environment: true,
+        releaseVersion: true,
+        level: true,
         timestamp: true,
       }
     });
@@ -190,6 +216,9 @@ export class EventsController {
         message: e.message,
         stack: e.stack,
         context: e.context,
+        environment: e.environment,
+        releaseVersion: e.releaseVersion,
+        level: e.level,
         createdAt: e.timestamp,
       })),
     };

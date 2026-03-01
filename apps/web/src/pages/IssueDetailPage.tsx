@@ -7,6 +7,9 @@ type EventItem = {
     message: string;
     stack: string | null;
     context: any;
+    environment: string | null;
+    releaseVersion: string | null;
+    level: string | null;
     createdAt: string;
 };
 
@@ -192,6 +195,9 @@ export default function IssueDetailPage() {
                                 <Row label="Events"><span className="font-semibold text-lg">{group.eventCount}</span></Row>
                                 <Row label="First seen">{formatDate(group.firstSeenAt)}</Row>
                                 <Row label="Last seen">{formatDate(group.lastSeenAt)}</Row>
+                                {selectedEvent?.environment && <Row label="Environment"><span className="px-2 py-0.5 rounded-md text-xs font-medium bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-400">{selectedEvent.environment}</span></Row>}
+                                {selectedEvent?.releaseVersion && <Row label="Release"><code className="text-xs font-mono bg-slate-100 dark:bg-slate-700/50 px-2 py-0.5 rounded">{selectedEvent.releaseVersion}</code></Row>}
+                                {selectedEvent?.level && <Row label="Level"><span className={`px-2 py-0.5 rounded-md text-xs font-medium ${selectedEvent.level === 'error' ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400' : selectedEvent.level === 'warn' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400'}`}>{selectedEvent.level}</span></Row>}
                                 <div className="px-5 py-3">
                                     <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Fingerprint</div>
                                     <div className="flex items-center gap-2">
@@ -221,7 +227,13 @@ export default function IssueDetailPage() {
                                         <li key={ev.id}
                                             onClick={() => setSelectedEvent(ev)}
                                             className={`px-5 py-3 cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/30 ${selectedEvent?.id === ev.id ? 'bg-blue-50 dark:bg-blue-900/20 border-l-2 border-l-blue-500' : ''}`}>
-                                            <div className="text-xs text-slate-400 dark:text-slate-500 mb-0.5">{formatDate(ev.createdAt)}</div>
+                                            <div className="flex items-center justify-between mb-0.5">
+                                                <span className="text-xs text-slate-400 dark:text-slate-500">{formatDate(ev.createdAt)}</span>
+                                                <div className="flex gap-1">
+                                                    {ev.environment && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400">{ev.environment}</span>}
+                                                    {ev.releaseVersion && <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-600 dark:bg-slate-600/30 dark:text-slate-400">{ev.releaseVersion}</span>}
+                                                </div>
+                                            </div>
                                             <div className="text-sm truncate">{ev.message}</div>
                                         </li>
                                     ))}
