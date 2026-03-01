@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Post, Query } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { createHash } from 'crypto';
 
@@ -118,12 +118,18 @@ export class EventsController {
   @Get('groups')
   async listGroups(
     @Headers('x-api-key') apiKey: string | undefined,
+    @Query('status') status?: string,
   ) {
     const projectId = await this.resolveProjectIdFromApiKey(apiKey);
-    if (!projectId) return { ok: false, error: 'invalid_or_missing_api_key' };
+    if (!projectId) return { ok: false, error: 'unauthorized' };
+
+    const whereClause: any = { projectId };
+    if (status) {
+      whereClause.status = status;
+    }
 
     const groups = await this.prisma.errorGroup.findMany({
-      where: { projectId },
+      where: whereClause,
       take: 50,
       orderBy: { lastSeenAt: 'desc' },
       select: {
@@ -140,26 +146,103 @@ export class EventsController {
     return { ok: true, groups };
   }
 
-  @Get('groups/detail')
+  @Get('groups/:id')
   async groupDetail(
     @Headers('x-api-key') apiKey: string | undefined,
-    @Query('id') id: string,
+    @Param('id') id: string,
   ) {
     const projectId = await this.resolveProjectIdFromApiKey(apiKey);
-    if (!projectId) return { error: 'invalid_or_missing_api_key' };
-    if (!id) return { error: 'missing_id' };
+    if (!projectId) return { ok: false, error: 'unauthorized' };
+    if (!id) return { ok: false, error: 'invalid' };
+
+    const group = await this.prisma.errorGroup.findFirst({
+      where: { id, projectId },
+      select: {
+        id: true,
+        fingerprint: true,
+        title: true,
+        status: true,
+        eventCount: true,
+        firstSeenAt: true,
+        lastSeenAt: true,
+      }
+    });
+    if (!group) return { ok: false, error: 'not_found' };
+
+    const events = await this.prisma.event.findMany({
+      where: { groupId: id, projectId },
+      take: 20,
+      orderBy: { timestamp: 'desc' },
+      select: {
+        id: true,
+        message: true,
+        stack: true,
+        context: true,
+        timestamp: true,
+      }
+    });
+
+    return {
+      ok: true,
+      group,
+      events: events.map(e => ({
+        id: e.id,
+        message: e.message,
+        stack: e.stack,
+        context: e.context,
+        createdAt: e.timestamp,
+      })),
+    };
+  }
+
+  @Post('groups/:id/resolve')
+  async resolveGroup(
+    @Headers('x-api-key') apiKey: string | undefined,
+    @Param('id') id: string,
+  ) {
+    return this.updateGroupStatus(apiKey, id, 'resolved');
+  }
+
+  @Post('groups/:id/open')
+  async openGroup(
+    @Headers('x-api-key') apiKey: string | undefined,
+    @Param('id') id: string,
+  ) {
+    return this.updateGroupStatus(apiKey, id, 'open');
+  }
+
+  @Post('groups/:id/ignore')
+  async ignoreGroup(
+    @Headers('x-api-key') apiKey: string | undefined,
+    @Param('id') id: string,
+  ) {
+    return this.updateGroupStatus(apiKey, id, 'ignored');
+  }
+
+  private async updateGroupStatus(apiKey: string | undefined, id: string, status: string) {
+    const projectId = await this.resolveProjectIdFromApiKey(apiKey);
+    if (!projectId) return { ok: false, error: 'unauthorized' };
 
     const group = await this.prisma.errorGroup.findFirst({
       where: { id, projectId },
     });
-    if (!group) return { error: 'group_not_found' };
+    if (!group) return { ok: false, error: 'not_found' };
 
-    const events = await this.prisma.event.findMany({
-      where: { groupId: id, projectId },
-      take: 50,
-      orderBy: { timestamp: 'desc' },
+    if (group.status === status) {
+      return {
+        ok: true,
+        group: { id: group.id, status: group.status, lastSeenAt: group.lastSeenAt, eventCount: group.eventCount }
+      };
+    }
+
+    const updated = await this.prisma.errorGroup.update({
+      where: { id },
+      data: { status },
     });
 
-    return { group, events };
+    return {
+      ok: true,
+      group: { id: updated.id, status: updated.status, lastSeenAt: updated.lastSeenAt, eventCount: updated.eventCount }
+    };
   }
 }
