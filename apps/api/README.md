@@ -25,6 +25,41 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## API Notes
+
+### `POST /events` Payload Validation
+
+The ingest endpoint now validates request payloads with a route-level `ValidationPipe`.
+
+Required fields:
+- `source`: non-empty string, max 64 chars
+- `message`: non-empty string, max 4000 chars
+
+Optional fields:
+- `stack`: string, max 100000 chars
+- `context`: object
+- `timestamp`: ISO-8601 string
+- `environment`: string, max 64 chars
+- `releaseVersion`: string, max 128 chars
+- `level`: one of `error`, `warn`, `info`
+- `sdk`: object with optional `name` and `version` string fields
+
+Behavior:
+- Invalid payload returns `HTTP 400`.
+- Unknown extra fields are silently removed (`whitelist: true`, `forbidNonWhitelisted: false`).
+
+Example validation error response:
+
+```json
+{
+  "statusCode": 400,
+  "message": [
+    "message must be longer than or equal to 1 characters"
+  ],
+  "error": "Bad Request"
+}
+```
+
 ## Project setup
 
 ```bash

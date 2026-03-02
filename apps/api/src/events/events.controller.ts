@@ -6,21 +6,13 @@ import {
   Param,
   Post,
   Query,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { createHash } from 'crypto';
 import { GoogleGenAI } from '@google/genai';
-
-type ErrorEventIn = {
-  source: 'frontend' | 'backend';
-  message: string;
-  stack?: string;
-  context?: any;
-  timestamp?: string;
-  environment?: string;
-  releaseVersion?: string;
-  level?: string;
-};
+import { IngestEventDto } from './dto/ingest-event.dto';
 
 function sha256(input: string) {
   return createHash('sha256').update(input).digest('hex');
@@ -40,10 +32,14 @@ function topFrame(stack?: string) {
   return (stack.split('\n')[0] ?? '').trim().slice(0, 200);
 }
 
-function makeFingerprint(ev: ErrorEventIn) {
+function makeFingerprint(ev: IngestEventDto) {
   const msg = normalizeMessage(ev.message);
   const frame = topFrame(ev.stack);
-  const route = ev.context?.route ? String(ev.context.route) : '';
+  const routeValue = ev.context?.route;
+  const route =
+    typeof routeValue === 'string' || typeof routeValue === 'number'
+      ? String(routeValue)
+      : '';
   return `${ev.source}|${route}|${msg}|${frame}`;
 }
 
@@ -65,9 +61,16 @@ export class EventsController {
   }
 
   @Post('events')
+  @UsePipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: false,
+      transform: true,
+    }),
+  )
   async ingest(
     @Headers('x-api-key') apiKey: string | undefined,
-    @Body() body: ErrorEventIn,
+    @Body() body: IngestEventDto,
   ) {
     const projectId = await this.resolveProjectIdFromApiKey(apiKey);
     if (!projectId) return { error: 'invalid_or_missing_api_key' };
@@ -75,43 +78,45 @@ export class EventsController {
     const ts = body.timestamp ? new Date(body.timestamp) : new Date();
     const fp = makeFingerprint(body);
 
-    // group upsert using compound unique (projectId + fingerprint)
-    const group = await this.prisma.errorGroup.upsert({
-      where: {
-        projectId_fingerprint: { projectId, fingerprint: fp },
-      },
-      create: {
-        projectId,
-        fingerprint: fp,
-        title: normalizeMessage(body.message) || 'Unknown error',
-        eventCount: 1,
-        firstSeenAt: ts,
-        lastSeenAt: ts,
-        sample: body as any,
-      },
-      update: {
-        eventCount: { increment: 1 },
-        lastSeenAt: ts,
-      },
+    const groupId = await this.prisma.$transaction(async (tx) => {
+      const group = await tx.errorGroup.upsert({
+        where: {
+          projectId_fingerprint: { projectId, fingerprint: fp },
+        },
+        create: {
+          projectId,
+          fingerprint: fp,
+          title: normalizeMessage(body.message) || 'Unknown error',
+          eventCount: 1,
+          firstSeenAt: ts,
+          lastSeenAt: ts,
+          sample: { ...body } as any,
+        },
+        update: {
+          eventCount: { increment: 1 },
+          lastSeenAt: ts,
+        },
+      });
+
+      await tx.event.create({
+        data: {
+          projectId,
+          groupId: group.id,
+          source: body.source,
+          message: body.message,
+          stack: body.stack,
+          context: (body.context as any) ?? undefined,
+          environment: body.environment,
+          releaseVersion: body.releaseVersion,
+          level: body.level,
+          timestamp: ts,
+        },
+      });
+
+      return group.id;
     });
 
-    // event insert
-    await this.prisma.event.create({
-      data: {
-        projectId,
-        groupId: group.id,
-        source: body.source,
-        message: body.message,
-        stack: body.stack,
-        context: body.context ?? undefined,
-        environment: body.environment,
-        releaseVersion: body.releaseVersion,
-        level: body.level,
-        timestamp: ts,
-      },
-    });
-
-    return { ok: true, groupId: group.id };
+    return { ok: true, groupId };
   }
 
   @Get('events')
