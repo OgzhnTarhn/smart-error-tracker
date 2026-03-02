@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Query,
+  UseGuards,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -13,6 +14,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { createHash } from 'crypto';
 import { GoogleGenAI } from '@google/genai';
 import { IngestEventDto } from './dto/ingest-event.dto';
+import { IngestRateLimitGuard } from '../common/guards/ingest-rate-limit.guard';
 
 function sha256(input: string) {
   return createHash('sha256').update(input).digest('hex');
@@ -61,6 +63,7 @@ export class EventsController {
   }
 
   @Post('events')
+  @UseGuards(IngestRateLimitGuard)
   @UsePipes(
     new ValidationPipe({
       whitelist: true,

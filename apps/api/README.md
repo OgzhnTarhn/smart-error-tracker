@@ -47,6 +47,18 @@ Optional fields:
 Behavior:
 - Invalid payload returns `HTTP 400`.
 - Unknown extra fields are silently removed (`whitelist: true`, `forbidNonWhitelisted: false`).
+- In-memory rate limit is applied for ingest requests (`HTTP 429` when exceeded).
+
+Rate limit defaults:
+- `INGEST_RATE_LIMIT_MAX=60`
+- `INGEST_RATE_LIMIT_WINDOW_MS=60000`
+
+Example `.env` overrides:
+
+```dotenv
+INGEST_RATE_LIMIT_MAX=120
+INGEST_RATE_LIMIT_WINDOW_MS=60000
+```
 
 Example validation error response:
 
