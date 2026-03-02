@@ -32,8 +32,9 @@ jobs:
 
     env:
       NODE_ENV: test
-      DATABASE_URL: postgresql://set_user:set_pass@localhost:5432/set_db?schema=public
-      ADMIN_TOKEN: dev-admin-123
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
     services:
       postgres:
