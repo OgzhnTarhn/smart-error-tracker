@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: API Build and Tests
+    runs-on: ubuntu-latest
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://set_user:set_pass@localhost:5432/set_db?schema=public
+      ADMIN_TOKEN: dev-admin-123
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: set_user
+          POSTGRES_PASSWORD: set_pass
+          POSTGRES_DB: set_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U set_user -d set_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter api exec prisma generate
+
+      - name: Apply Prisma Migrations
+        run: pnpm --filter api exec prisma migrate deploy
+
+      - name: Build API
+        run: pnpm --filter api build
+
+      - name: Run API Unit Tests
+        run: pnpm --filter api test -- --runInBand
+
+      - name: Run API E2E Tests
+        run: pnpm --filter api test:e2e -- --runInBand
