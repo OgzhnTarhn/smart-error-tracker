@@ -32,8 +32,10 @@ jobs:
 
     env:
       NODE_ENV: test
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+      # Dependabot PRs cannot read repo Actions secrets by default.
+      # Keep CI runnable by falling back to local service credentials.
+      DATABASE_URL: ${{ secrets.DATABASE_URL != '' && secrets.DATABASE_URL || 'postgresql://set_user:set_pass@localhost:5432/set_db?schema=public' }}
+      ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN != '' && secrets.ADMIN_TOKEN || 'dev-admin-123' }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
     services:
