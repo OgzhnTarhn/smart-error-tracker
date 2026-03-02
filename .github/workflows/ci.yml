@@ -60,7 +60,7 @@ jobs:
         run: pnpm --filter api build
 
       - name: Run API Unit Tests
-        run: pnpm --filter api test -- --runInBand
+        run: pnpm --filter api test --runInBand
 
       - name: Run API E2E Tests
-        run: pnpm --filter api test:e2e -- --runInBand
+        run: pnpm --filter api test:e2e --runInBand
