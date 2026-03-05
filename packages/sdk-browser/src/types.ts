@@ -1,8 +1,6 @@
 // ─── Types ───────────────────────────────────────────────
 
 export interface SdkConfig {
-    baseUrl: string;
-    apiKey: string;
     environment?: string;
     release?: string;
     /** Max events per dedupe window (default: drop duplicates within 2s) */
@@ -11,6 +9,30 @@ export interface SdkConfig {
     timeoutMs?: number;
     /** Enable console warnings (default: true) */
     debug?: boolean;
+}
+
+export type SdkInitConfig =
+    | (SdkConfig & {
+        dsn: string;
+        baseUrl?: never;
+        apiKey?: never;
+    })
+    | (SdkConfig & {
+        baseUrl: string;
+        apiKey: string;
+        dsn?: never;
+    });
+
+export interface ResolvedSdkConfig extends SdkConfig {
+    baseUrl: string;
+    apiKey: string;
+    projectId?: string;
+}
+
+export interface ParsedDsn {
+    baseUrl: string;
+    apiKey: string;
+    projectId: string;
 }
 
 export interface EventPayload {

@@ -1,11 +1,11 @@
-import type { SdkConfig, CaptureMessageOptions } from './types';
-import { normalizeError, parseTopFrame, buildContext } from './utils';
+import type { SdkInitConfig, ResolvedSdkConfig, CaptureMessageOptions } from './types';
+import { normalizeError, parseTopFrame, buildContext, parseDsn } from './utils';
 import { sendEvent } from './transport';
 import { isDuplicate } from './dedupe';
 
 // ─── Internal State ──────────────────────────────────────
 
-let _config: SdkConfig | null = null;
+let _config: ResolvedSdkConfig | null = null;
 let _handlersInstalled = false;
 
 function warn(msg: string) {
@@ -14,11 +14,41 @@ function warn(msg: string) {
     }
 }
 
-function getConfig(): SdkConfig | null {
+function getConfig(): ResolvedSdkConfig | null {
     if (!_config) {
         warn('SDK not initialized. Call init() first.');
     }
     return _config;
+}
+
+function resolveConfig(config: SdkInitConfig): ResolvedSdkConfig | null {
+    if ('dsn' in config && typeof config.dsn === 'string') {
+        const parsedDsn = parseDsn(config.dsn);
+        if (!parsedDsn) {
+            return null;
+        }
+
+        return {
+            baseUrl: parsedDsn.baseUrl,
+            apiKey: parsedDsn.apiKey,
+            projectId: parsedDsn.projectId,
+            environment: config.environment,
+            release: config.release,
+            dedupeIntervalMs: config.dedupeIntervalMs ?? 2000,
+            timeoutMs: config.timeoutMs ?? 5000,
+            debug: config.debug ?? true,
+        };
+    }
+
+    return {
+        baseUrl: config.baseUrl,
+        apiKey: config.apiKey,
+        environment: config.environment,
+        release: config.release,
+        dedupeIntervalMs: config.dedupeIntervalMs ?? 2000,
+        timeoutMs: config.timeoutMs ?? 5000,
+        debug: config.debug ?? true,
+    };
 }
 
 // ─── Public API ──────────────────────────────────────────
@@ -31,8 +61,7 @@ function getConfig(): SdkConfig | null {
  * import { init, installGlobalHandlers } from '@smart-error-tracker/browser';
  *
  * init({
- *   baseUrl: 'http://localhost:3000',
- *   apiKey: 'set_xxxxxxx',
+ *   dsn: 'http://set_xxxxxxx@localhost:3000/project_1',
  *   environment: 'production',
  *   release: '1.0.0',
  * });
@@ -40,16 +69,20 @@ function getConfig(): SdkConfig | null {
  * installGlobalHandlers();
  * ```
  */
-export function init(config: SdkConfig): void {
-    _config = {
-        dedupeIntervalMs: 2000,
-        timeoutMs: 5000,
-        debug: true,
-        ...config,
-    };
+export function init(config: SdkInitConfig): void {
+    const resolved = resolveConfig(config);
+    if (!resolved) {
+        _config = null;
+        console.warn('[SET SDK] Invalid DSN. Use format: https://set_key@host/projectId');
+        return;
+    }
+
+    _config = resolved;
+
     if (_config.debug) {
         console.log('[SET SDK] Initialized', {
             baseUrl: _config.baseUrl,
+            projectId: _config.projectId,
             environment: _config.environment,
             release: _config.release,
         });
@@ -143,4 +176,4 @@ export function installGlobalHandlers(): void {
 }
 
 // Re-export types
-export type { SdkConfig, CaptureMessageOptions, EventPayload } from './types';
+export type { SdkInitConfig, SdkInitConfig as SdkConfig, CaptureMessageOptions, EventPayload } from './types';

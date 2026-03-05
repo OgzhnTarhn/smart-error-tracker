@@ -1,5 +1,7 @@
+import type { ParsedDsn } from './types';
+
 /**
- * Safe JSON.stringify — handles circular references and caps payload size.
+ * Safe JSON.stringify - handles circular references and caps payload size.
  */
 export function safeStringify(obj: unknown, maxLength = 50_000): string {
     const seen = new WeakSet();
@@ -9,12 +11,12 @@ export function safeStringify(obj: unknown, maxLength = 50_000): string {
             seen.add(value);
         }
         if (typeof value === 'string' && value.length > 10_000) {
-            return value.slice(0, 10_000) + '…[truncated]';
+            return value.slice(0, 10_000) + '...[truncated]';
         }
         return value;
     });
     if (json && json.length > maxLength) {
-        return json.slice(0, maxLength) + '…[truncated]';
+        return json.slice(0, maxLength) + '...[truncated]';
     }
     return json ?? '{}';
 }
@@ -59,4 +61,27 @@ export function buildContext(extras?: Record<string, unknown>): Record<string, u
     };
     if (extras) Object.assign(ctx, extras);
     return ctx;
+}
+
+/**
+ * Parse DSN in format: https://set_xxx@host.tld/projectId
+ */
+export function parseDsn(dsn: string): ParsedDsn | null {
+    try {
+        const url = new URL(dsn);
+        const apiKey = decodeURIComponent(url.username).trim();
+        const projectId = url.pathname.replace(/^\/+/, '').trim();
+
+        if (!apiKey || !projectId) {
+            return null;
+        }
+
+        return {
+            baseUrl: url.origin,
+            apiKey,
+            projectId,
+        };
+    } catch {
+        return null;
+    }
 }

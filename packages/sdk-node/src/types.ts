@@ -1,8 +1,6 @@
 // ─── Types ───────────────────────────────────────────────
 
 export interface SdkConfig {
-    baseUrl: string;
-    apiKey: string;
     environment?: string;
     release?: string;
     /** Drop duplicate events within this window (default: 2000ms) */
@@ -13,6 +11,30 @@ export interface SdkConfig {
     debug?: boolean;
     /** Event source identifier (default: "backend") */
     source?: string;
+}
+
+export type SdkInitConfig =
+    | (SdkConfig & {
+        dsn: string;
+        baseUrl?: never;
+        apiKey?: never;
+    })
+    | (SdkConfig & {
+        baseUrl: string;
+        apiKey: string;
+        dsn?: never;
+    });
+
+export interface ResolvedSdkConfig extends SdkConfig {
+    baseUrl: string;
+    apiKey: string;
+    projectId?: string;
+}
+
+export interface ParsedDsn {
+    baseUrl: string;
+    apiKey: string;
+    projectId: string;
 }
 
 export interface EventPayload {

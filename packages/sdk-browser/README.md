@@ -1,6 +1,6 @@
 # @smart-error-tracker/browser
 
-Browser SDK for [Smart Error Tracker](../../README.md) — automatic error capture & reporting.
+Browser SDK for [Smart Error Tracker](../../README.md) with automatic capture and manual reporting.
 
 ## Quick Start
 
@@ -8,13 +8,21 @@ Browser SDK for [Smart Error Tracker](../../README.md) — automatic error captu
 import { init, installGlobalHandlers } from '@smart-error-tracker/browser';
 
 init({
-  baseUrl: 'http://localhost:3000',
-  apiKey: 'set_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  dsn: 'http://set_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@localhost:3000/project_1',
   environment: 'production',
   release: '1.0.0',
 });
 
-installGlobalHandlers(); // captures window.onerror + unhandledrejection
+installGlobalHandlers();
+```
+
+Legacy init (still supported):
+
+```ts
+init({
+  baseUrl: 'http://localhost:3000',
+  apiKey: 'set_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+});
 ```
 
 ## Manual Capture
@@ -22,46 +30,50 @@ installGlobalHandlers(); // captures window.onerror + unhandledrejection
 ```ts
 import { captureException, captureMessage } from '@smart-error-tracker/browser';
 
-// Capture a caught error
 try {
   riskyOperation();
 } catch (err) {
   captureException(err, { userId: '123', page: '/checkout' });
 }
 
-// Capture a custom message
 captureMessage('User completed onboarding', { level: 'info' });
 ```
 
 ## API
 
 ### `init(config)`
+
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `baseUrl` | `string` | — | API server URL |
-| `apiKey` | `string` | — | Project API key (`set_...`) |
-| `environment` | `string?` | — | e.g. `'production'`, `'staging'` |
-| `release` | `string?` | — | e.g. `'1.0.0'` |
-| `dedupeIntervalMs` | `number?` | `2000` | Drop duplicate events within this window |
+| `dsn` | `string` | - | Preferred: `https://set_key@host/projectId` |
+| `baseUrl` + `apiKey` | `string` | - | Legacy mode |
+| `environment` | `string?` | - | Example: `'production'` |
+| `release` | `string?` | - | Example: `'1.0.0'` |
+| `dedupeIntervalMs` | `number?` | `2000` | Dedupe window |
 | `timeoutMs` | `number?` | `5000` | Fetch timeout |
 | `debug` | `boolean?` | `true` | Console warnings |
 
 ### `installGlobalHandlers()`
-Installs `window.addEventListener('error')` and `window.addEventListener('unhandledrejection')`.
+
+Installs `error` and `unhandledrejection` handlers.
 
 ### `captureException(error, extras?)`
-Send an error event. `extras` are merged into `context`.
+
+Sends an error event.
 
 ### `captureMessage(message, options?)`
-Send a custom message. Options: `{ level?: 'error'|'warn'|'info', extras?: {} }`.
+
+Sends a custom event with optional level and extras.
 
 ## Safety
-- **Never crashes your app** — all transport is fire-and-forget
-- **Circular JSON safe** — handles circular references in context
-- **Client-side dedupe** — prevents spam from rapid identical errors
-- **Timeout protection** — AbortController with configurable timeout
+
+- Never crashes your app (fire-and-forget transport)
+- Circular JSON safe for context payloads
+- Client-side dedupe to reduce noise
+- Timeout protection with AbortController
 
 ## Troubleshooting
-- **CORS error**: Ensure backend allows your origin in `main.ts`
-- **Events not appearing**: Check that `VITE_API_KEY` matches a valid project key
-- **No console output**: Set `debug: true` in `init()` config
+
+- CORS error: allow your frontend origin in API CORS config
+- Events not appearing: verify the API key is valid
+- No logs: set `debug: true` in `init()`
