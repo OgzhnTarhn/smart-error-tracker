@@ -15,6 +15,7 @@ import { createHash } from 'crypto';
 import { GoogleGenAI } from '@google/genai';
 import { IngestEventDto } from './dto/ingest-event.dto';
 import { IngestRateLimitGuard } from '../common/guards/ingest-rate-limit.guard';
+import { SourceMapService } from '../source-maps/source-map.service';
 
 function sha256(input: string) {
   return createHash('sha256').update(input).digest('hex');
@@ -47,7 +48,10 @@ function makeFingerprint(ev: IngestEventDto) {
 
 @Controller()
 export class EventsController {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sourceMaps: SourceMapService,
+  ) { }
 
   private async resolveProjectIdFromApiKey(apiKey: string | undefined) {
     if (!apiKey) return null;
@@ -338,10 +342,11 @@ export class EventsController {
       include: { group: true },
     });
     if (!event) return { ok: false, error: 'not_found' };
+    const sourceMap = await this.sourceMaps.resolveTopFrame(event.stack);
 
     // If already analyzed, return cached result
     if (event.group.aiAnalysis) {
-      return { ok: true, aiAnalysis: event.group.aiAnalysis };
+      return { ok: true, aiAnalysis: event.group.aiAnalysis, sourceMap };
     }
 
     const aiKey = process.env.GEMINI_API_KEY;
@@ -363,6 +368,9 @@ Context:
 
 Stack Trace:
 ${event.stack || 'No stack trace provided.'}
+
+Resolved Top Frame (if available):
+${sourceMap ? JSON.stringify(sourceMap.original) : 'No source-map resolution available.'}
 
 Provide your response in this EXACT JSON format (no markdown code blocks, just raw JSON):
 {
@@ -389,7 +397,7 @@ Provide your response in this EXACT JSON format (no markdown code blocks, just r
         data: { aiAnalysis },
       });
 
-      return { ok: true, aiAnalysis };
+      return { ok: true, aiAnalysis, sourceMap };
     } catch (err: any) {
       console.error('AI Analysis failed:', err);
       return { ok: false, error: 'ai_analysis_failed' };

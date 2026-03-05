@@ -72,6 +72,23 @@ Example validation error response:
 }
 ```
 
+### Source Map Resolution (`POST /events/:id/analyze`)
+
+When analyzing an event, API now tries to resolve the top minified stack frame using source maps.
+
+How it works:
+- Reads the event stack trace top frame (browser-style `at ... (http://...js:line:column)`).
+- Tries to fetch `{scriptUrl}.map` (for example `index.js -> index.js.map`).
+- Uses the source map to map minified location to original source file/line.
+
+Requirements:
+- Frontend build must generate source maps (for Vite: `build.sourcemap = true`).
+- `.map` files must be reachable by the API server.
+
+Response:
+- `sourceMap` is returned when resolution succeeds.
+- If map is missing or unreachable, analysis continues normally (`sourceMap: null`).
+
 ## Project setup
 
 ```bash

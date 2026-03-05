@@ -11,12 +11,15 @@ describe('EventsController', () => {
     apiKey: { findUnique: jest.fn() },
     $transaction: jest.fn(),
   } as any;
+  const sourceMaps = {
+    resolveTopFrame: jest.fn(),
+  } as any;
 
   let controller: EventsController;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    controller = new EventsController(prisma);
+    controller = new EventsController(prisma, sourceMaps);
   });
 
   it('uses a transaction and writes both group and event for ingest', async () => {
