@@ -4,6 +4,28 @@ interface SourceMapSummaryProps {
     sourceMap: EventSourceMapResolution;
 }
 
+function normalizeOriginalSourcePath(
+    file: string | null | undefined,
+): string | null {
+    const value = file?.trim();
+    if (!value) return null;
+
+    let normalized = value
+        .replace(/^webpack:\/\/\/?/, '')
+        .replace(/^vite:\/\/\/?/, '')
+        .replace(/^\.\/+/, '')
+        .replace(/^(?:\.\.\/)+/, '');
+
+    // If source maps only return the file name, show it as src/<file>.
+    const isBareFileName = !normalized.includes('/');
+    const hasLikelySourceExt = /\.[a-z0-9]+$/i.test(normalized);
+    if (isBareFileName && hasLikelySourceExt) {
+        normalized = `src/${normalized}`;
+    }
+
+    return normalized;
+}
+
 function formatLocation(
     file: string | null | undefined,
     line: number | null | undefined,
@@ -16,8 +38,9 @@ function formatLocation(
 }
 
 export default function SourceMapSummary({ sourceMap }: SourceMapSummaryProps) {
+    const originalFile = normalizeOriginalSourcePath(sourceMap.original.source);
     const originalLocation = formatLocation(
-        sourceMap.original.source,
+        originalFile,
         sourceMap.original.line,
         sourceMap.original.column,
     );
