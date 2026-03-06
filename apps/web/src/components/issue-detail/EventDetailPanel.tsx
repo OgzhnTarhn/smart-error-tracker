@@ -67,21 +67,6 @@ function formatContextValue(value: unknown): string {
     }
 }
 
-function buildRawFallback(event: GroupDetailEvent) {
-    return {
-        id: event.id,
-        timestamp: event.timestamp || event.createdAt,
-        source: event.source,
-        message: event.message,
-        stack: event.stack,
-        level: event.level,
-        environment: event.environment,
-        releaseVersion: event.releaseVersion,
-        sdk: event.sdk,
-        context: event.context,
-    };
-}
-
 function getSourceMapSummary(sourceMapOriginal?: Record<string, unknown> | null) {
     if (!sourceMapOriginal) return null;
     const file = toDisplayString(sourceMapOriginal.file);
@@ -177,7 +162,6 @@ export default function EventDetailPanel({
 
     const rawPayload = event.rawPayload ?? null;
     const hasRawPayload = rawPayload !== null;
-    const rawViewData = hasRawPayload ? rawPayload : buildRawFallback(event);
 
     return (
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
@@ -197,7 +181,8 @@ export default function EventDetailPanel({
                     <button
                         type="button"
                         onClick={onCopyRaw}
-                        className="px-2.5 py-1 text-xs font-medium text-slate-300 hover:text-slate-100 bg-slate-700/60 hover:bg-slate-700 rounded-md transition-colors"
+                        disabled={!hasRawPayload}
+                        className="px-2.5 py-1 text-xs font-medium text-slate-300 hover:text-slate-100 bg-slate-700/60 hover:bg-slate-700 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                         {rawCopied ? 'Copied Raw' : 'Copy Raw'}
                     </button>
@@ -313,17 +298,16 @@ export default function EventDetailPanel({
                     )}
 
                     {activeTab === 'raw' && (
-                        <div>
-                            {!hasRawPayload && (
-                                <div className="px-4 pt-4 text-xs text-slate-500">
-                                    No raw payload available
-                                </div>
-                            )}
+                        hasRawPayload ? (
                             <JsonViewer
-                                data={rawViewData}
+                                data={rawPayload}
                                 emptyMessage="No raw payload available"
                             />
-                        </div>
+                        ) : (
+                            <div className="p-5 text-sm text-slate-500">
+                                No raw payload available
+                            </div>
+                        )
                     )}
                 </div>
             </div>

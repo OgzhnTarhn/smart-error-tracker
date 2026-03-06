@@ -74,21 +74,6 @@ function buildTimeline(events: GroupDetailEvent[]): TimelinePoint[] {
     }));
 }
 
-function buildRawFallback(event: GroupDetailEvent) {
-    return {
-        id: event.id,
-        timestamp: event.timestamp || event.createdAt,
-        source: event.source,
-        message: event.message,
-        stack: event.stack,
-        level: event.level,
-        environment: event.environment,
-        releaseVersion: event.releaseVersion,
-        sdk: event.sdk,
-        context: event.context,
-    };
-}
-
 export default function IssueDetailPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -219,7 +204,8 @@ export default function IssueDetailPage() {
 
     const copyRawPayload = async () => {
         if (!selectedEvent) return;
-        const rawData = selectedEvent.rawPayload ?? buildRawFallback(selectedEvent);
+        const rawData = selectedEvent.rawPayload ?? null;
+        if (rawData === null) return;
         try {
             await navigator.clipboard.writeText(JSON.stringify(rawData, null, 2));
             setRawCopied(true);
