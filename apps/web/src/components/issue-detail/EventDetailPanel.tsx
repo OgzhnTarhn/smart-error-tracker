@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import type { GroupDetailEvent } from '../../lib/api';
+import type { EventSourceMapResolution, GroupDetailEvent } from '../../lib/api';
 import IssueLevelBadge from '../issues/IssueLevelBadge';
 import JsonViewer from './JsonViewer';
+import SourceMapSummary from './SourceMapSummary';
 import { EVENT_TABS, type EventTab } from './types';
 
 interface EventDetailPanelProps {
@@ -11,9 +12,12 @@ interface EventDetailPanelProps {
     formatDate: (value: string) => string;
     onCopyStack: () => void;
     onCopyRaw: () => void;
+    onResolveSourceMap: () => void;
     stackCopied: boolean;
     rawCopied: boolean;
-    sourceMapOriginal?: Record<string, unknown> | null;
+    sourceMap?: EventSourceMapResolution | null;
+    sourceMapRequested?: boolean;
+    resolvingSourceMap?: boolean;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -67,22 +71,6 @@ function formatContextValue(value: unknown): string {
     }
 }
 
-function getSourceMapSummary(sourceMapOriginal?: Record<string, unknown> | null) {
-    if (!sourceMapOriginal) return null;
-    const file = toDisplayString(sourceMapOriginal.file);
-    const line = toDisplayString(sourceMapOriginal.line);
-    const column = toDisplayString(sourceMapOriginal.column);
-    const name = toDisplayString(sourceMapOriginal.name);
-
-    if (!file && !line && !column && !name) return null;
-    return {
-        file: file ?? '-',
-        line: line ?? '-',
-        column: column ?? '-',
-        name: name ?? '-',
-    };
-}
-
 export default function EventDetailPanel({
     event,
     activeTab,
@@ -90,9 +78,12 @@ export default function EventDetailPanel({
     formatDate,
     onCopyStack,
     onCopyRaw,
+    onResolveSourceMap,
     stackCopied,
     rawCopied,
-    sourceMapOriginal,
+    sourceMap,
+    sourceMapRequested = false,
+    resolvingSourceMap = false,
 }: EventDetailPanelProps) {
     if (!event) {
         return (
@@ -111,7 +102,6 @@ export default function EventDetailPanel({
 
     const context = asRecord(event.context);
     const contextEntries = context ? Object.entries(context) : [];
-    const sourceMapSummary = getSourceMapSummary(sourceMapOriginal);
     const metaValues = {
         timestamp: formatDate(event.timestamp || event.createdAt),
         source: event.source || '-',
@@ -211,16 +201,6 @@ export default function EventDetailPanel({
                     <MetaItem label="Release" value={metaValues.release} />
                     <MetaItem label="SDK" value={metaValues.sdk} />
                 </div>
-                {sourceMapSummary && (
-                    <div className="mt-3 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2">
-                        <div className="text-[11px] uppercase tracking-wider font-semibold text-blue-300 mb-1">
-                            Source Map
-                        </div>
-                        <div className="text-xs text-blue-100 font-mono break-all">
-                            {sourceMapSummary.file}:{sourceMapSummary.line}:{sourceMapSummary.column} {sourceMapSummary.name !== '-' ? `(${sourceMapSummary.name})` : ''}
-                        </div>
-                    </div>
-                )}
             </div>
 
             <div className="flex gap-1 px-5 pt-4 pb-2">
@@ -243,9 +223,34 @@ export default function EventDetailPanel({
                 <div className="bg-slate-900/50 border border-slate-700 rounded-xl overflow-hidden">
                     {activeTab === 'stack' && (
                         event.stack ? (
-                            <pre className="max-h-[420px] overflow-auto p-4 text-sm font-mono whitespace-pre-wrap break-words text-slate-300 leading-relaxed">
-                                {event.stack}
-                            </pre>
+                            <div className="p-4">
+                                {sourceMap ? (
+                                    <SourceMapSummary sourceMap={sourceMap} />
+                                ) : (
+                                    <div className="mb-3 rounded-lg border border-slate-700/60 bg-slate-800/30 px-3 py-2.5">
+                                        <div className="text-[11px] uppercase tracking-wider font-semibold text-slate-400">
+                                            Source map
+                                        </div>
+                                        <div className="mt-1 text-xs text-slate-500">
+                                            {sourceMapRequested
+                                                ? 'Source map could not be resolved for this event'
+                                                : 'Resolve source map to view original source locations'}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={onResolveSourceMap}
+                                            disabled={resolvingSourceMap}
+                                            className="mt-2 px-2.5 py-1 text-xs font-medium text-blue-200 bg-blue-500/15 border border-blue-500/30 hover:bg-blue-500/25 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {resolvingSourceMap ? 'Resolving...' : 'Resolve source map'}
+                                        </button>
+                                    </div>
+                                )}
+
+                                <pre className="max-h-[420px] overflow-auto p-4 text-sm font-mono whitespace-pre-wrap break-words text-slate-300 leading-relaxed bg-slate-900/40 border border-slate-700/70 rounded-lg">
+                                    {event.stack}
+                                </pre>
+                            </div>
                         ) : (
                             <div className="p-5 text-sm text-slate-500">
                                 No stack trace for this event

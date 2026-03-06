@@ -572,7 +572,7 @@ export class EventsController {
 
     const aiKey = process.env.GEMINI_API_KEY;
     if (!aiKey) {
-      return { ok: false, error: 'ai_not_configured' };
+      return { ok: false, error: 'ai_not_configured', sourceMap };
     }
 
     try {
@@ -621,7 +621,7 @@ Provide your response in this EXACT JSON format (no markdown code blocks, just r
       return { ok: true, aiAnalysis, sourceMap };
     } catch (err: any) {
       console.error('AI Analysis failed:', err);
-      return { ok: false, error: 'ai_analysis_failed' };
+      return { ok: false, error: 'ai_analysis_failed', sourceMap };
     }
   }
 

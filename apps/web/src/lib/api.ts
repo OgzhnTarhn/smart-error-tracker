@@ -94,10 +94,28 @@ export const setGroupStatus = (id: string, action: StatusAction) =>
 export interface AnalyzeEventResponse {
     ok: boolean;
     aiAnalysis?: GroupAiAnalysis;
-    sourceMap?: {
-        original?: Record<string, unknown>;
-    } | null;
+    sourceMap?: EventSourceMapResolution | null;
     error?: string;
+}
+
+export interface SourceMapFrame {
+    functionName: string | null;
+    file: string;
+    line: number;
+    column: number;
+}
+
+export interface SourceMapOriginalFrame {
+    source: string | null;
+    line: number | null;
+    column: number | null;
+    name: string | null;
+}
+
+export interface EventSourceMapResolution {
+    mapUrl: string;
+    minified: SourceMapFrame;
+    original: SourceMapOriginalFrame;
 }
 
 export const analyzeEvent = (eventId: string) =>

@@ -16,6 +16,7 @@ import IssueRegressionBadge from '../components/issues/IssueRegressionBadge';
 import IssueStatusBadge from '../components/issues/IssueStatusBadge';
 import {
     analyzeEvent,
+    type EventSourceMapResolution,
     getGroupDetail,
     setGroupStatus,
     type GroupAiAnalysis,
@@ -41,6 +42,19 @@ const statusColor: Record<string, string> = {
 interface TimelinePoint {
     date: string;
     count: number;
+}
+
+function getAnalyzeErrorMessage(errorCode: string | undefined): string {
+    if (errorCode === 'ai_not_configured') {
+        return 'AI analysis is not configured, but source map resolution is still available.';
+    }
+    if (errorCode === 'ai_analysis_failed') {
+        return 'AI analysis failed for this event.';
+    }
+    if (errorCode === 'not_found') {
+        return 'Selected event could not be found.';
+    }
+    return 'AI analysis failed';
 }
 
 function formatDate(value: string) {
@@ -95,7 +109,7 @@ export default function IssueDetailPage() {
     const [stackCopied, setStackCopied] = useState(false);
     const [rawCopied, setRawCopied] = useState(false);
     const [sourceMapByEventId, setSourceMapByEventId] = useState<
-        Record<string, Record<string, unknown> | null>
+        Record<string, EventSourceMapResolution | null>
     >({});
 
     const selectedEvent = useMemo(() => {
@@ -108,6 +122,17 @@ export default function IssueDetailPage() {
     const selectedSourceMap = selectedEvent
         ? sourceMapByEventId[selectedEvent.id] ?? null
         : null;
+    const selectedSourceMapRequested = useMemo(
+        () =>
+            Boolean(
+                selectedEvent &&
+                Object.prototype.hasOwnProperty.call(
+                    sourceMapByEventId,
+                    selectedEvent.id,
+                ),
+            ),
+        [selectedEvent, sourceMapByEventId],
+    );
 
     useEffect(() => {
         setStackCopied(false);
@@ -226,26 +251,18 @@ export default function IssueDetailPage() {
         setAnalysisError(null);
         try {
             const data = await analyzeEvent(selectedEvent.id);
-            if (!data.ok || !data.aiAnalysis) {
-                setAnalysisError(data.error || 'AI analysis failed');
+            setSourceMapByEventId((previous) => ({
+                ...previous,
+                [selectedEvent.id]: data.sourceMap ?? null,
+            }));
+
+            if (data.ok && data.aiAnalysis) {
+                setGroup({ ...group, aiAnalysis: data.aiAnalysis as GroupAiAnalysis });
+                setAnalysisEventId(selectedEvent.id);
                 return;
             }
 
-            setGroup({ ...group, aiAnalysis: data.aiAnalysis as GroupAiAnalysis });
-            setAnalysisEventId(selectedEvent.id);
-
-            const original = data.sourceMap?.original;
-            if (original && typeof original === 'object') {
-                setSourceMapByEventId((previous) => ({
-                    ...previous,
-                    [selectedEvent.id]: original,
-                }));
-            } else {
-                setSourceMapByEventId((previous) => ({
-                    ...previous,
-                    [selectedEvent.id]: null,
-                }));
-            }
+            setAnalysisError(getAnalyzeErrorMessage(data.error));
         } catch (err: unknown) {
             setAnalysisError(err instanceof Error ? err.message : 'AI analysis failed');
         } finally {
@@ -480,9 +497,12 @@ export default function IssueDetailPage() {
                             formatDate={formatDate}
                             onCopyStack={() => void copyStackTrace()}
                             onCopyRaw={() => void copyRawPayload()}
+                            onResolveSourceMap={() => void handleAnalyze()}
                             stackCopied={stackCopied}
                             rawCopied={rawCopied}
-                            sourceMapOriginal={selectedSourceMap}
+                            sourceMap={selectedSourceMap}
+                            sourceMapRequested={selectedSourceMapRequested}
+                            resolvingSourceMap={aiAnalyzing}
                         />
 
                         <AiAnalysisPanel
