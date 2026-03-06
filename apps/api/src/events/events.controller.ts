@@ -13,9 +13,15 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { createHash } from 'crypto';
 import { GoogleGenAI } from '@google/genai';
+import { Prisma } from '@prisma/client';
 import { IngestEventDto } from './dto/ingest-event.dto';
 import { IngestRateLimitGuard } from '../common/guards/ingest-rate-limit.guard';
 import { SourceMapService } from '../source-maps/source-map.service';
+import {
+  EVENT_LEVEL_VALUES,
+  GROUP_STATUS_VALUES,
+  ListGroupsQueryDto,
+} from './dto/list-groups-query.dto';
 
 function sha256(input: string) {
   return createHash('sha256').update(input).digest('hex');
@@ -44,6 +50,22 @@ function makeFingerprint(ev: IngestEventDto) {
       ? String(routeValue)
       : '';
   return `${ev.source}|${route}|${msg}|${frame}`;
+}
+
+function normalizeQueryValue(value?: string | null) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function parseEnumQuery<T extends readonly string[]>(
+  value: string | undefined,
+  allowed: T,
+): T[number] | undefined {
+  if (!value) return undefined;
+  const normalized = value.trim().toLowerCase();
+  return (allowed as readonly string[]).includes(normalized)
+    ? (normalized as T[number])
+    : undefined;
 }
 
 @Controller()
@@ -228,24 +250,53 @@ export class EventsController {
   @Get('groups')
   async listGroups(
     @Headers('x-api-key') apiKey: string | undefined,
-    @Query('status') status?: string,
-    @Query('q') q?: string,
-    @Query('offset') offset?: string,
-    @Query('limit') limit?: string,
+    @Query() query: ListGroupsQueryDto,
   ) {
     const projectId = await this.resolveProjectIdFromApiKey(apiKey);
     if (!projectId) return { ok: false, error: 'unauthorized' };
 
-    const whereClause: any = { projectId };
+    const status = parseEnumQuery(query.status, GROUP_STATUS_VALUES);
+    const level = parseEnumQuery(query.level, EVENT_LEVEL_VALUES);
+    const search = normalizeQueryValue(query.search ?? query.q);
+    const environment = normalizeQueryValue(query.environment);
+    const release = normalizeQueryValue(query.release);
+
+    const whereClause: Prisma.ErrorGroupWhereInput = { projectId };
     if (status) {
       whereClause.status = status;
     }
-    if (q) {
-      whereClause.title = { contains: q, mode: 'insensitive' };
+
+    const eventWhere: Prisma.EventWhereInput = {};
+    if (environment) {
+      eventWhere.environment = environment;
+    }
+    if (level) {
+      eventWhere.level = level;
+    }
+    if (release) {
+      eventWhere.releaseVersion = release;
+    }
+    if (Object.keys(eventWhere).length > 0) {
+      whereClause.events = { some: eventWhere };
+    }
+    const latestEventWhere =
+      Object.keys(eventWhere).length > 0 ? eventWhere : undefined;
+
+    if (search) {
+      whereClause.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        {
+          events: {
+            some: {
+              message: { contains: search, mode: 'insensitive' },
+            },
+          },
+        },
+      ];
     }
 
-    const take = Math.min(Number(limit ?? 50) || 50, 100);
-    const skip = Math.max(Number(offset ?? 0) || 0, 0);
+    const take = Math.min(Number(query.limit ?? 50) || 50, 100);
+    const skip = Math.max(Number(query.offset ?? 0) || 0, 0);
 
     const groups = await this.prisma.errorGroup.findMany({
       where: whereClause,
@@ -260,16 +311,71 @@ export class EventsController {
         eventCount: true,
         firstSeenAt: true,
         lastSeenAt: true,
+        events: {
+          where: latestEventWhere,
+          take: 1,
+          orderBy: { timestamp: 'desc' },
+          select: {
+            environment: true,
+            releaseVersion: true,
+            level: true,
+          },
+        },
       },
     });
 
     const hasMore = groups.length > take;
-    const items = hasMore ? groups.slice(0, take) : groups;
+    const items = (hasMore ? groups.slice(0, take) : groups).map((group) => {
+      const latestEvent = group.events[0];
+      return {
+        id: group.id,
+        fingerprint: group.fingerprint,
+        title: group.title,
+        status: group.status,
+        eventCount: group.eventCount,
+        firstSeenAt: group.firstSeenAt,
+        lastSeenAt: group.lastSeenAt,
+        environment: latestEvent?.environment ?? null,
+        releaseVersion: latestEvent?.releaseVersion ?? null,
+        level: latestEvent?.level ?? null,
+      };
+    });
 
     return {
       ok: true,
       groups: items,
       page: { limit: take, offset: skip, hasMore },
+    };
+  }
+
+  @Get('groups/filters')
+  async listGroupFilters(@Headers('x-api-key') apiKey: string | undefined) {
+    const projectId = await this.resolveProjectIdFromApiKey(apiKey);
+    if (!projectId) return { ok: false, error: 'unauthorized' };
+
+    const [environmentRows, releaseRows] = await Promise.all([
+      this.prisma.event.findMany({
+        where: { projectId, environment: { not: null } },
+        distinct: ['environment'],
+        select: { environment: true },
+        orderBy: { environment: 'asc' },
+      }),
+      this.prisma.event.findMany({
+        where: { projectId, releaseVersion: { not: null } },
+        distinct: ['releaseVersion'],
+        select: { releaseVersion: true },
+        orderBy: { releaseVersion: 'asc' },
+      }),
+    ]);
+
+    return {
+      ok: true,
+      environments: environmentRows
+        .map((row) => row.environment)
+        .filter((value): value is string => Boolean(value)),
+      releases: releaseRows
+        .map((row) => row.releaseVersion)
+        .filter((value): value is string => Boolean(value)),
     };
   }
 
