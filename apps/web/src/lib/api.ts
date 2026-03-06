@@ -35,6 +35,9 @@ export interface GroupDetail {
     fingerprint: string;
     title: string;
     status: string;
+    isRegression: boolean;
+    regressionCount: number;
+    lastRegressedAt: string | null;
     eventCount: number;
     firstSeenAt: string;
     lastSeenAt: string;
@@ -77,6 +80,9 @@ export interface SetGroupStatusResponse {
     group?: {
         id: string;
         status: string;
+        isRegression: boolean;
+        regressionCount: number;
+        lastRegressedAt: string | null;
         lastSeenAt: string;
         eventCount: number;
     };
@@ -105,6 +111,9 @@ export interface GroupListItem {
     fingerprint: string;
     title: string;
     status: string;
+    isRegression: boolean;
+    regressionCount: number;
+    lastRegressedAt: string | null;
     eventCount: number;
     firstSeenAt: string;
     lastSeenAt: string;

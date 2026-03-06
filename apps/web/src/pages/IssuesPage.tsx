@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import IssueFilterBar from '../components/issues/IssueFilterBar';
 import IssueLevelBadge from '../components/issues/IssueLevelBadge';
 import IssueMetaRow from '../components/issues/IssueMetaRow';
+import IssueRegressionBadge from '../components/issues/IssueRegressionBadge';
 import IssueStatusBadge from '../components/issues/IssueStatusBadge';
 import type {
     IssueFilters,
@@ -483,6 +484,10 @@ export default function IssuesPage() {
                                                         {issue.title}
                                                     </h2>
                                                     <IssueStatusBadge status={issue.status} />
+                                                    <IssueRegressionBadge
+                                                        isRegression={issue.isRegression}
+                                                        regressionCount={issue.regressionCount}
+                                                    />
                                                 </div>
 
                                                 <IssueMetaRow

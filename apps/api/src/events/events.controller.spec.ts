@@ -3,7 +3,11 @@ import { IngestEventDto } from './dto/ingest-event.dto';
 
 describe('EventsController', () => {
   const tx = {
-    errorGroup: { upsert: jest.fn() },
+    errorGroup: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    },
     event: { create: jest.fn() },
   };
 
@@ -24,12 +28,13 @@ describe('EventsController', () => {
     controller = new EventsController(prisma, sourceMaps);
   });
 
-  it('uses a transaction and writes both group and event for ingest', async () => {
+  it('creates a new group and event in a transaction for ingest', async () => {
     prisma.apiKey.findUnique.mockResolvedValue({
       projectId: 'proj_1',
       revokedAt: null,
     });
-    tx.errorGroup.upsert.mockResolvedValue({ id: 'group_1' });
+    tx.errorGroup.findUnique.mockResolvedValue(null);
+    tx.errorGroup.create.mockResolvedValue({ id: 'group_1' });
     tx.event.create.mockResolvedValue({ id: 'event_1' });
     prisma.$transaction.mockImplementation(async (fn: any) => fn(tx));
 
@@ -43,21 +48,20 @@ describe('EventsController', () => {
     const result = await controller.ingest('set_valid_key', body);
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
-    expect(tx.errorGroup.upsert).toHaveBeenCalledWith(
+    expect(tx.errorGroup.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
-          projectId_fingerprint: {
-            projectId: 'proj_1',
-            fingerprint: expect.any(String),
-          },
-        },
-        create: expect.objectContaining({
+        data: expect.objectContaining({
           projectId: 'proj_1',
           title: 'Boom failure',
+          status: 'open',
+          isRegression: false,
+          regressionCount: 0,
+          lastRegressedAt: null,
           eventCount: 1,
         }),
       }),
     );
+    expect(tx.errorGroup.update).not.toHaveBeenCalled();
     expect(tx.event.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -89,7 +93,8 @@ describe('EventsController', () => {
       projectId: 'proj_1',
       revokedAt: null,
     });
-    tx.errorGroup.upsert.mockResolvedValue({ id: 'group_1' });
+    tx.errorGroup.findUnique.mockResolvedValue(null);
+    tx.errorGroup.create.mockResolvedValue({ id: 'group_1' });
     tx.event.create.mockResolvedValue({ id: 'event_1' });
     prisma.$transaction.mockImplementation(async (fn: any) => fn(tx));
 
@@ -115,6 +120,90 @@ describe('EventsController', () => {
     );
   });
 
+  it('reopens resolved groups as regression on matching ingest', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    tx.errorGroup.findUnique.mockResolvedValue({
+      id: 'group_1',
+      status: 'resolved',
+    });
+    tx.errorGroup.update.mockResolvedValue({ id: 'group_1' });
+    tx.event.create.mockResolvedValue({ id: 'event_1' });
+    prisma.$transaction.mockImplementation(async (fn: any) => fn(tx));
+
+    await controller.ingest('set_valid_key', {
+      source: 'backend-service',
+      message: 'Regression event',
+      level: 'error',
+    });
+
+    expect(tx.errorGroup.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'group_1' },
+        data: expect.objectContaining({
+          status: 'open',
+          isRegression: true,
+          regressionCount: { increment: 1 },
+          eventCount: { increment: 1 },
+          lastRegressedAt: expect.any(Date),
+        }),
+      }),
+    );
+  });
+
+  it('does not increment regression for open groups on ingest', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    tx.errorGroup.findUnique.mockResolvedValue({
+      id: 'group_1',
+      status: 'open',
+    });
+    tx.errorGroup.update.mockResolvedValue({ id: 'group_1' });
+    tx.event.create.mockResolvedValue({ id: 'event_1' });
+    prisma.$transaction.mockImplementation(async (fn: any) => fn(tx));
+
+    await controller.ingest('set_valid_key', {
+      source: 'backend-service',
+      message: 'Open group event',
+      level: 'error',
+    });
+
+    const updateArg = tx.errorGroup.update.mock.calls[0][0];
+    expect(updateArg.data.eventCount).toEqual({ increment: 1 });
+    expect(updateArg.data.status).toBeUndefined();
+    expect(updateArg.data.isRegression).toBeUndefined();
+    expect(updateArg.data.regressionCount).toBeUndefined();
+    expect(updateArg.data.lastRegressedAt).toBeUndefined();
+  });
+
+  it('keeps ignored groups ignored on ingest', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    tx.errorGroup.findUnique.mockResolvedValue({
+      id: 'group_1',
+      status: 'ignored',
+    });
+    tx.errorGroup.update.mockResolvedValue({ id: 'group_1' });
+    tx.event.create.mockResolvedValue({ id: 'event_1' });
+    prisma.$transaction.mockImplementation(async (fn: any) => fn(tx));
+
+    await controller.ingest('set_valid_key', {
+      source: 'backend-service',
+      message: 'Ignored group event',
+      level: 'error',
+    });
+
+    const updateArg = tx.errorGroup.update.mock.calls[0][0];
+    expect(updateArg.data.eventCount).toEqual({ increment: 1 });
+    expect(updateArg.data.status).toBeUndefined();
+  });
+
   it('applies listGroups filters and maps latest event metadata', async () => {
     prisma.apiKey.findUnique.mockResolvedValue({
       projectId: 'proj_1',
@@ -126,6 +215,9 @@ describe('EventsController', () => {
         fingerprint: 'fp_1',
         title: 'TypeError: cannot read properties',
         status: 'open',
+        isRegression: true,
+        regressionCount: 2,
+        lastRegressedAt: new Date('2026-03-02T09:00:00.000Z'),
         eventCount: 3,
         firstSeenAt: new Date('2026-03-01T10:00:00.000Z'),
         lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
@@ -184,6 +276,9 @@ describe('EventsController', () => {
           fingerprint: 'fp_1',
           title: 'TypeError: cannot read properties',
           status: 'open',
+          isRegression: true,
+          regressionCount: 2,
+          lastRegressedAt: new Date('2026-03-02T09:00:00.000Z'),
           eventCount: 3,
           firstSeenAt: new Date('2026-03-01T10:00:00.000Z'),
           lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
@@ -234,7 +329,7 @@ describe('EventsController', () => {
     });
   });
 
-  it('returns event-level fields in groupDetail response', async () => {
+  it('returns event-level and regression fields in groupDetail response', async () => {
     prisma.apiKey.findUnique.mockResolvedValue({
       projectId: 'proj_1',
       revokedAt: null,
@@ -244,6 +339,9 @@ describe('EventsController', () => {
       fingerprint: 'fp_1',
       title: 'TypeError',
       status: 'open',
+      isRegression: true,
+      regressionCount: 1,
+      lastRegressedAt: new Date('2026-03-02T09:00:00.000Z'),
       eventCount: 2,
       firstSeenAt: new Date('2026-03-01T10:00:00.000Z'),
       lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
@@ -271,7 +369,11 @@ describe('EventsController', () => {
 
     expect(result).toEqual({
       ok: true,
-      group: expect.objectContaining({ id: 'group_1' }),
+      group: expect.objectContaining({
+        id: 'group_1',
+        isRegression: true,
+        regressionCount: 1,
+      }),
       events: [
         {
           id: 'event_1',

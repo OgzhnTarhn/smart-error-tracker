@@ -10,7 +10,11 @@ describe('Events ingest (e2e)', () => {
   const oldRateLimitWindow = process.env.INGEST_RATE_LIMIT_WINDOW_MS;
 
   const tx = {
-    errorGroup: { upsert: jest.fn() },
+    errorGroup: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    },
     event: { create: jest.fn() },
   };
 
@@ -81,7 +85,8 @@ describe('Events ingest (e2e)', () => {
       projectId: 'proj_1',
       revokedAt: null,
     });
-    tx.errorGroup.upsert.mockResolvedValue({ id: 'group_1' });
+    tx.errorGroup.findUnique.mockResolvedValue(null);
+    tx.errorGroup.create.mockResolvedValue({ id: 'group_1' });
     tx.event.create.mockResolvedValue({ id: 'event_1' });
     prismaMock.$transaction.mockImplementation(async (fn: any) => fn(tx));
 
@@ -107,7 +112,8 @@ describe('Events ingest (e2e)', () => {
       projectId: 'proj_1',
       revokedAt: null,
     });
-    tx.errorGroup.upsert.mockResolvedValue({ id: 'group_1' });
+    tx.errorGroup.findUnique.mockResolvedValue(null);
+    tx.errorGroup.create.mockResolvedValue({ id: 'group_1' });
     tx.event.create.mockResolvedValue({ id: 'event_1' });
     prismaMock.$transaction.mockImplementation(async (fn: any) => fn(tx));
 

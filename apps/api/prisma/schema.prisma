@@ -12,6 +12,9 @@ model ErrorGroup {
   fingerprint String
   title       String
   status      String   @default("open")
+  isRegression   Boolean  @default(false)
+  regressionCount Int     @default(0)
+  lastRegressedAt DateTime?
   eventCount  Int      @default(0)
   firstSeenAt DateTime @default(now())
   lastSeenAt  DateTime @default(now())

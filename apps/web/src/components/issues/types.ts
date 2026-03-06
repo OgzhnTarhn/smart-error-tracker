@@ -19,6 +19,9 @@ export interface IssueListItem {
     fingerprint: string;
     title: string;
     status: string;
+    isRegression: boolean;
+    regressionCount: number;
+    lastRegressedAt: string | null;
     eventCount: number;
     firstSeenAt: string;
     lastSeenAt: string;

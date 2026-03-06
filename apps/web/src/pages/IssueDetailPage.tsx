@@ -12,6 +12,7 @@ import {
 import EventDetailPanel from '../components/issue-detail/EventDetailPanel';
 import EventList from '../components/issue-detail/EventList';
 import type { EventTab } from '../components/issue-detail/types';
+import IssueRegressionBadge from '../components/issues/IssueRegressionBadge';
 import IssueStatusBadge from '../components/issues/IssueStatusBadge';
 import {
     analyzeEvent,
@@ -170,6 +171,9 @@ export default function IssueDetailPage() {
                     ? {
                         ...previous,
                         status: updatedGroup.status,
+                        isRegression: updatedGroup.isRegression,
+                        regressionCount: updatedGroup.regressionCount,
+                        lastRegressedAt: updatedGroup.lastRegressedAt,
                         lastSeenAt: updatedGroup.lastSeenAt,
                         eventCount: updatedGroup.eventCount,
                     }
@@ -314,6 +318,10 @@ export default function IssueDetailPage() {
                             <h1 className="text-xl font-bold truncate">{group.title}</h1>
                             <div className="flex items-center gap-2 mt-1">
                                 <IssueStatusBadge status={group.status} />
+                                <IssueRegressionBadge
+                                    isRegression={group.isRegression}
+                                    regressionCount={group.regressionCount}
+                                />
                                 <span className="text-xs text-slate-500">
                                     {group.eventCount} events
                                 </span>
@@ -365,6 +373,24 @@ export default function IssueDetailPage() {
                                         {group.status}
                                     </span>
                                 </Row>
+                                <Row label="Regression">
+                                    {group.isRegression ? (
+                                        <IssueRegressionBadge
+                                            isRegression={group.isRegression}
+                                            regressionCount={group.regressionCount}
+                                        />
+                                    ) : (
+                                        <span className="text-slate-400">No</span>
+                                    )}
+                                </Row>
+                                {group.isRegression && (
+                                    <Row label="Regression count">{group.regressionCount}</Row>
+                                )}
+                                {group.isRegression && group.lastRegressedAt && (
+                                    <Row label="Last regressed">
+                                        {formatDate(group.lastRegressedAt)}
+                                    </Row>
+                                )}
                                 <Row label="Total events">
                                     <span className="text-lg font-bold">{group.eventCount}</span>
                                 </Row>

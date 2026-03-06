@@ -68,6 +68,12 @@ function parseEnumQuery<T extends readonly string[]>(
     : undefined;
 }
 
+const GROUP_STATUS = {
+  OPEN: 'open',
+  RESOLVED: 'resolved',
+  IGNORED: 'ignored',
+} as const;
+
 function asRecord(
   value: Prisma.JsonValue | Record<string, unknown> | null | undefined,
 ): Record<string, unknown> | null {
@@ -124,12 +130,33 @@ function buildEventContext(
     : undefined;
 }
 
+function buildIngestGroupUpdate(
+  status: string,
+  timestamp: Date,
+): Prisma.ErrorGroupUpdateInput {
+  const updateData: Prisma.ErrorGroupUpdateInput = {
+    eventCount: { increment: 1 },
+    lastSeenAt: timestamp,
+  };
+
+  // Regression is counted only on resolved -> open transition.
+  if (status === GROUP_STATUS.RESOLVED) {
+    updateData.status = GROUP_STATUS.OPEN;
+    updateData.isRegression = true;
+    updateData.regressionCount = { increment: 1 };
+    updateData.lastRegressedAt = timestamp;
+  }
+
+  // Ignored groups intentionally stay ignored on new events.
+  return updateData;
+}
+
 @Controller()
 export class EventsController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sourceMaps: SourceMapService,
-  ) { }
+  ) {}
 
   private async resolveProjectIdFromApiKey(apiKey: string | undefined) {
     if (!apiKey) return null;
@@ -162,26 +189,36 @@ export class EventsController {
 
     const ts = body.timestamp ? new Date(body.timestamp) : new Date();
     const fp = makeFingerprint(body);
+    const groupWhere = {
+      projectId_fingerprint: { projectId, fingerprint: fp },
+    };
 
     const groupId = await this.prisma.$transaction(async (tx) => {
-      const group = await tx.errorGroup.upsert({
-        where: {
-          projectId_fingerprint: { projectId, fingerprint: fp },
-        },
-        create: {
-          projectId,
-          fingerprint: fp,
-          title: normalizeMessage(body.message) || 'Unknown error',
-          eventCount: 1,
-          firstSeenAt: ts,
-          lastSeenAt: ts,
-          sample: { ...body } as any,
-        },
-        update: {
-          eventCount: { increment: 1 },
-          lastSeenAt: ts,
-        },
+      const existingGroup = await tx.errorGroup.findUnique({
+        where: groupWhere,
+        select: { id: true, status: true },
       });
+
+      const group = existingGroup
+        ? await tx.errorGroup.update({
+            where: { id: existingGroup.id },
+            data: buildIngestGroupUpdate(existingGroup.status, ts),
+          })
+        : await tx.errorGroup.create({
+            data: {
+              projectId,
+              fingerprint: fp,
+              title: normalizeMessage(body.message) || 'Unknown error',
+              status: GROUP_STATUS.OPEN,
+              isRegression: false,
+              regressionCount: 0,
+              lastRegressedAt: null,
+              eventCount: 1,
+              firstSeenAt: ts,
+              lastSeenAt: ts,
+              sample: { ...body } as any,
+            },
+          });
 
       await tx.event.create({
         data: {
@@ -229,16 +266,18 @@ export class EventsController {
     const [totalGroups, openCount, resolvedCount, ignoredCount, eventAgg] =
       await Promise.all([
         this.prisma.errorGroup.count({ where: { projectId } }),
-        this.prisma.errorGroup.count({ where: { projectId, status: 'open' } }),
         this.prisma.errorGroup.count({
-          where: { projectId, status: 'resolved' },
+          where: { projectId, status: GROUP_STATUS.OPEN },
         }),
         this.prisma.errorGroup.count({
-          where: { projectId, status: 'ignored' },
+          where: { projectId, status: GROUP_STATUS.RESOLVED },
+        }),
+        this.prisma.errorGroup.count({
+          where: { projectId, status: GROUP_STATUS.IGNORED },
         }),
         this.prisma.errorGroup.aggregate({
           where: { projectId },
-          _sum: { eventCount: true }
+          _sum: { eventCount: true },
         }),
       ]);
 
@@ -284,6 +323,9 @@ export class EventsController {
         id: true,
         title: true,
         status: true,
+        isRegression: true,
+        regressionCount: true,
+        lastRegressedAt: true,
         eventCount: true,
         lastSeenAt: true,
       },
@@ -364,6 +406,9 @@ export class EventsController {
         fingerprint: true,
         title: true,
         status: true,
+        isRegression: true,
+        regressionCount: true,
+        lastRegressedAt: true,
         eventCount: true,
         firstSeenAt: true,
         lastSeenAt: true,
@@ -388,6 +433,9 @@ export class EventsController {
         fingerprint: group.fingerprint,
         title: group.title,
         status: group.status,
+        isRegression: group.isRegression,
+        regressionCount: group.regressionCount,
+        lastRegressedAt: group.lastRegressedAt,
         eventCount: group.eventCount,
         firstSeenAt: group.firstSeenAt,
         lastSeenAt: group.lastSeenAt,
@@ -451,6 +499,9 @@ export class EventsController {
         fingerprint: true,
         title: true,
         status: true,
+        isRegression: true,
+        regressionCount: true,
+        lastRegressedAt: true,
         eventCount: true,
         firstSeenAt: true,
         lastSeenAt: true,
@@ -480,21 +531,21 @@ export class EventsController {
       ok: true,
       group,
       events: events.map((e) => {
-        const constContext = asRecord(e.context);
+        const eventContext = asRecord(e.context);
         return {
-        id: e.id,
-        source: e.source,
-        message: e.message,
-        stack: e.stack,
-        context: constContext,
-        environment: e.environment,
-        releaseVersion: e.releaseVersion,
-        level: e.level,
-        sdk: extractSdkFromContext(constContext),
-        rawPayload: extractRawPayload(constContext),
-        timestamp: e.timestamp,
-        createdAt: e.timestamp,
-      };
+          id: e.id,
+          source: e.source,
+          message: e.message,
+          stack: e.stack,
+          context: eventContext,
+          environment: e.environment,
+          releaseVersion: e.releaseVersion,
+          level: e.level,
+          sdk: extractSdkFromContext(eventContext),
+          rawPayload: extractRawPayload(eventContext),
+          timestamp: e.timestamp,
+          createdAt: e.timestamp,
+        };
       }),
     };
   }
@@ -617,6 +668,9 @@ Provide your response in this EXACT JSON format (no markdown code blocks, just r
         group: {
           id: group.id,
           status: group.status,
+          isRegression: group.isRegression,
+          regressionCount: group.regressionCount,
+          lastRegressedAt: group.lastRegressedAt,
           lastSeenAt: group.lastSeenAt,
           eventCount: group.eventCount,
         },
@@ -633,6 +687,9 @@ Provide your response in this EXACT JSON format (no markdown code blocks, just r
       group: {
         id: updated.id,
         status: updated.status,
+        isRegression: updated.isRegression,
+        regressionCount: updated.regressionCount,
+        lastRegressedAt: updated.lastRegressedAt,
         lastSeenAt: updated.lastSeenAt,
         eventCount: updated.eventCount,
       },

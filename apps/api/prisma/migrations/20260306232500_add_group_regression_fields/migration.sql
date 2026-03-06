@@ -1,0 +1,4 @@
+ALTER TABLE "ErrorGroup"
+ADD COLUMN "isRegression" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "regressionCount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "lastRegressedAt" TIMESTAMP(3);
