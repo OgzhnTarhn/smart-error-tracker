@@ -1,7 +1,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 const API_KEY = import.meta.env.VITE_API_KEY || '';
 
-export const apiFetch = async <T = any>(
+export const apiFetch = async <T = unknown>(
     endpoint: string,
     options: RequestInit = {},
 ): Promise<T> => {
@@ -24,14 +24,78 @@ export const apiFetch = async <T = any>(
     return response.json() as Promise<T>;
 };
 
-export const getGroupDetail = (id: string) => apiFetch(`/groups/${id}`);
+export interface GroupAiAnalysis {
+    rootCause: string;
+    suggestedFix: string;
+    severity: string;
+}
+
+export interface GroupDetail {
+    id: string;
+    fingerprint: string;
+    title: string;
+    status: string;
+    eventCount: number;
+    firstSeenAt: string;
+    lastSeenAt: string;
+    aiAnalysis?: GroupAiAnalysis;
+}
+
+export interface EventSdkInfo {
+    name: string | null;
+    version: string | null;
+}
+
+export interface GroupDetailEvent {
+    id: string;
+    source: string;
+    message: string;
+    stack: string | null;
+    context: Record<string, unknown> | null;
+    environment: string | null;
+    releaseVersion: string | null;
+    level: string | null;
+    sdk: EventSdkInfo | null;
+    rawPayload: unknown | null;
+    timestamp: string;
+    createdAt: string;
+}
+
+export interface GroupDetailResponse {
+    ok: boolean;
+    group?: GroupDetail;
+    events?: GroupDetailEvent[];
+    error?: string;
+}
+
+export const getGroupDetail = (id: string) =>
+    apiFetch<GroupDetailResponse>(`/groups/${id}`);
 
 export type StatusAction = 'resolve' | 'open' | 'ignore';
+export interface SetGroupStatusResponse {
+    ok: boolean;
+    group?: {
+        id: string;
+        status: string;
+        lastSeenAt: string;
+        eventCount: number;
+    };
+    error?: string;
+}
 export const setGroupStatus = (id: string, action: StatusAction) =>
-    apiFetch(`/groups/${id}/${action}`, { method: 'POST' });
+    apiFetch<SetGroupStatusResponse>(`/groups/${id}/${action}`, { method: 'POST' });
+
+export interface AnalyzeEventResponse {
+    ok: boolean;
+    aiAnalysis?: GroupAiAnalysis;
+    sourceMap?: {
+        original?: Record<string, unknown>;
+    } | null;
+    error?: string;
+}
 
 export const analyzeEvent = (eventId: string) =>
-    apiFetch(`/events/${eventId}/analyze`, { method: 'POST' });
+    apiFetch<AnalyzeEventResponse>(`/events/${eventId}/analyze`, { method: 'POST' });
 
 export type GroupStatus = 'open' | 'resolved' | 'ignored';
 export type GroupLevel = 'error' | 'warn' | 'info';

@@ -1,50 +1,35 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getGroupDetail, setGroupStatus, type StatusAction, analyzeEvent } from '../lib/api';
-import {
-    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-} from 'recharts';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
+import {
+    BarChart,
+    Bar,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+} from 'recharts';
+import EventDetailPanel from '../components/issue-detail/EventDetailPanel';
+import EventList from '../components/issue-detail/EventList';
+import type { EventTab } from '../components/issue-detail/types';
+import IssueStatusBadge from '../components/issues/IssueStatusBadge';
+import {
+    analyzeEvent,
+    getGroupDetail,
+    setGroupStatus,
+    type GroupAiAnalysis,
+    type GroupDetail,
+    type GroupDetailEvent,
+    type StatusAction,
+} from '../lib/api';
 
-type EventItem = {
-    id: string;
-    message: string;
-    stack: string | null;
-    context: any;
-    environment: string | null;
-    releaseVersion: string | null;
-    level: string | null;
-    createdAt: string;
-};
-
-type GroupDetail = {
-    id: string;
-    fingerprint: string;
-    title: string;
-    status: string;
-    eventCount: number;
-    firstSeenAt: string;
-    lastSeenAt: string;
-    aiAnalysis?: {
-        rootCause: string;
-        suggestedFix: string;
-        severity: string;
-    };
-};
-
-type EventTab = 'stack' | 'context' | 'raw';
-
-const formatDate = (d: string) =>
-    new Date(d).toLocaleDateString('en-US', {
-        month: 'short', day: 'numeric', year: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-    });
-
-const levelColor: Record<string, string> = {
-    error: 'text-red-400 bg-red-500/10 border-red-500/30',
-    warn: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
-    info: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
-};
+const DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+});
 
 const statusColor: Record<string, string> = {
     open: 'text-red-400 bg-red-500/10 border-red-500/30',
@@ -52,449 +37,450 @@ const statusColor: Record<string, string> = {
     ignored: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
 };
 
-// ─── Helper: build mini timeline from events ─────────────
-function buildTimeline(events: EventItem[]) {
-    const map: Record<string, number> = {};
+interface TimelinePoint {
+    date: string;
+    count: number;
+}
+
+function formatDate(value: string) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return DATE_FORMATTER.format(date);
+}
+
+function buildTimeline(events: GroupDetailEvent[]): TimelinePoint[] {
     const now = new Date();
-    for (let d = 6; d >= 0; d--) {
-        const dt = new Date(now);
-        dt.setDate(dt.getDate() - d);
-        map[dt.toISOString().slice(0, 10)] = 0;
+    const map: Record<string, number> = {};
+
+    for (let day = 6; day >= 0; day -= 1) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - day);
+        map[date.toISOString().slice(0, 10)] = 0;
     }
-    for (const ev of events) {
-        const key = new Date(ev.createdAt).toISOString().slice(0, 10);
-        if (key in map) map[key]++;
+
+    for (const event of events) {
+        const eventDate = new Date(event.timestamp || event.createdAt);
+        if (Number.isNaN(eventDate.getTime())) continue;
+        const key = eventDate.toISOString().slice(0, 10);
+        if (key in map) map[key] += 1;
     }
+
     return Object.entries(map).map(([date, count]) => ({
-        date: new Date(date + 'T00:00:00').toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }),
+        date: new Date(`${date}T00:00:00`).toLocaleDateString('en-US', {
+            day: '2-digit',
+            month: 'short',
+        }),
         count,
     }));
 }
 
-// ─── Helper: parse context into key-value pairs ──────────
-function parseContext(ctx: any): Array<{ key: string; value: string }> {
-    if (!ctx || typeof ctx !== 'object') return [];
-    return Object.entries(ctx).map(([key, val]) => ({
-        key,
-        value: typeof val === 'object' ? JSON.stringify(val) : String(val),
-    }));
+function buildRawFallback(event: GroupDetailEvent) {
+    return {
+        id: event.id,
+        timestamp: event.timestamp || event.createdAt,
+        source: event.source,
+        message: event.message,
+        stack: event.stack,
+        level: event.level,
+        environment: event.environment,
+        releaseVersion: event.releaseVersion,
+        sdk: event.sdk,
+        context: event.context,
+    };
 }
 
 export default function IssueDetailPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+
     const [group, setGroup] = useState<GroupDetail | null>(null);
-    const [events, setEvents] = useState<EventItem[]>([]);
-    const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
+    const [events, setEvents] = useState<GroupDetailEvent[]>([]);
+    const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<EventTab>('stack');
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [actionLoading, setActionLoading] = useState<string | null>(null);
-    const [copied, setCopied] = useState(false);
-    const [stackCopied, setStackCopied] = useState(false);
+    const [actionLoading, setActionLoading] = useState<StatusAction | null>(null);
     const [aiAnalyzing, setAiAnalyzing] = useState(false);
+    const [analysisError, setAnalysisError] = useState<string | null>(null);
+    const [analysisEventId, setAnalysisEventId] = useState<string | null>(null);
 
-    const fetchDetail = async () => {
+    const [copiedFingerprint, setCopiedFingerprint] = useState(false);
+    const [stackCopied, setStackCopied] = useState(false);
+    const [rawCopied, setRawCopied] = useState(false);
+    const [sourceMapByEventId, setSourceMapByEventId] = useState<
+        Record<string, Record<string, unknown> | null>
+    >({});
+
+    const selectedEvent = useMemo(() => {
+        if (events.length === 0) return null;
+        if (!selectedEventId) return events[0];
+        return events.find((event) => event.id === selectedEventId) ?? events[0];
+    }, [events, selectedEventId]);
+
+    const timeline = useMemo(() => buildTimeline(events), [events]);
+    const selectedSourceMap = selectedEvent
+        ? sourceMapByEventId[selectedEvent.id] ?? null
+        : null;
+
+    useEffect(() => {
+        setStackCopied(false);
+        setRawCopied(false);
+    }, [selectedEvent?.id]);
+
+    const fetchDetail = useCallback(async () => {
         if (!id) return;
+
         setLoading(true);
         setError(null);
+        setAnalysisError(null);
+
         try {
             const data = await getGroupDetail(id);
-            if (data.ok) {
-                setGroup(data.group);
-                setEvents(data.events || []);
-                if (data.events?.length > 0) setSelectedEvent(data.events[0]);
-            } else {
+            if (!data.ok || !data.group) {
                 setError(data.error || 'Failed to load');
+                setGroup(null);
+                setEvents([]);
+                setSelectedEventId(null);
+                return;
             }
-        } catch (err: any) {
-            setError(err.message || 'Failed to load');
+
+            const nextEvents = data.events ?? [];
+            setGroup(data.group);
+            setEvents(nextEvents);
+            setSelectedEventId((prev) => {
+                if (prev && nextEvents.some((event) => event.id === prev)) {
+                    return prev;
+                }
+                return nextEvents[0]?.id ?? null;
+            });
+            if (!data.group.aiAnalysis) {
+                setAnalysisEventId(null);
+            }
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to load');
+            setGroup(null);
+            setEvents([]);
+            setSelectedEventId(null);
         } finally {
             setLoading(false);
         }
-    };
+    }, [id]);
 
-    useEffect(() => { fetchDetail(); }, [id]);
+    useEffect(() => {
+        setSourceMapByEventId({});
+        setAnalysisEventId(null);
+        void fetchDetail();
+    }, [fetchDetail, id]);
 
     const handleAction = async (action: StatusAction) => {
         if (!id) return;
+
         setActionLoading(action);
         try {
             const data = await setGroupStatus(id, action);
             if (data.ok && data.group) {
-                setGroup(prev => prev ? { ...prev, status: data.group.status, lastSeenAt: data.group.lastSeenAt, eventCount: data.group.eventCount } : prev);
+                const updatedGroup = data.group;
+                setGroup((previous) => (previous
+                    ? {
+                        ...previous,
+                        status: updatedGroup.status,
+                        lastSeenAt: updatedGroup.lastSeenAt,
+                        eventCount: updatedGroup.eventCount,
+                    }
+                    : previous));
             }
-        } catch { }
-        setActionLoading(null);
+        } finally {
+            setActionLoading(null);
+        }
     };
 
     const copyFingerprint = async () => {
         if (!group) return;
-        await navigator.clipboard.writeText(group.fingerprint);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        try {
+            await navigator.clipboard.writeText(group.fingerprint);
+            setCopiedFingerprint(true);
+            setTimeout(() => setCopiedFingerprint(false), 1800);
+        } catch {
+            // no-op
+        }
     };
 
     const copyStackTrace = async () => {
         if (!selectedEvent?.stack) return;
-        await navigator.clipboard.writeText(selectedEvent.stack);
-        setStackCopied(true);
-        setTimeout(() => setStackCopied(false), 2000);
+        try {
+            await navigator.clipboard.writeText(selectedEvent.stack);
+            setStackCopied(true);
+            setTimeout(() => setStackCopied(false), 1800);
+        } catch {
+            // no-op
+        }
+    };
+
+    const copyRawPayload = async () => {
+        if (!selectedEvent) return;
+        const rawData = selectedEvent.rawPayload ?? buildRawFallback(selectedEvent);
+        try {
+            await navigator.clipboard.writeText(JSON.stringify(rawData, null, 2));
+            setRawCopied(true);
+            setTimeout(() => setRawCopied(false), 1800);
+        } catch {
+            // no-op
+        }
     };
 
     const handleAnalyze = async () => {
-        if (!selectedEvent?.id || !group) return;
+        if (!selectedEvent || !group) return;
+
         setAiAnalyzing(true);
+        setAnalysisError(null);
         try {
             const data = await analyzeEvent(selectedEvent.id);
-            if (data.ok && data.aiAnalysis) {
-                setGroup({ ...group, aiAnalysis: data.aiAnalysis });
-            } else {
-                alert(data.error || 'AI Analysis failed');
+            if (!data.ok || !data.aiAnalysis) {
+                setAnalysisError(data.error || 'AI analysis failed');
+                return;
             }
-        } catch (err: any) {
-            alert(err.message || 'AI Analysis failed');
+
+            setGroup({ ...group, aiAnalysis: data.aiAnalysis as GroupAiAnalysis });
+            setAnalysisEventId(selectedEvent.id);
+
+            const original = data.sourceMap?.original;
+            if (original && typeof original === 'object') {
+                setSourceMapByEventId((previous) => ({
+                    ...previous,
+                    [selectedEvent.id]: original,
+                }));
+            } else {
+                setSourceMapByEventId((previous) => ({
+                    ...previous,
+                    [selectedEvent.id]: null,
+                }));
+            }
+        } catch (err: unknown) {
+            setAnalysisError(err instanceof Error ? err.message : 'AI analysis failed');
         } finally {
             setAiAnalyzing(false);
         }
     };
 
-    // Loading
-    if (loading) return (
-        <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-    );
-
-    // Error
-    if (error || !group) return (
-        <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-            <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
-                    <span className="text-2xl">⚠️</span>
-                </div>
-                <h2 className="text-xl font-semibold text-slate-100 mb-2">
-                    {error === 'not_found' ? 'Issue Not Found' : 'Error Loading Issue'}
-                </h2>
-                <p className="text-slate-400 mb-6">{error}</p>
-                <Link to="/issues" className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors">
-                    ← Back to Issues
-                </Link>
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
             </div>
-        </div>
-    );
+        );
+    }
 
-    const timeline = buildTimeline(events);
-    const contextPairs = selectedEvent ? parseContext(selectedEvent.context) : [];
+    if (error || !group) {
+        return (
+            <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
+                        <svg
+                            className="w-8 h-8 text-red-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                        </svg>
+                    </div>
+                    <h2 className="text-xl font-semibold text-slate-100 mb-2">
+                        {error === 'not_found' ? 'Issue Not Found' : 'Error Loading Issue'}
+                    </h2>
+                    <p className="text-slate-400 mb-6">{error}</p>
+                    <button
+                        type="button"
+                        onClick={() => navigate('/issues')}
+                        className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
+                    >
+                        Back to Issues
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-slate-900 text-slate-100">
-            {/* Header */}
             <header className="border-b border-slate-800 px-6 py-4">
-                <div className="max-w-7xl mx-auto flex items-center justify-between">
+                <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4 min-w-0">
                         <button
                             onClick={() => navigate('/issues')}
                             className="shrink-0 p-2 rounded-lg hover:bg-slate-800 transition-colors text-slate-400 hover:text-slate-200"
                         >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                                />
+                            </svg>
                         </button>
                         <div className="min-w-0">
                             <h1 className="text-xl font-bold truncate">{group.title}</h1>
                             <div className="flex items-center gap-2 mt-1">
-                                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border capitalize ${statusColor[group.status] || statusColor.open}`}>
-                                    {group.status}
+                                <IssueStatusBadge status={group.status} />
+                                <span className="text-xs text-slate-500">
+                                    {group.eventCount} events
                                 </span>
-                                <span className="text-xs text-slate-500">{group.eventCount} events</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
                     <div className="flex items-center gap-2 shrink-0">
                         {group.status === 'open' && (
                             <>
-                                <button onClick={() => handleAction('resolve')} disabled={!!actionLoading}
-                                    className="px-4 py-2 text-sm font-medium bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-colors disabled:opacity-50 flex items-center gap-2">
-                                    {actionLoading === 'resolve' ? <Spinner /> : '✅'} Resolve
-                                </button>
-                                <button onClick={() => handleAction('ignore')} disabled={!!actionLoading}
-                                    className="px-4 py-2 text-sm font-medium bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-lg hover:bg-amber-500/20 transition-colors disabled:opacity-50 flex items-center gap-2">
-                                    {actionLoading === 'ignore' ? <Spinner /> : '🔕'} Ignore
-                                </button>
+                                <ActionButton
+                                    loading={actionLoading === 'resolve'}
+                                    onClick={() => void handleAction('resolve')}
+                                    className="bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20"
+                                    label="Resolve"
+                                />
+                                <ActionButton
+                                    loading={actionLoading === 'ignore'}
+                                    onClick={() => void handleAction('ignore')}
+                                    className="bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20"
+                                    label="Ignore"
+                                />
                             </>
                         )}
                         {(group.status === 'resolved' || group.status === 'ignored') && (
-                            <button onClick={() => handleAction('open')} disabled={!!actionLoading}
-                                className="px-4 py-2 text-sm font-medium bg-blue-500/10 border border-blue-500/30 text-blue-400 rounded-lg hover:bg-blue-500/20 transition-colors disabled:opacity-50 flex items-center gap-2">
-                                {actionLoading === 'open' ? <Spinner /> : '🔄'} Reopen
-                            </button>
+                            <ActionButton
+                                loading={actionLoading === 'open'}
+                                onClick={() => void handleAction('open')}
+                                className="bg-blue-500/10 border-blue-500/30 text-blue-300 hover:bg-blue-500/20"
+                                label="Reopen"
+                            />
                         )}
                     </div>
                 </div>
             </header>
 
-            {/* Body */}
             <main className="max-w-7xl mx-auto px-6 py-6">
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-
-                    {/* Left: Overview + Timeline + Events list */}
                     <div className="lg:col-span-2 space-y-6">
-                        {/* Overview Card */}
                         <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
                             <div className="px-5 py-3 border-b border-slate-700/50">
-                                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Overview</h2>
+                                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                    Overview
+                                </h2>
                             </div>
                             <div className="divide-y divide-slate-700/30">
                                 <Row label="Status">
-                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium border capitalize ${statusColor[group.status]}`}>{group.status}</span>
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium border capitalize ${statusColor[group.status] || statusColor.open}`}>
+                                        {group.status}
+                                    </span>
                                 </Row>
-                                <Row label="Events"><span className="text-lg font-bold">{group.eventCount}</span></Row>
+                                <Row label="Total events">
+                                    <span className="text-lg font-bold">{group.eventCount}</span>
+                                </Row>
                                 <Row label="First seen">{formatDate(group.firstSeenAt)}</Row>
                                 <Row label="Last seen">{formatDate(group.lastSeenAt)}</Row>
-                                {selectedEvent?.environment && (
-                                    <Row label="Environment">
-                                        <span className="px-2 py-0.5 rounded-md text-xs font-medium bg-violet-500/10 text-violet-400 border border-violet-500/30">{selectedEvent.environment}</span>
-                                    </Row>
-                                )}
-                                {selectedEvent?.releaseVersion && (
-                                    <Row label="Release">
-                                        <code className="text-xs font-mono bg-slate-700/50 px-2 py-0.5 rounded text-blue-400">{selectedEvent.releaseVersion}</code>
-                                    </Row>
-                                )}
-                                {selectedEvent?.level && (
-                                    <Row label="Level">
-                                        <span className={`px-2 py-0.5 rounded-md text-xs font-medium border ${levelColor[selectedEvent.level] || levelColor.info}`}>{selectedEvent.level}</span>
-                                    </Row>
-                                )}
                                 <div className="px-5 py-3">
                                     <div className="text-xs text-slate-500 mb-1.5">Fingerprint</div>
                                     <div className="flex items-center gap-2">
-                                        <code className="text-xs font-mono bg-slate-700/50 px-2 py-1 rounded break-all flex-1 text-slate-400">{group.fingerprint}</code>
-                                        <button onClick={copyFingerprint} className="shrink-0 p-1.5 rounded-md hover:bg-slate-700 transition-colors">
-                                            {copied ? <span className="text-emerald-400 text-xs">✓</span> : (
-                                                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                                            )}
+                                        <code className="text-xs font-mono bg-slate-700/50 px-2 py-1 rounded break-all flex-1 text-slate-400">
+                                            {group.fingerprint}
+                                        </code>
+                                        <button
+                                            type="button"
+                                            onClick={() => void copyFingerprint()}
+                                            className="shrink-0 p-1.5 rounded-md hover:bg-slate-700 transition-colors text-xs text-slate-300"
+                                        >
+                                            {copiedFingerprint ? 'Copied' : 'Copy'}
                                         </button>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* ✨ NEW: Event Timeline Mini Chart */}
                         <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
                             <div className="px-5 py-3 border-b border-slate-700/50">
-                                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Event Frequency — Last 7 Days</h2>
+                                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                    Event Frequency - Last 7 Days
+                                </h2>
                             </div>
                             <div className="px-3 py-4 h-36">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={timeline}>
-                                        <XAxis dataKey="date" stroke="#475569" fontSize={10} tickLine={false} axisLine={false} />
-                                        <YAxis stroke="#475569" fontSize={10} allowDecimals={false} tickLine={false} axisLine={false} width={20} />
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', fontSize: '12px' }}
+                                        <XAxis
+                                            dataKey="date"
+                                            stroke="#475569"
+                                            fontSize={10}
+                                            tickLine={false}
+                                            axisLine={false}
                                         />
-                                        <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Events" />
+                                        <YAxis
+                                            stroke="#475569"
+                                            fontSize={10}
+                                            allowDecimals={false}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            width={20}
+                                        />
+                                        <Tooltip
+                                            contentStyle={{
+                                                backgroundColor: '#1e293b',
+                                                border: '1px solid #334155',
+                                                borderRadius: '8px',
+                                                fontSize: '12px',
+                                            }}
+                                        />
+                                        <Bar
+                                            dataKey="count"
+                                            fill="#8b5cf6"
+                                            radius={[4, 4, 0, 0]}
+                                            name="Events"
+                                        />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>
 
-                        {/* Events List */}
                         <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
                             <div className="px-5 py-3 border-b border-slate-700/50">
-                                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Latest Events ({events.length})</h2>
+                                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                    Latest Events ({events.length})
+                                </h2>
                             </div>
-                            {events.length === 0 ? (
-                                <div className="px-5 py-12 text-center text-sm text-slate-500">No events recorded</div>
-                            ) : (
-                                <ul className="max-h-[320px] overflow-y-auto divide-y divide-slate-700/30">
-                                    {events.map((ev) => (
-                                        <li
-                                            key={ev.id}
-                                            onClick={() => setSelectedEvent(ev)}
-                                            className={`px-5 py-3 cursor-pointer transition-all hover:bg-slate-700/20 ${selectedEvent?.id === ev.id
-                                                ? 'bg-violet-500/5 border-l-2 border-l-violet-500'
-                                                : 'border-l-2 border-l-transparent'
-                                                }`}
-                                        >
-                                            <div className="flex items-center justify-between mb-1">
-                                                <span className="text-xs text-slate-500">{formatDate(ev.createdAt)}</span>
-                                                <div className="flex gap-1">
-                                                    {ev.environment && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-500/10 text-violet-400">{ev.environment}</span>}
-                                                    {ev.releaseVersion && <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-700/50 text-slate-400">{ev.releaseVersion}</span>}
-                                                    {ev.level && <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${levelColor[ev.level] || ''}`}>{ev.level}</span>}
-                                                </div>
-                                            </div>
-                                            <div className="text-sm truncate text-slate-300">{ev.message}</div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
+                            <EventList
+                                events={events}
+                                selectedEventId={selectedEvent?.id ?? null}
+                                onSelectEvent={(event) => setSelectedEventId(event.id)}
+                                formatDate={formatDate}
+                            />
                         </div>
                     </div>
 
-                    {/* Right: Event Detail + Context + AI */}
                     <div className="lg:col-span-3 space-y-6">
+                        <EventDetailPanel
+                            event={selectedEvent}
+                            activeTab={activeTab}
+                            onTabChange={setActiveTab}
+                            formatDate={formatDate}
+                            onCopyStack={() => void copyStackTrace()}
+                            onCopyRaw={() => void copyRawPayload()}
+                            stackCopied={stackCopied}
+                            rawCopied={rawCopied}
+                            sourceMapOriginal={selectedSourceMap}
+                        />
 
-                        {/* Event Detail Panel */}
-                        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
-                            <div className="px-5 py-3 border-b border-slate-700/50 flex items-center justify-between">
-                                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Event Detail</h2>
-                                <div className="flex items-center gap-2">
-                                    {/* ✨ NEW: Copy Stack Trace */}
-                                    {selectedEvent?.stack && (
-                                        <button
-                                            onClick={copyStackTrace}
-                                            className="px-2.5 py-1 text-xs font-medium text-slate-400 hover:text-slate-200 bg-slate-700/50 hover:bg-slate-700 rounded-md transition-colors flex items-center gap-1.5"
-                                        >
-                                            {stackCopied ? (
-                                                <><span className="text-emerald-400">✓</span> Copied</>
-                                            ) : (
-                                                <>
-                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                                                    Copy Stack
-                                                </>
-                                            )}
-                                        </button>
-                                    )}
-                                    {selectedEvent && <span className="text-xs text-slate-500 font-mono">{selectedEvent.id.slice(0, 12)}…</span>}
-                                </div>
-                            </div>
-
-                            {!selectedEvent ? (
-                                <div className="px-5 py-16 text-center text-sm text-slate-500">
-                                    Select an event from the list
-                                </div>
-                            ) : (
-                                <>
-                                    {/* Tabs */}
-                                    <div className="flex gap-1 px-5 pt-4 pb-2">
-                                        {(['stack', 'context', 'raw'] as EventTab[]).map((tab) => (
-                                            <button
-                                                key={tab}
-                                                onClick={() => setActiveTab(tab)}
-                                                className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize transition-all ${activeTab === tab
-                                                    ? 'bg-violet-500/10 text-violet-400 border border-violet-500/30'
-                                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
-                                                    }`}
-                                            >
-                                                {tab}
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    {/* Tab Content */}
-                                    <div className="px-5 pb-5">
-                                        <div className="bg-slate-900/50 border border-slate-700 rounded-xl overflow-auto max-h-[400px]">
-                                            {activeTab === 'stack' && (
-                                                <pre className="p-4 text-sm font-mono whitespace-pre-wrap break-words text-slate-300 leading-relaxed">
-                                                    {selectedEvent.stack || 'No stack trace available'}
-                                                </pre>
-                                            )}
-                                            {activeTab === 'context' && (
-                                                contextPairs.length > 0 ? (
-                                                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                        {contextPairs.map(({ key, value }) => (
-                                                            <div key={key} className="bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 py-2">
-                                                                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-0.5">{key}</div>
-                                                                <div className="text-sm font-mono text-slate-300 break-all">{value}</div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                ) : (
-                                                    <div className="p-4 text-sm text-slate-500">No context available</div>
-                                                )
-                                            )}
-                                            {activeTab === 'raw' && (
-                                                <pre className="p-4 text-sm font-mono whitespace-pre-wrap break-words text-slate-300 leading-relaxed">
-                                                    {JSON.stringify(selectedEvent, null, 2)}
-                                                </pre>
-                                            )}
-                                        </div>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-
-                        {/* ✨ NEW: AI Error Analysis Container (Below Tabs) */}
-                        {selectedEvent && (
-                            <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden shadow-lg border-t-2 border-t-violet-500/50 mt-6 md:mt-0">
-                                <div className="px-5 py-4 border-b border-slate-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-violet-500/10 to-transparent">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-violet-500/20 text-violet-400 flex items-center justify-center">✨</div>
-                                        <div>
-                                            <h2 className="text-sm font-bold text-slate-200">AI Error Analysis</h2>
-                                            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Powered by Gemini AI</p>
-                                        </div>
-                                    </div>
-                                    {!group.aiAnalysis && (
-                                        <button
-                                            onClick={handleAnalyze}
-                                            disabled={aiAnalyzing || !selectedEvent}
-                                            className="px-5 py-2 text-sm font-semibold bg-gradient-to-r from-violet-600 to-blue-600 text-white rounded-lg shadow-md hover:from-violet-500 hover:to-blue-500 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                                        >
-                                            {aiAnalyzing ? <Spinner /> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
-                                            {aiAnalyzing ? 'Analyzing...' : 'Analyze Now'}
-                                        </button>
-                                    )}
-                                </div>
-                                <div className="p-5">
-                                    {!group.aiAnalysis ? (
-                                        <div className="text-center py-10 flex flex-col items-center">
-                                            <div className="w-16 h-16 rounded-2xl bg-slate-800/50 border border-slate-700/50 flex items-center justify-center text-3xl mb-4 grayscale opacity-50">
-                                                🤖
-                                            </div>
-                                            <h3 className="text-slate-300 font-medium mb-1">No analysis generated yet</h3>
-                                            <p className="text-sm text-slate-500 max-w-sm mx-auto">
-                                                Click the Analyze button above to get a root cause breakdown and suggested code fix.
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            <div className="flex gap-4 flex-col lg:flex-row">
-                                                {/* Root Cause Card */}
-                                                <div className="flex-1 bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
-                                                    <h4 className="flex items-center gap-2 text-xs font-bold text-violet-400 uppercase tracking-wider mb-3">
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                                                        Root Cause
-                                                    </h4>
-                                                    <div className="text-sm text-slate-300 leading-relaxed">
-                                                        {group.aiAnalysis.rootCause}
-                                                    </div>
-                                                </div>
-                                                {/* Severity Card */}
-                                                <div className="w-full lg:w-48 shrink-0 bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm flex flex-col justify-center items-center text-center">
-                                                    <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                                                        Severity Assessment
-                                                    </h4>
-                                                    <div className={`text-xl font-black uppercase tracking-widest ${group.aiAnalysis.severity === 'high' ? 'text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.5)]' :
-                                                        group.aiAnalysis.severity === 'medium' ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]' : 'text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]'
-                                                        }`}>
-                                                        {group.aiAnalysis.severity}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Suggested Fix Card */}
-                                            <div className="bg-gradient-to-br from-slate-900/80 to-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
-                                                <h4 className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wider mb-4">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
-                                                    Suggested Fix
-                                                </h4>
-                                                <div className="mt-2 text-sm text-slate-300 leading-relaxed font-mono whitespace-pre-wrap">
-                                                    <ReactMarkdown>
-                                                        {group.aiAnalysis.suggestedFix}
-                                                    </ReactMarkdown>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-
+                        <AiAnalysisPanel
+                            analysis={group.aiAnalysis}
+                            selectedEventId={selectedEvent?.id ?? null}
+                            analysisEventId={analysisEventId}
+                            analyzing={aiAnalyzing}
+                            error={analysisError}
+                            onAnalyze={() => void handleAnalyze()}
+                        />
                     </div>
                 </div>
             </main>
@@ -502,11 +488,118 @@ export default function IssueDetailPage() {
     );
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({ label, children }: { label: string; children: ReactNode }) {
     return (
-        <div className="px-5 py-3 flex justify-between items-center">
+        <div className="px-5 py-3 flex justify-between items-center gap-3">
             <span className="text-sm text-slate-500">{label}</span>
-            <span className="text-sm text-slate-200">{children}</span>
+            <span className="text-sm text-slate-200 text-right">{children}</span>
+        </div>
+    );
+}
+
+interface ActionButtonProps {
+    loading: boolean;
+    onClick: () => void;
+    label: string;
+    className: string;
+}
+
+function ActionButton({ loading, onClick, label, className }: ActionButtonProps) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={loading}
+            className={`px-4 py-2 text-sm font-medium border rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2 ${className}`}
+        >
+            {loading ? <Spinner /> : null}
+            {label}
+        </button>
+    );
+}
+
+interface AiAnalysisPanelProps {
+    analysis?: GroupAiAnalysis;
+    selectedEventId: string | null;
+    analysisEventId: string | null;
+    analyzing: boolean;
+    error: string | null;
+    onAnalyze: () => void;
+}
+
+function AiAnalysisPanel({
+    analysis,
+    selectedEventId,
+    analysisEventId,
+    analyzing,
+    error,
+    onAnalyze,
+}: AiAnalysisPanelProps) {
+    return (
+        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-violet-500/10 to-transparent">
+                <div>
+                    <h2 className="text-sm font-bold text-slate-200">AI Error Analysis</h2>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">
+                        Issue-level analysis (analyzes selected event)
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={onAnalyze}
+                    disabled={analyzing || !selectedEventId}
+                    className="px-4 py-2 text-sm font-semibold bg-gradient-to-r from-violet-600 to-blue-600 text-white rounded-lg hover:from-violet-500 hover:to-blue-500 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                    {analyzing ? <Spinner /> : null}
+                    {analyzing ? 'Analyzing...' : 'Analyze Selected Event'}
+                </button>
+            </div>
+            <div className="p-5">
+                {error && (
+                    <div className="mb-4 text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+                        {error}
+                    </div>
+                )}
+
+                {!analysis ? (
+                    <div className="text-center py-8">
+                        <h3 className="text-slate-300 font-medium mb-1">
+                            No analysis generated yet
+                        </h3>
+                        <p className="text-sm text-slate-500">
+                            Select an event and run analysis to generate root cause and fix suggestions.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {analysisEventId && (
+                            <div className="text-xs text-slate-500">
+                                Based on event <span className="font-mono text-slate-300">{analysisEventId}</span>
+                            </div>
+                        )}
+                        <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-4">
+                            <div className="text-xs font-semibold text-violet-300 uppercase tracking-wider mb-2">
+                                Root Cause
+                            </div>
+                            <p className="text-sm text-slate-300 leading-relaxed">{analysis.rootCause}</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-4">
+                            <div className="text-xs font-semibold text-emerald-300 uppercase tracking-wider mb-2">
+                                Suggested Fix
+                            </div>
+                            <div className="text-sm text-slate-300 leading-relaxed font-mono whitespace-pre-wrap">
+                                <ReactMarkdown>{analysis.suggestedFix}</ReactMarkdown>
+                            </div>
+                        </div>
+                        <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-4">
+                            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                                Severity
+                            </div>
+                            <p className="text-sm text-slate-200 uppercase tracking-wide">{analysis.severity}</p>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

@@ -68,6 +68,62 @@ function parseEnumQuery<T extends readonly string[]>(
     : undefined;
 }
 
+function asRecord(
+  value: Prisma.JsonValue | Record<string, unknown> | null | undefined,
+): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+function asString(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function extractSdkFromContext(context: Record<string, unknown> | null) {
+  if (!context) return null;
+  const sdkRecord = asRecord(context.sdk as Record<string, unknown> | null);
+  if (!sdkRecord) return null;
+
+  const name = asString(sdkRecord.name);
+  const version = asString(sdkRecord.version);
+  if (!name && !version) return null;
+
+  return { name, version };
+}
+
+function extractRawPayload(context: Record<string, unknown> | null) {
+  if (!context) return null;
+  const rawPayload =
+    context.rawPayload ?? context.payload ?? context.raw ?? null;
+  return rawPayload ?? null;
+}
+
+function buildEventContext(
+  context: IngestEventDto['context'],
+  sdk: IngestEventDto['sdk'],
+): Prisma.InputJsonValue | undefined {
+  const baseContext = asRecord(
+    context as Prisma.JsonValue | Record<string, unknown> | null,
+  );
+  const merged: Record<string, unknown> = baseContext ? { ...baseContext } : {};
+
+  if (sdk?.name || sdk?.version) {
+    merged.sdk = {
+      ...(asRecord(merged.sdk as Record<string, unknown> | null) ?? {}),
+      ...(sdk.name ? { name: sdk.name } : {}),
+      ...(sdk.version ? { version: sdk.version } : {}),
+    };
+  }
+
+  return Object.keys(merged).length > 0
+    ? (merged as Prisma.InputJsonValue)
+    : undefined;
+}
+
 @Controller()
 export class EventsController {
   constructor(
@@ -134,7 +190,7 @@ export class EventsController {
           source: body.source,
           message: body.message,
           stack: body.stack,
-          context: (body.context as any) ?? undefined,
+          context: buildEventContext(body.context, body.sdk),
           environment: body.environment,
           releaseVersion: body.releaseVersion,
           level: body.level,
@@ -409,6 +465,7 @@ export class EventsController {
       orderBy: { timestamp: 'desc' },
       select: {
         id: true,
+        source: true,
         message: true,
         stack: true,
         context: true,
@@ -422,16 +479,23 @@ export class EventsController {
     return {
       ok: true,
       group,
-      events: events.map((e) => ({
+      events: events.map((e) => {
+        const constContext = asRecord(e.context);
+        return {
         id: e.id,
+        source: e.source,
         message: e.message,
         stack: e.stack,
-        context: e.context,
+        context: constContext,
         environment: e.environment,
         releaseVersion: e.releaseVersion,
         level: e.level,
+        sdk: extractSdkFromContext(constContext),
+        rawPayload: extractRawPayload(constContext),
+        timestamp: e.timestamp,
         createdAt: e.timestamp,
-      })),
+      };
+      }),
     };
   }
 
