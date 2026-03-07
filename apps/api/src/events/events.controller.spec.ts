@@ -17,6 +17,62 @@ describe('EventsController', () => {
     };
   }
 
+  function makeResolvedSourceMapResult() {
+    return {
+      status: 'resolved',
+      message: 'Resolved the top frame to its original source location.',
+      hint: 'Source map resolved. Re-run analysis for more precise guidance.',
+      sourceMap: {
+        mapUrl: 'https://cdn.example.com/app.js.map',
+        minified: {
+          functionName: 'renderCheckout',
+          file: 'app.min.js',
+          line: 10,
+          column: 5,
+        },
+        original: {
+          source: 'src/pages/Checkout.tsx',
+          line: 12,
+          column: 4,
+          name: 'CheckoutPage',
+        },
+      },
+      diagnostics: {
+        frame: {
+          functionName: 'renderCheckout',
+          file: 'app.min.js',
+          line: 10,
+          column: 5,
+        },
+        frameKind: 'remote_asset',
+        mapUrl: 'https://cdn.example.com/app.js.map',
+        httpStatus: 200,
+      },
+    };
+  }
+
+  function makeNoSourceMapNeededResult() {
+    return {
+      status: 'not_needed',
+      message:
+        'This stack already points to source-level code, so source map resolution is probably not needed.',
+      hint:
+        'Dev stacks from Vite or webpack often already include original source paths.',
+      sourceMap: null,
+      diagnostics: {
+        frame: {
+          functionName: 'renderSettings',
+          file: 'http://localhost:5173/src/pages/Settings.tsx',
+          line: 20,
+          column: 2,
+        },
+        frameKind: 'source',
+        mapUrl: null,
+        httpStatus: null,
+      },
+    };
+  }
+
   const tx = {
     errorGroup: {
       findUnique: jest.fn(),
@@ -41,7 +97,7 @@ describe('EventsController', () => {
     $transaction: jest.fn(),
   } as any;
   const sourceMaps = {
-    resolveTopFrame: jest.fn(),
+    resolveTopFrameDetailed: jest.fn(),
   } as any;
   const dashboardStats = {
     getStats: jest.fn(),
@@ -51,6 +107,9 @@ describe('EventsController', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    sourceMaps.resolveTopFrameDetailed.mockResolvedValue(
+      makeNoSourceMapNeededResult(),
+    );
     controller = new EventsController(prisma, sourceMaps, dashboardStats);
   });
 
@@ -497,6 +556,31 @@ describe('EventsController', () => {
     });
   });
 
+  it('returns explicit source map resolution results without triggering analysis', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    prisma.event.findFirst.mockResolvedValue({
+      id: 'event_1',
+      stack: 'TypeError: Cannot read properties of undefined\n at checkout.tsx:12:4',
+    });
+    sourceMaps.resolveTopFrameDetailed.mockResolvedValue(
+      makeResolvedSourceMapResult(),
+    );
+
+    const result = await controller.resolveEventSourceMap(
+      'set_valid_key',
+      'event_1',
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      sourceMap: makeResolvedSourceMapResult().sourceMap,
+      sourceMapResult: makeResolvedSourceMapResult(),
+    });
+  });
+
   it('returns cached event-level structured analysis for analyzeEvent', async () => {
     prisma.apiKey.findUnique.mockResolvedValue({
       projectId: 'proj_1',
@@ -525,21 +609,9 @@ describe('EventsController', () => {
         aiAnalysis: null,
       },
     });
-    sourceMaps.resolveTopFrame.mockResolvedValue({
-      mapUrl: 'https://cdn.example.com/app.js.map',
-      minified: {
-        functionName: 'renderCheckout',
-        file: 'app.min.js',
-        line: 10,
-        column: 5,
-      },
-      original: {
-        source: 'src/pages/Checkout.tsx',
-        line: 12,
-        column: 4,
-        name: 'CheckoutPage',
-      },
-    });
+    sourceMaps.resolveTopFrameDetailed.mockResolvedValue(
+      makeResolvedSourceMapResult(),
+    );
 
     const result = await controller.analyzeEvent('set_valid_key', 'event_1');
 
@@ -565,6 +637,7 @@ describe('EventsController', () => {
         confidence: 'high',
         summary: null,
       },
+      sourceMapResult: makeResolvedSourceMapResult(),
       sourceMap: {
         mapUrl: 'https://cdn.example.com/app.js.map',
         minified: {
@@ -616,7 +689,9 @@ describe('EventsController', () => {
       },
     });
     prisma.event.update.mockResolvedValue({ id: 'event_1' });
-    sourceMaps.resolveTopFrame.mockResolvedValue(null);
+    sourceMaps.resolveTopFrameDetailed.mockResolvedValue(
+      makeNoSourceMapNeededResult(),
+    );
 
     const result = await controller.analyzeEvent('set_valid_key', 'event_1');
 
@@ -667,6 +742,7 @@ describe('EventsController', () => {
         confidence: 'medium',
         summary: null,
       },
+      sourceMapResult: makeNoSourceMapNeededResult(),
       sourceMap: null,
     });
   });
@@ -768,7 +844,9 @@ describe('EventsController', () => {
           },
         },
       });
-    sourceMaps.resolveTopFrame.mockResolvedValue(null);
+    sourceMaps.resolveTopFrameDetailed.mockResolvedValue(
+      makeNoSourceMapNeededResult(),
+    );
 
     const result = await controller.analyzeEvent('set_valid_key', 'event_1');
 
@@ -801,6 +879,7 @@ describe('EventsController', () => {
         confidence: 'medium',
         summary: null,
       },
+      sourceMapResult: makeNoSourceMapNeededResult(),
       sourceMap: null,
     });
   });

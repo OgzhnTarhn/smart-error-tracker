@@ -163,9 +163,20 @@ export interface AnalyzeEventResponse {
     ok: boolean;
     analysis?: EventAiAnalysis;
     aiAnalysis?: GroupAiAnalysis;
+    sourceMapResult?: EventSourceMapResult;
     sourceMap?: EventSourceMapResolution | null;
     error?: string;
 }
+
+export type EventSourceMapStatus =
+    | 'resolved'
+    | 'not_needed'
+    | 'no_stack'
+    | 'unsupported_stack'
+    | 'missing_source_map'
+    | 'fetch_failed'
+    | 'invalid_source_map'
+    | 'unmapped_frame';
 
 export interface SourceMapFrame {
     functionName: string | null;
@@ -187,8 +198,31 @@ export interface EventSourceMapResolution {
     original: SourceMapOriginalFrame;
 }
 
+export interface EventSourceMapResult {
+    status: EventSourceMapStatus;
+    message: string;
+    hint: string | null;
+    sourceMap: EventSourceMapResolution | null;
+    diagnostics: {
+        frame: SourceMapFrame | null;
+        frameKind: 'remote_asset' | 'source' | 'local_path' | 'unsupported_url' | 'unknown';
+        mapUrl: string | null;
+        httpStatus: number | null;
+    };
+}
+
+export interface ResolveSourceMapResponse {
+    ok: boolean;
+    sourceMap?: EventSourceMapResolution | null;
+    sourceMapResult?: EventSourceMapResult;
+    error?: string;
+}
+
 export const analyzeEvent = (eventId: string) =>
     apiFetch<AnalyzeEventResponse>(`/events/${eventId}/analyze`, { method: 'POST' });
+
+export const resolveEventSourceMap = (eventId: string) =>
+    apiFetch<ResolveSourceMapResponse>(`/events/${eventId}/source-map`, { method: 'POST' });
 
 export type GroupStatus = 'open' | 'resolved' | 'ignored';
 export type GroupLevel = 'error' | 'warn' | 'info';

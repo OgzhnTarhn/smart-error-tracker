@@ -17,7 +17,9 @@ import { GoogleGenAI } from '@google/genai';
 import { Prisma } from '@prisma/client';
 import { IngestEventDto } from './dto/ingest-event.dto';
 import { IngestRateLimitGuard } from '../common/guards/ingest-rate-limit.guard';
-import { SourceMapService } from '../source-maps/source-map.service';
+import {
+  SourceMapService,
+} from '../source-maps/source-map.service';
 import { DashboardStatsService } from '../dashboard/dashboard-stats.service';
 import {
   createEmptyStructuredAiAnalysis,
@@ -255,6 +257,11 @@ type AnalyzeEventRow = {
   };
 };
 
+type SourceMapEventRow = {
+  id: string;
+  stack: string | null;
+};
+
 @Controller()
 export class EventsController {
   private readonly logger = new Logger(EventsController.name);
@@ -410,6 +417,19 @@ export class EventsController {
         'Event.aiAnalysis update skipped because the database column is missing.',
       );
     }
+  }
+
+  private async findEventStackForSourceMap(
+    projectId: string,
+    eventId: string,
+  ): Promise<SourceMapEventRow | null> {
+    return this.prisma.event.findFirst({
+      where: { id: eventId, projectId },
+      select: {
+        id: true,
+        stack: true,
+      },
+    });
   }
 
   private async resolveProjectIdFromApiKey(apiKey: string | undefined) {
@@ -715,6 +735,28 @@ export class EventsController {
     };
   }
 
+  @Post('events/:id/source-map')
+  async resolveEventSourceMap(
+    @Headers('x-api-key') apiKey: string | undefined,
+    @Param('id') eventId: string,
+  ) {
+    const projectId = await this.resolveProjectIdFromApiKey(apiKey);
+    if (!projectId) return { ok: false, error: 'unauthorized' };
+
+    const event = await this.findEventStackForSourceMap(projectId, eventId);
+    if (!event) return { ok: false, error: 'not_found' };
+
+    const sourceMapResult = await this.sourceMaps.resolveTopFrameDetailed(
+      event.stack,
+    );
+
+    return {
+      ok: true,
+      sourceMap: sourceMapResult.sourceMap,
+      sourceMapResult,
+    };
+  }
+
   @Post('events/:id/analyze')
   async analyzeEvent(
     @Headers('x-api-key') apiKey: string | undefined,
@@ -728,7 +770,10 @@ export class EventsController {
       eventId,
     );
     if (!event) return { ok: false, error: 'not_found' };
-    const sourceMap = await this.sourceMaps.resolveTopFrame(event.stack);
+    const sourceMapResult = await this.sourceMaps.resolveTopFrameDetailed(
+      event.stack,
+    );
+    const sourceMap = sourceMapResult.sourceMap;
 
     const cachedEventAnalysis = normalizeStoredAiAnalysis(event.aiAnalysis);
     if (cachedEventAnalysis.analysis) {
@@ -736,6 +781,7 @@ export class EventsController {
         ok: true,
         analysis: cachedEventAnalysis.analysis,
         aiAnalysis: cachedEventAnalysis.analysis,
+        sourceMapResult,
         sourceMap,
       };
     }
@@ -760,13 +806,19 @@ export class EventsController {
         ok: true,
         analysis: cachedGroupAnalysis.analysis,
         aiAnalysis: cachedGroupAnalysis.analysis,
+        sourceMapResult,
         sourceMap,
       };
     }
 
     const aiKey = process.env.GEMINI_API_KEY;
     if (!aiKey) {
-      return { ok: false, error: 'ai_not_configured', sourceMap };
+      return {
+        ok: false,
+        error: 'ai_not_configured',
+        sourceMapResult,
+        sourceMap,
+      };
     }
 
     try {
@@ -810,10 +862,21 @@ export class EventsController {
         ]);
       }
 
-      return { ok: true, analysis, aiAnalysis: analysis, sourceMap };
+      return {
+        ok: true,
+        analysis,
+        aiAnalysis: analysis,
+        sourceMapResult,
+        sourceMap,
+      };
     } catch (err: any) {
       console.error('AI Analysis failed:', err);
-      return { ok: false, error: 'ai_analysis_failed', sourceMap };
+      return {
+        ok: false,
+        error: 'ai_analysis_failed',
+        sourceMapResult,
+        sourceMap,
+      };
     }
   }
 

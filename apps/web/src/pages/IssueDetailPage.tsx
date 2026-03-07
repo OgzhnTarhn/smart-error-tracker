@@ -16,8 +16,9 @@ import IssueStatusBadge from '../components/issues/IssueStatusBadge';
 import {
     analyzeEvent,
     type EventAiAnalysis,
-    type EventSourceMapResolution,
+    type EventSourceMapResult,
     getGroupDetail,
+    resolveEventSourceMap,
     setGroupStatus,
     type GroupDetail,
     type GroupDetailEvent,
@@ -56,6 +57,13 @@ function getAnalyzeErrorMessage(errorCode: string | undefined): string {
     return 'AI analysis failed';
 }
 
+function getSourceMapErrorMessage(errorCode: string | undefined): string {
+    if (errorCode === 'not_found') {
+        return 'Selected event could not be found.';
+    }
+    return 'Source map resolution failed.';
+}
+
 function formatDate(value: string) {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '-';
@@ -88,21 +96,6 @@ function buildTimeline(events: GroupDetailEvent[]): TimelinePoint[] {
     }));
 }
 
-function hasAnalysisContent(analysis: EventAiAnalysis | null | undefined) {
-    if (!analysis) return false;
-
-    return Boolean(
-        analysis.rootCause
-        || analysis.suggestedFix
-        || analysis.likelyArea
-        || analysis.nextStep
-        || analysis.preventionTip
-        || analysis.severity
-        || analysis.confidence
-        || analysis.summary,
-    );
-}
-
 export default function IssueDetailPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -115,14 +108,15 @@ export default function IssueDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState<StatusAction | null>(null);
-    const [aiAnalyzing, setAiAnalyzing] = useState(false);
+    const [aiAnalyzingEventId, setAiAnalyzingEventId] = useState<string | null>(null);
     const [analysisError, setAnalysisError] = useState<string | null>(null);
+    const [sourceMapResolvingEventId, setSourceMapResolvingEventId] = useState<string | null>(null);
 
     const [copiedFingerprint, setCopiedFingerprint] = useState(false);
     const [stackCopied, setStackCopied] = useState(false);
     const [rawCopied, setRawCopied] = useState(false);
-    const [sourceMapByEventId, setSourceMapByEventId] = useState<
-        Record<string, EventSourceMapResolution | null>
+    const [sourceMapResultByEventId, setSourceMapResultByEventId] = useState<
+        Record<string, EventSourceMapResult>
     >({});
 
     const selectedEvent = useMemo(() => {
@@ -132,24 +126,21 @@ export default function IssueDetailPage() {
     }, [events, selectedEventId]);
 
     const timeline = useMemo(() => buildTimeline(events), [events]);
-    const selectedSourceMap = selectedEvent
-        ? sourceMapByEventId[selectedEvent.id] ?? null
+    const selectedSourceMapResult = selectedEvent
+        ? sourceMapResultByEventId[selectedEvent.id] ?? null
         : null;
-    const selectedSourceMapRequested = useMemo(
-        () =>
-            Boolean(
-                selectedEvent &&
-                Object.prototype.hasOwnProperty.call(
-                    sourceMapByEventId,
-                    selectedEvent.id,
-                ),
-            ),
-        [selectedEvent, sourceMapByEventId],
-    );
+    const aiAnalyzing = selectedEvent ? aiAnalyzingEventId === selectedEvent.id : false;
+    const sourceMapResolving = selectedEvent
+        ? sourceMapResolvingEventId === selectedEvent.id
+        : false;
 
     useEffect(() => {
         setStackCopied(false);
         setRawCopied(false);
+    }, [selectedEvent?.id]);
+
+    useEffect(() => {
+        setAnalysisError(null);
     }, [selectedEvent?.id]);
 
     const fetchDetail = useCallback(async () => {
@@ -189,7 +180,9 @@ export default function IssueDetailPage() {
     }, [id]);
 
     useEffect(() => {
-        setSourceMapByEventId({});
+        setAiAnalyzingEventId(null);
+        setSourceMapResolvingEventId(null);
+        setSourceMapResultByEventId({});
         void fetchDetail();
     }, [fetchDetail, id]);
 
@@ -256,14 +249,37 @@ export default function IssueDetailPage() {
     const handleAnalyze = async () => {
         if (!selectedEvent) return;
 
-        setAiAnalyzing(true);
+        setAiAnalyzingEventId(selectedEvent.id);
         setAnalysisError(null);
         try {
             const data = await analyzeEvent(selectedEvent.id);
-            setSourceMapByEventId((previous) => ({
-                ...previous,
-                [selectedEvent.id]: data.sourceMap ?? null,
-            }));
+            if (data.sourceMapResult) {
+                setSourceMapResultByEventId((previous) => ({
+                    ...previous,
+                    [selectedEvent.id]: data.sourceMapResult!,
+                }));
+            } else {
+                const sourceMap = data.sourceMap;
+                if (!sourceMap) {
+                    // no-op: analysis can still succeed without a resolvable source map
+                } else {
+                    setSourceMapResultByEventId((previous) => ({
+                        ...previous,
+                        [selectedEvent.id]: {
+                            status: 'resolved',
+                            message: 'Resolved the top frame to its original source location.',
+                            hint: null,
+                            sourceMap,
+                            diagnostics: {
+                                frame: sourceMap.minified,
+                                frameKind: 'remote_asset',
+                                mapUrl: sourceMap.mapUrl,
+                                httpStatus: null,
+                            },
+                        },
+                    }));
+                }
+            }
 
             const nextAnalysis = data.analysis ?? data.aiAnalysis ?? null;
             if (data.ok && nextAnalysis) {
@@ -277,7 +293,59 @@ export default function IssueDetailPage() {
         } catch (err: unknown) {
             setAnalysisError(err instanceof Error ? err.message : 'AI analysis failed');
         } finally {
-            setAiAnalyzing(false);
+            setAiAnalyzingEventId((current) => (current === selectedEvent.id ? null : current));
+        }
+    };
+
+    const handleResolveSourceMap = async () => {
+        if (!selectedEvent) return;
+
+        setSourceMapResolvingEventId(selectedEvent.id);
+        try {
+            const data = await resolveEventSourceMap(selectedEvent.id);
+            if (data.ok && data.sourceMapResult) {
+                setSourceMapResultByEventId((previous) => ({
+                    ...previous,
+                    [selectedEvent.id]: data.sourceMapResult!,
+                }));
+                return;
+            }
+
+            setSourceMapResultByEventId((previous) => ({
+                ...previous,
+                [selectedEvent.id]: {
+                    status: 'fetch_failed',
+                    message: getSourceMapErrorMessage(data.error),
+                    hint: 'Try again after confirming the event still exists and the API is reachable.',
+                    sourceMap: null,
+                    diagnostics: {
+                        frame: null,
+                        frameKind: 'unknown',
+                        mapUrl: null,
+                        httpStatus: null,
+                    },
+                },
+            }));
+        } catch (err: unknown) {
+            setSourceMapResultByEventId((previous) => ({
+                ...previous,
+                [selectedEvent.id]: {
+                    status: 'fetch_failed',
+                    message: err instanceof Error
+                        ? err.message
+                        : 'Source map resolution failed.',
+                    hint: 'Check that the API can reach the frontend asset URL for this event.',
+                    sourceMap: null,
+                    diagnostics: {
+                        frame: null,
+                        frameKind: 'unknown',
+                        mapUrl: null,
+                        httpStatus: null,
+                    },
+                },
+            }));
+        } finally {
+            setSourceMapResolvingEventId((current) => (current === selectedEvent.id ? null : current));
         }
     };
 
@@ -508,12 +576,11 @@ export default function IssueDetailPage() {
                             formatDate={formatDate}
                             onCopyStack={() => void copyStackTrace()}
                             onCopyRaw={() => void copyRawPayload()}
-                            onResolveSourceMap={() => void handleAnalyze()}
+                            onResolveSourceMap={() => void handleResolveSourceMap()}
                             stackCopied={stackCopied}
                             rawCopied={rawCopied}
-                            sourceMap={selectedSourceMap}
-                            sourceMapRequested={selectedSourceMapRequested}
-                            resolvingSourceMap={aiAnalyzing}
+                            sourceMapResult={selectedSourceMapResult}
+                            resolvingSourceMap={sourceMapResolving}
                         />
 
                         <AiAnalysisPanel
@@ -672,7 +739,17 @@ function AiAnalysisPanel({
         accentClassName: string;
     } => Boolean(section.value));
 
-    const showEmptyState = !selectedEvent || !analysis || !hasAnalysisContent(analysis);
+    const hasRenderableAnalysis = Boolean(
+        analysis
+        && (
+            analysis.summary
+            || sections.length > 0
+            || analysis.severity
+            || analysis.confidence
+        ),
+    );
+    const showLoadingState = Boolean(selectedEvent && analyzing && !hasRenderableAnalysis);
+    const showEmptyState = !selectedEvent || (!showLoadingState && !hasRenderableAnalysis);
 
     return (
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
@@ -697,10 +774,21 @@ function AiAnalysisPanel({
                 {error && (
                     <div className="mb-4 text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
                         {error}
+                        {hasRenderableAnalysis ? ' Previous guidance is still shown below.' : ''}
                     </div>
                 )}
 
-                {showEmptyState ? (
+                {showLoadingState ? (
+                    <div className="py-8 text-center">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-xs text-violet-200">
+                            <Spinner />
+                            Analyzing selected event
+                        </div>
+                        <p className="mt-3 text-sm text-slate-500">
+                            Building structured debugging guidance from the event context and stack trace.
+                        </p>
+                    </div>
+                ) : showEmptyState ? (
                     <div className="py-8 text-center">
                         <h3 className="text-slate-300 font-medium mb-1">
                             {selectedEvent ? 'No analysis for this event yet' : 'No event selected'}
@@ -713,20 +801,26 @@ function AiAnalysisPanel({
                     </div>
                 ) : (
                     <div className="space-y-4">
+                        {analyzing && (
+                            <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 px-4 py-3 text-sm text-violet-100">
+                                Refreshing guidance for the selected event.
+                            </div>
+                        )}
+
                         <div className="flex flex-col gap-3 border border-slate-700/60 rounded-xl bg-slate-900/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                             <div className="text-xs text-slate-400">
                                 Selected event{' '}
                                 <span className="font-mono text-slate-200">{selectedEvent.id}</span>
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
-                                {analysis.severity && (
+                                {analysis?.severity && (
                                     <AnalysisPill
                                         label="Severity"
                                         value={analysis.severity}
                                         className={getSeverityPillClass(analysis.severity)}
                                     />
                                 )}
-                                {analysis.confidence && (
+                                {analysis?.confidence && (
                                     <AnalysisPill
                                         label="Confidence"
                                         value={analysis.confidence}
@@ -736,7 +830,7 @@ function AiAnalysisPanel({
                             </div>
                         </div>
 
-                        {analysis.summary && (
+                        {analysis?.summary && (
                             <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-4">
                                 <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                                     Summary
@@ -757,6 +851,12 @@ function AiAnalysisPanel({
                                         accentClassName={section.accentClassName}
                                     />
                                 ))}
+                            </div>
+                        )}
+
+                        {!analysis?.summary && sections.length === 0 && (
+                            <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-4 text-sm text-slate-400">
+                                Analysis returned limited structured data for this event.
                             </div>
                         )}
                     </div>

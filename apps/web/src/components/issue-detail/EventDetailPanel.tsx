@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { EventSourceMapResolution, GroupDetailEvent } from '../../lib/api';
+import type { EventSourceMapResult, GroupDetailEvent } from '../../lib/api';
 import IssueLevelBadge from '../issues/IssueLevelBadge';
 import JsonViewer from './JsonViewer';
 import SourceMapSummary from './SourceMapSummary';
@@ -15,8 +15,7 @@ interface EventDetailPanelProps {
     onResolveSourceMap: () => void;
     stackCopied: boolean;
     rawCopied: boolean;
-    sourceMap?: EventSourceMapResolution | null;
-    sourceMapRequested?: boolean;
+    sourceMapResult?: EventSourceMapResult | null;
     resolvingSourceMap?: boolean;
 }
 
@@ -81,8 +80,7 @@ export default function EventDetailPanel({
     onResolveSourceMap,
     stackCopied,
     rawCopied,
-    sourceMap,
-    sourceMapRequested = false,
+    sourceMapResult = null,
     resolvingSourceMap = false,
 }: EventDetailPanelProps) {
     if (!event) {
@@ -152,6 +150,19 @@ export default function EventDetailPanel({
 
     const rawPayload = event.rawPayload ?? null;
     const hasRawPayload = rawPayload !== null;
+    const sourceMap = sourceMapResult?.sourceMap ?? null;
+    const sourceMapStatus = sourceMapResult?.status ?? null;
+    const sourceMapButtonLabel = sourceMapResult ? 'Resolve again' : 'Resolve source map';
+    const sourceMapStatusBadgeClass = sourceMapStatus === 'resolved'
+        ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-200'
+        : sourceMapStatus === 'not_needed'
+            ? 'border-sky-500/30 bg-sky-500/15 text-sky-200'
+            : sourceMapStatus
+                ? 'border-amber-500/30 bg-amber-500/15 text-amber-200'
+                : 'border-slate-700/60 bg-slate-800/50 text-slate-400';
+    const sourceMapStatusLabel = sourceMapStatus
+        ? sourceMapStatus.replace(/_/g, ' ')
+        : 'Not checked';
 
     return (
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
@@ -225,24 +236,42 @@ export default function EventDetailPanel({
                         event.stack ? (
                             <div className="p-4">
                                 {sourceMap ? (
-                                    <SourceMapSummary sourceMap={sourceMap} />
+                                    <SourceMapSummary
+                                        sourceMap={sourceMap}
+                                        hint={sourceMapResult?.hint ?? null}
+                                    />
                                 ) : (
                                     <div className="mb-3 rounded-lg border border-slate-700/60 bg-slate-800/30 px-3 py-2.5">
-                                        <div className="text-[11px] uppercase tracking-wider font-semibold text-slate-400">
-                                            Source map
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <div className="text-[11px] uppercase tracking-wider font-semibold text-slate-400">
+                                                Source map
+                                            </div>
+                                            <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold capitalize ${sourceMapStatusBadgeClass}`}>
+                                                {sourceMapStatusLabel}
+                                            </span>
                                         </div>
-                                        <div className="mt-1 text-xs text-slate-500">
-                                            {sourceMapRequested
-                                                ? 'Source map could not be resolved for this event'
-                                                : 'Resolve source map to view original source locations'}
+                                        <div className="mt-1 text-xs text-slate-300">
+                                            {resolvingSourceMap
+                                                ? 'Checking the top frame against its matching .map artifact...'
+                                                : sourceMapResult?.message ?? 'Resolve source map to view original source locations.'}
                                         </div>
+                                        {sourceMapResult?.hint && !resolvingSourceMap && (
+                                            <div className="mt-1 text-xs text-slate-500">
+                                                {sourceMapResult.hint}
+                                            </div>
+                                        )}
+                                        {sourceMapResult?.diagnostics.mapUrl && !resolvingSourceMap && (
+                                            <div className="mt-2 text-[11px] text-slate-500 break-all">
+                                                Checked map URL: <span className="font-mono">{sourceMapResult.diagnostics.mapUrl}</span>
+                                            </div>
+                                        )}
                                         <button
                                             type="button"
                                             onClick={onResolveSourceMap}
                                             disabled={resolvingSourceMap}
                                             className="mt-2 px-2.5 py-1 text-xs font-medium text-blue-200 bg-blue-500/15 border border-blue-500/30 hover:bg-blue-500/25 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            {resolvingSourceMap ? 'Resolving...' : 'Resolve source map'}
+                                            {resolvingSourceMap ? 'Resolving...' : sourceMapButtonLabel}
                                         </button>
                                     </div>
                                 )}

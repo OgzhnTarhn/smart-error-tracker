@@ -2,6 +2,7 @@ import type { EventSourceMapResolution } from '../../lib/api';
 
 interface SourceMapSummaryProps {
     sourceMap: EventSourceMapResolution;
+    hint?: string | null;
 }
 
 function normalizeOriginalSourcePath(
@@ -37,7 +38,7 @@ function formatLocation(
     return `${normalizedFile}:${line}:${column}`;
 }
 
-export default function SourceMapSummary({ sourceMap }: SourceMapSummaryProps) {
+export default function SourceMapSummary({ sourceMap, hint = null }: SourceMapSummaryProps) {
     const originalFile = normalizeOriginalSourcePath(sourceMap.original.source);
     const originalLocation = formatLocation(
         originalFile,
@@ -62,6 +63,12 @@ export default function SourceMapSummary({ sourceMap }: SourceMapSummaryProps) {
             </div>
 
             <div className="mt-2 grid gap-2 text-xs">
+                {hint && (
+                    <div className="rounded-md border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-2 text-emerald-100/90">
+                        {hint}
+                    </div>
+                )}
+
                 <div className="rounded-md border border-slate-700/60 bg-slate-900/40 px-2.5 py-2">
                     <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
                         Original source
