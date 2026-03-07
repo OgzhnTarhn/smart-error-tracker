@@ -17,6 +17,21 @@ describe('EventsController', () => {
     };
   }
 
+  function makeMissingErrorGroupResolutionNoteError() {
+    return {
+      code: 'P2022',
+      message: 'column ErrorGroup.resolutionNote does not exist',
+      meta: {
+        modelName: 'ErrorGroup',
+        driverAdapterError: {
+          cause: {
+            originalMessage: 'column ErrorGroup.resolutionNote does not exist',
+          },
+        },
+      },
+    };
+  }
+
   function makeResolvedSourceMapResult() {
     return {
       status: 'resolved',
@@ -479,6 +494,7 @@ describe('EventsController', () => {
       eventCount: 2,
       firstSeenAt: new Date('2026-03-01T10:00:00.000Z'),
       lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+      resolutionNote: 'Added a guard before rendering checkout totals.',
       aiAnalysis: null,
     });
     prisma.event.findMany.mockResolvedValue([
@@ -517,6 +533,7 @@ describe('EventsController', () => {
         id: 'group_1',
         isRegression: true,
         regressionCount: 1,
+        resolutionNote: 'Added a guard before rendering checkout totals.',
       }),
       events: [
         {
@@ -553,6 +570,394 @@ describe('EventsController', () => {
           createdAt: new Date('2026-03-02T10:00:00.000Z'),
         },
       ],
+    });
+  });
+
+  it('resolves a group with a resolution note', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    prisma.errorGroup.findFirst.mockResolvedValue({
+      id: 'group_1',
+      status: 'open',
+      resolutionNote: null,
+      isRegression: false,
+      regressionCount: 0,
+      lastRegressedAt: null,
+      lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+      eventCount: 3,
+    });
+    prisma.errorGroup.update.mockResolvedValue({
+      id: 'group_1',
+      status: 'resolved',
+      resolutionNote: 'Added null guard before rendering checkout summary.',
+      isRegression: false,
+      regressionCount: 0,
+      lastRegressedAt: null,
+      lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+      eventCount: 3,
+    });
+
+    const result = await controller.resolveGroup('set_valid_key', 'group_1', {
+      note: 'Added null guard before rendering checkout summary.',
+    });
+
+    expect(prisma.errorGroup.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'group_1' },
+        data: {
+          status: 'resolved',
+          resolutionNote:
+            'Added null guard before rendering checkout summary.',
+        },
+        select: expect.objectContaining({
+          resolutionNote: true,
+        }),
+      }),
+    );
+    expect(result).toEqual({
+      ok: true,
+      group: {
+        id: 'group_1',
+        status: 'resolved',
+        resolutionNote:
+          'Added null guard before rendering checkout summary.',
+        isRegression: false,
+        regressionCount: 0,
+        lastRegressedAt: null,
+        lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+        eventCount: 3,
+      },
+    });
+  });
+
+  it('resolves a group without changing the note when note is omitted', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    prisma.errorGroup.findFirst.mockResolvedValue({
+      id: 'group_1',
+      status: 'open',
+      resolutionNote: 'Existing note',
+      isRegression: false,
+      regressionCount: 0,
+      lastRegressedAt: null,
+      lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+      eventCount: 3,
+    });
+    prisma.errorGroup.update.mockResolvedValue({
+      id: 'group_1',
+      status: 'resolved',
+      resolutionNote: 'Existing note',
+      isRegression: false,
+      regressionCount: 0,
+      lastRegressedAt: null,
+      lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+      eventCount: 3,
+    });
+
+    const result = await controller.resolveGroup('set_valid_key', 'group_1');
+
+    expect(prisma.errorGroup.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'group_1' },
+        data: {
+          status: 'resolved',
+        },
+        select: expect.objectContaining({
+          resolutionNote: true,
+        }),
+      }),
+    );
+    expect(result).toEqual({
+      ok: true,
+      group: {
+        id: 'group_1',
+        status: 'resolved',
+        resolutionNote: 'Existing note',
+        isRegression: false,
+        regressionCount: 0,
+        lastRegressedAt: null,
+        lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+        eventCount: 3,
+      },
+    });
+  });
+
+  it('normalizes blank resolution notes to null', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    prisma.errorGroup.findFirst.mockResolvedValue({
+      id: 'group_1',
+      status: 'open',
+      resolutionNote: 'Old note',
+      isRegression: false,
+      regressionCount: 0,
+      lastRegressedAt: null,
+      lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+      eventCount: 3,
+    });
+    prisma.errorGroup.update.mockResolvedValue({
+      id: 'group_1',
+      status: 'resolved',
+      resolutionNote: null,
+      isRegression: false,
+      regressionCount: 0,
+      lastRegressedAt: null,
+      lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+      eventCount: 3,
+    });
+
+    const result = await controller.resolveGroup('set_valid_key', 'group_1', {
+      note: '   ',
+    });
+
+    expect(prisma.errorGroup.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'group_1' },
+        data: {
+          status: 'resolved',
+          resolutionNote: null,
+        },
+        select: expect.objectContaining({
+          resolutionNote: true,
+        }),
+      }),
+    );
+    expect(result).toEqual({
+      ok: true,
+      group: {
+        id: 'group_1',
+        status: 'resolved',
+        resolutionNote: null,
+        isRegression: false,
+        regressionCount: 0,
+        lastRegressedAt: null,
+        lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+        eventCount: 3,
+      },
+    });
+  });
+
+  it('reopens a resolved group without erasing the saved resolution note', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    prisma.errorGroup.findFirst.mockResolvedValue({
+      id: 'group_1',
+      status: 'resolved',
+      resolutionNote: 'Added null guard before rendering checkout summary.',
+      isRegression: false,
+      regressionCount: 0,
+      lastRegressedAt: null,
+      lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+      eventCount: 3,
+    });
+    prisma.errorGroup.update.mockResolvedValue({
+      id: 'group_1',
+      status: 'open',
+      resolutionNote: 'Added null guard before rendering checkout summary.',
+      isRegression: false,
+      regressionCount: 0,
+      lastRegressedAt: null,
+      lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+      eventCount: 3,
+    });
+
+    const result = await controller.openGroup('set_valid_key', 'group_1');
+
+    expect(prisma.errorGroup.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'group_1' },
+        data: {
+          status: 'open',
+        },
+        select: expect.objectContaining({
+          resolutionNote: true,
+        }),
+      }),
+    );
+    expect(result).toEqual({
+      ok: true,
+      group: {
+        id: 'group_1',
+        status: 'open',
+        resolutionNote: 'Added null guard before rendering checkout summary.',
+        isRegression: false,
+        regressionCount: 0,
+        lastRegressedAt: null,
+        lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+        eventCount: 3,
+      },
+    });
+  });
+
+  it('ignores a group without affecting an existing resolution note', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    prisma.errorGroup.findFirst.mockResolvedValue({
+      id: 'group_1',
+      status: 'open',
+      resolutionNote: 'Added null guard before rendering checkout summary.',
+      isRegression: false,
+      regressionCount: 0,
+      lastRegressedAt: null,
+      lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+      eventCount: 3,
+    });
+    prisma.errorGroup.update.mockResolvedValue({
+      id: 'group_1',
+      status: 'ignored',
+      resolutionNote: 'Added null guard before rendering checkout summary.',
+      isRegression: false,
+      regressionCount: 0,
+      lastRegressedAt: null,
+      lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+      eventCount: 3,
+    });
+
+    const result = await controller.ignoreGroup('set_valid_key', 'group_1');
+
+    expect(prisma.errorGroup.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'group_1' },
+        data: {
+          status: 'ignored',
+        },
+        select: expect.objectContaining({
+          resolutionNote: true,
+        }),
+      }),
+    );
+    expect(result).toEqual({
+      ok: true,
+      group: {
+        id: 'group_1',
+        status: 'ignored',
+        resolutionNote: 'Added null guard before rendering checkout summary.',
+        isRegression: false,
+        regressionCount: 0,
+        lastRegressedAt: null,
+        lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+        eventCount: 3,
+      },
+    });
+  });
+
+  it('falls back to resolutionNote=null in groupDetail when the column is not migrated yet', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    prisma.errorGroup.findFirst
+      .mockRejectedValueOnce(makeMissingErrorGroupResolutionNoteError())
+      .mockResolvedValueOnce({
+        id: 'group_1',
+        fingerprint: 'fp_1',
+        title: 'TypeError',
+        status: 'resolved',
+        isRegression: false,
+        regressionCount: 0,
+        lastRegressedAt: null,
+        eventCount: 1,
+        firstSeenAt: new Date('2026-03-01T10:00:00.000Z'),
+        lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+        aiAnalysis: null,
+      });
+    prisma.event.findMany.mockResolvedValue([
+      {
+        id: 'event_1',
+        source: 'browser',
+        message: 'Cannot read x',
+        stack: 'TypeError at app.ts:12',
+        context: { route: '/checkout' },
+        aiAnalysis: null,
+        environment: 'dev',
+        releaseVersion: '1.0.0',
+        level: 'error',
+        timestamp: new Date('2026-03-02T10:00:00.000Z'),
+      },
+    ]);
+
+    const result = await controller.groupDetail('set_valid_key', 'group_1');
+
+    expect(prisma.errorGroup.findFirst).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({
+      ok: true,
+      group: expect.objectContaining({
+        id: 'group_1',
+        status: 'resolved',
+        resolutionNote: null,
+      }),
+      events: [expect.objectContaining({ id: 'event_1' })],
+    });
+  });
+
+  it('resolves a group without failing when resolutionNote is not migrated yet', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    prisma.errorGroup.findFirst
+      .mockRejectedValueOnce(makeMissingErrorGroupResolutionNoteError())
+      .mockResolvedValueOnce({
+        id: 'group_1',
+        status: 'open',
+        isRegression: false,
+        regressionCount: 0,
+        lastRegressedAt: null,
+        lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+        eventCount: 3,
+      });
+    prisma.errorGroup.update.mockResolvedValue({
+      id: 'group_1',
+      status: 'resolved',
+      isRegression: false,
+      regressionCount: 0,
+      lastRegressedAt: null,
+      lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+      eventCount: 3,
+    });
+
+    const result = await controller.resolveGroup('set_valid_key', 'group_1', {
+      note: 'Added null guard before rendering checkout summary.',
+    });
+
+    expect(prisma.errorGroup.findFirst).toHaveBeenCalledTimes(2);
+    expect(prisma.errorGroup.update).toHaveBeenCalledWith({
+      where: { id: 'group_1' },
+      data: {
+        status: 'resolved',
+      },
+      select: {
+        id: true,
+        status: true,
+        isRegression: true,
+        regressionCount: true,
+        lastRegressedAt: true,
+        lastSeenAt: true,
+        eventCount: true,
+      },
+    });
+    expect(result).toEqual({
+      ok: true,
+      group: {
+        id: 'group_1',
+        status: 'resolved',
+        resolutionNote: null,
+        isRegression: false,
+        regressionCount: 0,
+        lastRegressedAt: null,
+        lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+        eventCount: 3,
+      },
     });
   });
 

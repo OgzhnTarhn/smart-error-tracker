@@ -111,6 +111,9 @@ export default function IssueDetailPage() {
     const [aiAnalyzingEventId, setAiAnalyzingEventId] = useState<string | null>(null);
     const [analysisError, setAnalysisError] = useState<string | null>(null);
     const [sourceMapResolvingEventId, setSourceMapResolvingEventId] = useState<string | null>(null);
+    const [resolveDialogOpen, setResolveDialogOpen] = useState(false);
+    const [resolutionNoteDraft, setResolutionNoteDraft] = useState('');
+    const [resolveDialogError, setResolveDialogError] = useState<string | null>(null);
 
     const [copiedFingerprint, setCopiedFingerprint] = useState(false);
     const [stackCopied, setStackCopied] = useState(false);
@@ -183,6 +186,8 @@ export default function IssueDetailPage() {
         setAiAnalyzingEventId(null);
         setSourceMapResolvingEventId(null);
         setSourceMapResultByEventId({});
+        setResolveDialogOpen(false);
+        setResolveDialogError(null);
         void fetchDetail();
     }, [fetchDetail, id]);
 
@@ -198,6 +203,7 @@ export default function IssueDetailPage() {
                     ? {
                         ...previous,
                         status: updatedGroup.status,
+                        resolutionNote: updatedGroup.resolutionNote,
                         isRegression: updatedGroup.isRegression,
                         regressionCount: updatedGroup.regressionCount,
                         lastRegressedAt: updatedGroup.lastRegressedAt,
@@ -205,7 +211,64 @@ export default function IssueDetailPage() {
                         eventCount: updatedGroup.eventCount,
                     }
                     : previous));
+                return { ok: true as const };
             }
+            return { ok: false as const, error: data.error || 'Action failed' };
+        } catch (err: unknown) {
+            return {
+                ok: false as const,
+                error: err instanceof Error ? err.message : 'Action failed',
+            };
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const openResolveDialog = () => {
+        if (!group) return;
+        setResolutionNoteDraft(group.resolutionNote ?? '');
+        setResolveDialogError(null);
+        setResolveDialogOpen(true);
+    };
+
+    const closeResolveDialog = () => {
+        if (actionLoading === 'resolve') return;
+        setResolveDialogOpen(false);
+        setResolveDialogError(null);
+    };
+
+    const handleResolveSubmit = async () => {
+        if (!id) return;
+
+        setActionLoading('resolve');
+        try {
+            const data = await setGroupStatus(id, 'resolve', {
+                note: resolutionNoteDraft,
+            });
+            if (data.ok && data.group) {
+                const updatedGroup = data.group;
+                setGroup((previous) => (previous
+                    ? {
+                        ...previous,
+                        status: updatedGroup.status,
+                        resolutionNote: updatedGroup.resolutionNote,
+                        isRegression: updatedGroup.isRegression,
+                        regressionCount: updatedGroup.regressionCount,
+                        lastRegressedAt: updatedGroup.lastRegressedAt,
+                        lastSeenAt: updatedGroup.lastSeenAt,
+                        eventCount: updatedGroup.eventCount,
+                    }
+                    : previous));
+                setResolveDialogOpen(false);
+                setResolveDialogError(null);
+                return;
+            }
+
+            setResolveDialogError(data.error || 'Failed to resolve issue');
+        } catch (err: unknown) {
+            setResolveDialogError(
+                err instanceof Error ? err.message : 'Failed to resolve issue',
+            );
         } finally {
             setActionLoading(null);
         }
@@ -430,7 +493,7 @@ export default function IssueDetailPage() {
                             <>
                                 <ActionButton
                                     loading={actionLoading === 'resolve'}
-                                    onClick={() => void handleAction('resolve')}
+                                    onClick={openResolveDialog}
                                     className="bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20"
                                     label="Resolve"
                                 />
@@ -509,6 +572,13 @@ export default function IssueDetailPage() {
                                 </div>
                             </div>
                         </div>
+
+                        {group.resolutionNote && (
+                            <ResolutionNoteCard
+                                note={group.resolutionNote}
+                                isResolved={group.status === 'resolved'}
+                            />
+                        )}
 
                         <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
                             <div className="px-5 py-3 border-b border-slate-700/50">
@@ -593,6 +663,17 @@ export default function IssueDetailPage() {
                     </div>
                 </div>
             </main>
+
+            {resolveDialogOpen && (
+                <ResolveIssueDialog
+                    note={resolutionNoteDraft}
+                    loading={actionLoading === 'resolve'}
+                    error={resolveDialogError}
+                    onChangeNote={setResolutionNoteDraft}
+                    onCancel={closeResolveDialog}
+                    onSubmit={() => void handleResolveSubmit()}
+                />
+            )}
         </div>
     );
 }
@@ -624,6 +705,106 @@ function ActionButton({ loading, onClick, label, className }: ActionButtonProps)
             {loading ? <Spinner /> : null}
             {label}
         </button>
+    );
+}
+
+function ResolutionNoteCard({
+    note,
+    isResolved,
+}: {
+    note: string;
+    isResolved: boolean;
+}) {
+    return (
+        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
+            <div className="px-5 py-3 border-b border-slate-700/50 flex items-center justify-between gap-3">
+                <div>
+                    <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                        Resolution Note
+                    </h2>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                        {isResolved ? 'Saved with the current resolution.' : 'Retained from the last resolution.'}
+                    </p>
+                </div>
+                <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">
+                    Saved
+                </span>
+            </div>
+            <div className="px-5 py-4">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-200">
+                    {note}
+                </p>
+            </div>
+        </div>
+    );
+}
+
+function ResolveIssueDialog({
+    note,
+    loading,
+    error,
+    onChangeNote,
+    onCancel,
+    onSubmit,
+}: {
+    note: string;
+    loading: boolean;
+    error: string | null;
+    onChangeNote: (value: string) => void;
+    onCancel: () => void;
+    onSubmit: () => void;
+}) {
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm">
+            <div className="w-full max-w-xl rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl shadow-slate-950/40">
+                <div className="border-b border-slate-800 px-5 py-4">
+                    <h2 className="text-base font-semibold text-slate-100">Resolve Issue</h2>
+                    <p className="mt-1 text-sm text-slate-400">
+                        Add an optional note describing what fixed the issue.
+                    </p>
+                </div>
+
+                <div className="px-5 py-4">
+                    <label className="block">
+                        <span className="text-sm font-medium text-slate-200">Resolution Note</span>
+                        <span className="ml-2 text-xs text-slate-500">Optional</span>
+                        <textarea
+                            value={note}
+                            onChange={(event) => onChangeNote(event.target.value)}
+                            rows={5}
+                            placeholder="Added null guard before rendering checkout summary."
+                            className="mt-2 w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 outline-none transition-colors placeholder:text-slate-600 focus:border-violet-500/60"
+                        />
+                    </label>
+
+                    {error && (
+                        <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                            {error}
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex items-center justify-end gap-3 border-t border-slate-800 px-5 py-4">
+                    <button
+                        type="button"
+                        onClick={onCancel}
+                        disabled={loading}
+                        className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 disabled:opacity-50"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onSubmit}
+                        disabled={loading}
+                        className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
+                    >
+                        {loading ? <Spinner /> : null}
+                        {loading ? 'Resolving...' : 'Resolve Issue'}
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 }
 

@@ -100,6 +100,32 @@ function asString(value: unknown): string | null {
   return trimmed ? trimmed : null;
 }
 
+function normalizeOptionalText(value: unknown): string | null {
+  return asString(value);
+}
+
+function mapGroupStatusResponse(group: {
+  id: string;
+  status: string;
+  resolutionNote?: string | null;
+  isRegression: boolean;
+  regressionCount: number;
+  lastRegressedAt: Date | null;
+  lastSeenAt: Date;
+  eventCount: number;
+}) {
+  return {
+    id: group.id,
+    status: group.status,
+    resolutionNote: group.resolutionNote ?? null,
+    isRegression: group.isRegression,
+    regressionCount: group.regressionCount,
+    lastRegressedAt: group.lastRegressedAt,
+    lastSeenAt: group.lastSeenAt,
+    eventCount: group.eventCount,
+  };
+}
+
 function extractSdkFromContext(context: Record<string, unknown> | null) {
   if (!context) return null;
   const sdkRecord = asRecord(context.sdk as Record<string, unknown> | null);
@@ -230,6 +256,37 @@ function isMissingEventAiAnalysisColumnError(error: unknown) {
   );
 }
 
+function isMissingErrorGroupResolutionNoteColumnError(error: unknown) {
+  if (!error || typeof error !== 'object') return false;
+
+  const errorLike = error as {
+    code?: unknown;
+    message?: unknown;
+    meta?: { modelName?: unknown; driverAdapterError?: { cause?: unknown } };
+  };
+  const code = typeof errorLike.code === 'string' ? errorLike.code : '';
+  const message =
+    typeof errorLike.message === 'string' ? errorLike.message.toLowerCase() : '';
+  const modelName =
+    typeof errorLike.meta?.modelName === 'string'
+      ? errorLike.meta.modelName
+      : '';
+  const driverMessage =
+    errorLike.meta?.driverAdapterError?.cause &&
+    typeof errorLike.meta.driverAdapterError.cause === 'object' &&
+    'originalMessage' in errorLike.meta.driverAdapterError.cause &&
+    typeof errorLike.meta.driverAdapterError.cause.originalMessage === 'string'
+      ? errorLike.meta.driverAdapterError.cause.originalMessage.toLowerCase()
+      : '';
+
+  return (
+    code === 'P2022' &&
+    modelName === 'ErrorGroup' &&
+    (message.includes('errorgroup.resolutionnote') ||
+      driverMessage.includes('errorgroup.resolutionnote'))
+  );
+}
+
 type GroupDetailEventRow = {
   id: string;
   source: string;
@@ -260,6 +317,36 @@ type AnalyzeEventRow = {
 type SourceMapEventRow = {
   id: string;
   stack: string | null;
+};
+
+type ResolveGroupBody = {
+  note?: unknown;
+};
+
+type GroupLifecycleRow = {
+  id: string;
+  status: string;
+  resolutionNote: string | null;
+  isRegression: boolean;
+  regressionCount: number;
+  lastRegressedAt: Date | null;
+  lastSeenAt: Date;
+  eventCount: number;
+};
+
+type GroupDetailRow = {
+  id: string;
+  fingerprint: string;
+  title: string;
+  status: string;
+  resolutionNote: string | null;
+  isRegression: boolean;
+  regressionCount: number;
+  lastRegressedAt: Date | null;
+  eventCount: number;
+  firstSeenAt: Date;
+  lastSeenAt: Date;
+  aiAnalysis: Prisma.JsonValue | null;
 };
 
 @Controller()
@@ -430,6 +517,179 @@ export class EventsController {
         stack: true,
       },
     });
+  }
+
+  private async findGroupDetailRow(
+    projectId: string,
+    groupId: string,
+  ): Promise<GroupDetailRow | null> {
+    try {
+      return await this.prisma.errorGroup.findFirst({
+        where: { id: groupId, projectId },
+        select: {
+          id: true,
+          fingerprint: true,
+          title: true,
+          status: true,
+          resolutionNote: true,
+          isRegression: true,
+          regressionCount: true,
+          lastRegressedAt: true,
+          eventCount: true,
+          firstSeenAt: true,
+          lastSeenAt: true,
+          aiAnalysis: true,
+        },
+      });
+    } catch (error) {
+      if (!isMissingErrorGroupResolutionNoteColumnError(error)) {
+        throw error;
+      }
+
+      this.logger.warn(
+        'ErrorGroup.resolutionNote column is missing; group detail will return resolutionNote=null until the migration is applied.',
+      );
+
+      const group = await this.prisma.errorGroup.findFirst({
+        where: { id: groupId, projectId },
+        select: {
+          id: true,
+          fingerprint: true,
+          title: true,
+          status: true,
+          isRegression: true,
+          regressionCount: true,
+          lastRegressedAt: true,
+          eventCount: true,
+          firstSeenAt: true,
+          lastSeenAt: true,
+          aiAnalysis: true,
+        },
+      });
+
+      return group ? { ...group, resolutionNote: null } : null;
+    }
+  }
+
+  private async findGroupForLifecycle(
+    projectId: string,
+    groupId: string,
+  ): Promise<{
+    group: GroupLifecycleRow | null;
+    resolutionNoteAvailable: boolean;
+  }> {
+    try {
+      const group = await this.prisma.errorGroup.findFirst({
+        where: { id: groupId, projectId },
+        select: {
+          id: true,
+          status: true,
+          resolutionNote: true,
+          isRegression: true,
+          regressionCount: true,
+          lastRegressedAt: true,
+          lastSeenAt: true,
+          eventCount: true,
+        },
+      });
+
+      return { group, resolutionNoteAvailable: true };
+    } catch (error) {
+      if (!isMissingErrorGroupResolutionNoteColumnError(error)) {
+        throw error;
+      }
+
+      this.logger.warn(
+        'ErrorGroup.resolutionNote column is missing; lifecycle actions will continue without persisting resolution notes until the migration is applied.',
+      );
+
+      const group = await this.prisma.errorGroup.findFirst({
+        where: { id: groupId, projectId },
+        select: {
+          id: true,
+          status: true,
+          isRegression: true,
+          regressionCount: true,
+          lastRegressedAt: true,
+          lastSeenAt: true,
+          eventCount: true,
+        },
+      });
+
+      return {
+        group: group ? { ...group, resolutionNote: null } : null,
+        resolutionNoteAvailable: false,
+      };
+    }
+  }
+
+  private async updateGroupLifecycle(
+    groupId: string,
+    status: string,
+    resolutionNote: string | null | undefined,
+    resolutionNoteAvailable: boolean,
+  ): Promise<GroupLifecycleRow> {
+    const selectWithResolutionNote = {
+      id: true,
+      status: true,
+      resolutionNote: true,
+      isRegression: true,
+      regressionCount: true,
+      lastRegressedAt: true,
+      lastSeenAt: true,
+      eventCount: true,
+    } as const;
+    const selectWithoutResolutionNote = {
+      id: true,
+      status: true,
+      isRegression: true,
+      regressionCount: true,
+      lastRegressedAt: true,
+      lastSeenAt: true,
+      eventCount: true,
+    } as const;
+
+    const buildUpdateData = (allowResolutionNote: boolean) => {
+      const data: Prisma.ErrorGroupUpdateInput = { status };
+      if (allowResolutionNote && resolutionNote !== undefined) {
+        data.resolutionNote = resolutionNote;
+      }
+      return data;
+    };
+
+    try {
+      if (resolutionNoteAvailable) {
+        return await this.prisma.errorGroup.update({
+          where: { id: groupId },
+          data: buildUpdateData(true),
+          select: selectWithResolutionNote,
+        });
+      }
+
+      const updated = await this.prisma.errorGroup.update({
+        where: { id: groupId },
+        data: buildUpdateData(false),
+        select: selectWithoutResolutionNote,
+      });
+
+      return { ...updated, resolutionNote: null };
+    } catch (error) {
+      if (!isMissingErrorGroupResolutionNoteColumnError(error)) {
+        throw error;
+      }
+
+      this.logger.warn(
+        'ErrorGroup.resolutionNote update skipped because the database column is missing.',
+      );
+
+      const updated = await this.prisma.errorGroup.update({
+        where: { id: groupId },
+        data: { status },
+        select: selectWithoutResolutionNote,
+      });
+
+      return { ...updated, resolutionNote: null };
+    }
   }
 
   private async resolveProjectIdFromApiKey(apiKey: string | undefined) {
@@ -686,22 +946,7 @@ export class EventsController {
     if (!projectId) return { ok: false, error: 'unauthorized' };
     if (!id) return { ok: false, error: 'invalid' };
 
-    const group = await this.prisma.errorGroup.findFirst({
-      where: { id, projectId },
-      select: {
-        id: true,
-        fingerprint: true,
-        title: true,
-        status: true,
-        isRegression: true,
-        regressionCount: true,
-        lastRegressedAt: true,
-        eventCount: true,
-        firstSeenAt: true,
-        lastSeenAt: true,
-        aiAnalysis: true,
-      },
-    });
+    const group = await this.findGroupDetailRow(projectId, id);
     if (!group) return { ok: false, error: 'not_found' };
 
     const normalizedGroupAnalysis = normalizeStoredAiAnalysis(group.aiAnalysis);
@@ -884,8 +1129,9 @@ export class EventsController {
   async resolveGroup(
     @Headers('x-api-key') apiKey: string | undefined,
     @Param('id') id: string,
+    @Body() body?: ResolveGroupBody,
   ) {
-    return this.updateGroupStatus(apiKey, id, 'resolved');
+    return this.updateGroupStatus(apiKey, id, 'resolved', body);
   }
 
   @Post('groups/:id/open')
@@ -908,46 +1154,42 @@ export class EventsController {
     apiKey: string | undefined,
     id: string,
     status: string,
+    body?: ResolveGroupBody,
   ) {
     const projectId = await this.resolveProjectIdFromApiKey(apiKey);
     if (!projectId) return { ok: false, error: 'unauthorized' };
 
-    const group = await this.prisma.errorGroup.findFirst({
-      where: { id, projectId },
-    });
+    const { group, resolutionNoteAvailable } = await this.findGroupForLifecycle(
+      projectId,
+      id,
+    );
     if (!group) return { ok: false, error: 'not_found' };
 
-    if (group.status === status) {
+    const hasResolutionNote =
+      status === GROUP_STATUS.RESOLVED &&
+      Boolean(body) &&
+      Object.prototype.hasOwnProperty.call(body, 'note');
+    const normalizedResolutionNote = hasResolutionNote
+      ? normalizeOptionalText(body?.note)
+      : undefined;
+
+    if (group.status === status && normalizedResolutionNote === undefined) {
       return {
         ok: true,
-        group: {
-          id: group.id,
-          status: group.status,
-          isRegression: group.isRegression,
-          regressionCount: group.regressionCount,
-          lastRegressedAt: group.lastRegressedAt,
-          lastSeenAt: group.lastSeenAt,
-          eventCount: group.eventCount,
-        },
+        group: mapGroupStatusResponse(group),
       };
     }
 
-    const updated = await this.prisma.errorGroup.update({
-      where: { id },
-      data: { status },
-    });
+    const updated = await this.updateGroupLifecycle(
+      id,
+      status,
+      normalizedResolutionNote,
+      resolutionNoteAvailable,
+    );
 
     return {
       ok: true,
-      group: {
-        id: updated.id,
-        status: updated.status,
-        isRegression: updated.isRegression,
-        regressionCount: updated.regressionCount,
-        lastRegressedAt: updated.lastRegressedAt,
-        lastSeenAt: updated.lastSeenAt,
-        eventCount: updated.eventCount,
-      },
+      group: mapGroupStatusResponse(updated),
     };
   }
 }

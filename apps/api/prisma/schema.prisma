@@ -12,6 +12,7 @@ model ErrorGroup {
   fingerprint String
   title       String
   status      String   @default("open")
+  resolutionNote String?
   isRegression   Boolean  @default(false)
   regressionCount Int     @default(0)
   lastRegressedAt DateTime?

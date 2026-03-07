@@ -102,6 +102,7 @@ export interface GroupDetail {
     fingerprint: string;
     title: string;
     status: string;
+    resolutionNote: string | null;
     isRegression: boolean;
     regressionCount: number;
     lastRegressedAt: string | null;
@@ -143,11 +144,15 @@ export const getGroupDetail = (id: string) =>
     apiFetch<GroupDetailResponse>(`/groups/${id}`);
 
 export type StatusAction = 'resolve' | 'open' | 'ignore';
+export interface SetGroupStatusRequest {
+    note?: string;
+}
 export interface SetGroupStatusResponse {
     ok: boolean;
     group?: {
         id: string;
         status: string;
+        resolutionNote: string | null;
         isRegression: boolean;
         regressionCount: number;
         lastRegressedAt: string | null;
@@ -156,8 +161,15 @@ export interface SetGroupStatusResponse {
     };
     error?: string;
 }
-export const setGroupStatus = (id: string, action: StatusAction) =>
-    apiFetch<SetGroupStatusResponse>(`/groups/${id}/${action}`, { method: 'POST' });
+export const setGroupStatus = (
+    id: string,
+    action: StatusAction,
+    body?: SetGroupStatusRequest,
+) =>
+    apiFetch<SetGroupStatusResponse>(`/groups/${id}/${action}`, {
+        method: 'POST',
+        body: body ? JSON.stringify(body) : undefined,
+    });
 
 export interface AnalyzeEventResponse {
     ok: boolean;
