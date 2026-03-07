@@ -81,11 +81,21 @@ export interface DashboardStatsResponse extends Partial<DashboardStatsData> {
 export const getDashboardStats = () =>
     apiFetch<DashboardStatsResponse>('/stats');
 
-export interface GroupAiAnalysis {
-    rootCause: string;
-    suggestedFix: string;
-    severity: string;
+export type AnalysisSeverity = 'low' | 'medium' | 'high' | 'critical';
+export type AnalysisConfidence = 'low' | 'medium' | 'high';
+
+export interface EventAiAnalysis {
+    rootCause: string | null;
+    suggestedFix: string | null;
+    likelyArea: string | null;
+    nextStep: string | null;
+    preventionTip: string | null;
+    severity: AnalysisSeverity | null;
+    confidence: AnalysisConfidence | null;
+    summary?: string | null;
 }
+
+export type GroupAiAnalysis = EventAiAnalysis;
 
 export interface GroupDetail {
     id: string;
@@ -98,7 +108,7 @@ export interface GroupDetail {
     eventCount: number;
     firstSeenAt: string;
     lastSeenAt: string;
-    aiAnalysis?: GroupAiAnalysis;
+    aiAnalysis?: GroupAiAnalysis | null;
 }
 
 export interface EventSdkInfo {
@@ -112,6 +122,7 @@ export interface GroupDetailEvent {
     message: string;
     stack: string | null;
     context: Record<string, unknown> | null;
+    aiAnalysis?: EventAiAnalysis | null;
     environment: string | null;
     releaseVersion: string | null;
     level: string | null;
@@ -150,6 +161,7 @@ export const setGroupStatus = (id: string, action: StatusAction) =>
 
 export interface AnalyzeEventResponse {
     ok: boolean;
+    analysis?: EventAiAnalysis;
     aiAnalysis?: GroupAiAnalysis;
     sourceMap?: EventSourceMapResolution | null;
     error?: string;

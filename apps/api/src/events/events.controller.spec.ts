@@ -2,6 +2,21 @@ import { EventsController } from './events.controller';
 import { IngestEventDto } from './dto/ingest-event.dto';
 
 describe('EventsController', () => {
+  function makeMissingEventAiAnalysisError() {
+    return {
+      code: 'P2022',
+      message: 'column Event.aiAnalysis does not exist',
+      meta: {
+        modelName: 'Event',
+        driverAdapterError: {
+          cause: {
+            originalMessage: 'column Event.aiAnalysis does not exist',
+          },
+        },
+      },
+    };
+  }
+
   const tx = {
     errorGroup: {
       findUnique: jest.fn(),
@@ -13,8 +28,16 @@ describe('EventsController', () => {
 
   const prisma = {
     apiKey: { findUnique: jest.fn() },
-    errorGroup: { findMany: jest.fn(), findFirst: jest.fn() },
-    event: { findMany: jest.fn() },
+    errorGroup: {
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
+    },
+    event: {
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
+    },
     $transaction: jest.fn(),
   } as any;
   const sourceMaps = {
@@ -410,6 +433,16 @@ describe('EventsController', () => {
           sdk: { name: '@smart-error-tracker/browser', version: '0.1.0' },
           rawPayload: { custom: true },
         },
+        aiAnalysis: {
+          eventId: 'event_1',
+          rootCause: 'The checkout payload is missing the cart id.',
+          suggestedFix: 'Guard against empty cart state before reading totals.',
+          likelyArea: 'apps/web/src/pages/Checkout.tsx',
+          nextStep: 'Inspect the cart selector output on the failing render.',
+          preventionTip: 'Add a checkout-state smoke test.',
+          severity: 'high',
+          confidence: 'medium',
+        },
         environment: 'dev',
         releaseVersion: '1.0.0',
         level: 'error',
@@ -437,6 +470,18 @@ describe('EventsController', () => {
             sdk: { name: '@smart-error-tracker/browser', version: '0.1.0' },
             rawPayload: { custom: true },
           },
+          aiAnalysis: {
+            rootCause: 'The checkout payload is missing the cart id.',
+            suggestedFix:
+              'Guard against empty cart state before reading totals.',
+            likelyArea: 'apps/web/src/pages/Checkout.tsx',
+            nextStep:
+              'Inspect the cart selector output on the failing render.',
+            preventionTip: 'Add a checkout-state smoke test.',
+            severity: 'high',
+            confidence: 'medium',
+            summary: null,
+          },
           environment: 'dev',
           releaseVersion: '1.0.0',
           level: 'error',
@@ -449,6 +494,314 @@ describe('EventsController', () => {
           createdAt: new Date('2026-03-02T10:00:00.000Z'),
         },
       ],
+    });
+  });
+
+  it('returns cached event-level structured analysis for analyzeEvent', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    prisma.event.findFirst.mockResolvedValue({
+      id: 'event_1',
+      projectId: 'proj_1',
+      groupId: 'group_1',
+      message: 'TypeError: Cannot read properties of undefined',
+      stack: 'TypeError: Cannot read properties of undefined\n at checkout.tsx:12:4',
+      context: { route: '/checkout' },
+      environment: 'production',
+      releaseVersion: '1.2.0',
+      aiAnalysis: {
+        eventId: 'event_1',
+        rootCause: 'The checkout flow reads a cart object before it exists.',
+        suggestedFix: 'Guard the cart access until cart state is loaded.',
+        likelyArea: 'apps/web/src/pages/Checkout.tsx',
+        nextStep: 'Inspect the first render path for an empty cart state.',
+        preventionTip: 'Add a loading-state regression test for checkout.',
+        severity: 'high',
+        confidence: 'high',
+      },
+      group: {
+        aiAnalysis: null,
+      },
+    });
+    sourceMaps.resolveTopFrame.mockResolvedValue({
+      mapUrl: 'https://cdn.example.com/app.js.map',
+      minified: {
+        functionName: 'renderCheckout',
+        file: 'app.min.js',
+        line: 10,
+        column: 5,
+      },
+      original: {
+        source: 'src/pages/Checkout.tsx',
+        line: 12,
+        column: 4,
+        name: 'CheckoutPage',
+      },
+    });
+
+    const result = await controller.analyzeEvent('set_valid_key', 'event_1');
+
+    expect(result).toEqual({
+      ok: true,
+      analysis: {
+        rootCause: 'The checkout flow reads a cart object before it exists.',
+        suggestedFix: 'Guard the cart access until cart state is loaded.',
+        likelyArea: 'apps/web/src/pages/Checkout.tsx',
+        nextStep: 'Inspect the first render path for an empty cart state.',
+        preventionTip: 'Add a loading-state regression test for checkout.',
+        severity: 'high',
+        confidence: 'high',
+        summary: null,
+      },
+      aiAnalysis: {
+        rootCause: 'The checkout flow reads a cart object before it exists.',
+        suggestedFix: 'Guard the cart access until cart state is loaded.',
+        likelyArea: 'apps/web/src/pages/Checkout.tsx',
+        nextStep: 'Inspect the first render path for an empty cart state.',
+        preventionTip: 'Add a loading-state regression test for checkout.',
+        severity: 'high',
+        confidence: 'high',
+        summary: null,
+      },
+      sourceMap: {
+        mapUrl: 'https://cdn.example.com/app.js.map',
+        minified: {
+          functionName: 'renderCheckout',
+          file: 'app.min.js',
+          line: 10,
+          column: 5,
+        },
+        original: {
+          source: 'src/pages/Checkout.tsx',
+          line: 12,
+          column: 4,
+          name: 'CheckoutPage',
+        },
+      },
+    });
+    expect(prisma.event.update).not.toHaveBeenCalled();
+  });
+
+  it('hydrates event-level cache from matching group analysis metadata', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    prisma.event.findFirst.mockResolvedValue({
+      id: 'event_1',
+      projectId: 'proj_1',
+      groupId: 'group_1',
+      message: 'ReferenceError: router is not defined',
+      stack: 'ReferenceError: router is not defined\n at app.ts:20:2',
+      context: { route: '/settings' },
+      environment: 'production',
+      releaseVersion: '1.3.0',
+      aiAnalysis: null,
+      group: {
+        aiAnalysis: {
+          eventId: 'event_1',
+          rootCause:
+            'The settings page uses router before the hook result is available.',
+          suggestedFix:
+            'Read the router inside the component body after hook initialization.',
+          likelyArea: 'apps/web/src/pages/Settings.tsx',
+          nextStep:
+            'Inspect the component branch that references router on first render.',
+          preventionTip: 'Add a test for first-render navigation state.',
+          severity: 'medium',
+          confidence: 'medium',
+        },
+      },
+    });
+    prisma.event.update.mockResolvedValue({ id: 'event_1' });
+    sourceMaps.resolveTopFrame.mockResolvedValue(null);
+
+    const result = await controller.analyzeEvent('set_valid_key', 'event_1');
+
+    expect(prisma.event.update).toHaveBeenCalledWith({
+      where: { id: 'event_1' },
+      data: {
+        aiAnalysis: {
+          eventId: 'event_1',
+          rootCause:
+            'The settings page uses router before the hook result is available.',
+          suggestedFix:
+            'Read the router inside the component body after hook initialization.',
+          likelyArea: 'apps/web/src/pages/Settings.tsx',
+          nextStep:
+            'Inspect the component branch that references router on first render.',
+          preventionTip: 'Add a test for first-render navigation state.',
+          severity: 'medium',
+          confidence: 'medium',
+          summary: null,
+        },
+      },
+    });
+    expect(result).toEqual({
+      ok: true,
+      analysis: {
+        rootCause:
+          'The settings page uses router before the hook result is available.',
+        suggestedFix:
+          'Read the router inside the component body after hook initialization.',
+        likelyArea: 'apps/web/src/pages/Settings.tsx',
+        nextStep:
+          'Inspect the component branch that references router on first render.',
+        preventionTip: 'Add a test for first-render navigation state.',
+        severity: 'medium',
+        confidence: 'medium',
+        summary: null,
+      },
+      aiAnalysis: {
+        rootCause:
+          'The settings page uses router before the hook result is available.',
+        suggestedFix:
+          'Read the router inside the component body after hook initialization.',
+        likelyArea: 'apps/web/src/pages/Settings.tsx',
+        nextStep:
+          'Inspect the component branch that references router on first render.',
+        preventionTip: 'Add a test for first-render navigation state.',
+        severity: 'medium',
+        confidence: 'medium',
+        summary: null,
+      },
+      sourceMap: null,
+    });
+  });
+
+  it('falls back to group-only event detail data when Event.aiAnalysis is not migrated yet', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    prisma.errorGroup.findFirst.mockResolvedValue({
+      id: 'group_1',
+      fingerprint: 'fp_1',
+      title: 'TypeError',
+      status: 'open',
+      isRegression: false,
+      regressionCount: 0,
+      lastRegressedAt: null,
+      eventCount: 1,
+      firstSeenAt: new Date('2026-03-01T10:00:00.000Z'),
+      lastSeenAt: new Date('2026-03-02T10:00:00.000Z'),
+      aiAnalysis: {
+        eventId: 'event_1',
+        rootCause: 'Legacy group cache still exists.',
+        suggestedFix: 'Apply the pending migration for event-level storage.',
+        severity: 'medium',
+      },
+    });
+    prisma.event.findMany
+      .mockRejectedValueOnce(makeMissingEventAiAnalysisError())
+      .mockResolvedValueOnce([
+        {
+          id: 'event_1',
+          source: 'browser',
+          message: 'Cannot read x',
+          stack: 'TypeError at app.ts:12',
+          context: { route: '/checkout' },
+          environment: 'dev',
+          releaseVersion: '1.0.0',
+          level: 'error',
+          timestamp: new Date('2026-03-02T10:00:00.000Z'),
+        },
+      ]);
+
+    const result = await controller.groupDetail('set_valid_key', 'group_1');
+
+    expect(prisma.event.findMany).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({
+      ok: true,
+      group: expect.objectContaining({
+        id: 'group_1',
+        aiAnalysis: {
+          rootCause: 'Legacy group cache still exists.',
+          suggestedFix: 'Apply the pending migration for event-level storage.',
+          likelyArea: null,
+          nextStep: null,
+          preventionTip: null,
+          severity: 'medium',
+          confidence: null,
+          summary: null,
+        },
+      }),
+      events: [
+        expect.objectContaining({
+          id: 'event_1',
+          aiAnalysis: null,
+        }),
+      ],
+    });
+  });
+
+  it('does not fail analyzeEvent when Event.aiAnalysis column is missing', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    prisma.event.findFirst
+      .mockRejectedValueOnce(makeMissingEventAiAnalysisError())
+      .mockResolvedValueOnce({
+        id: 'event_1',
+        groupId: 'group_1',
+        message: 'ReferenceError: router is not defined',
+        stack: 'ReferenceError: router is not defined\n at app.ts:20:2',
+        context: { route: '/settings' },
+        environment: 'production',
+        releaseVersion: '1.3.0',
+        group: {
+          aiAnalysis: {
+            eventId: 'event_1',
+            rootCause:
+              'The settings page uses router before the hook result is available.',
+            suggestedFix:
+              'Read the router inside the component body after hook initialization.',
+            likelyArea: 'apps/web/src/pages/Settings.tsx',
+            nextStep:
+              'Inspect the component branch that references router on first render.',
+            preventionTip: 'Add a test for first-render navigation state.',
+            severity: 'medium',
+            confidence: 'medium',
+          },
+        },
+      });
+    sourceMaps.resolveTopFrame.mockResolvedValue(null);
+
+    const result = await controller.analyzeEvent('set_valid_key', 'event_1');
+
+    expect(prisma.event.update).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      ok: true,
+      analysis: {
+        rootCause:
+          'The settings page uses router before the hook result is available.',
+        suggestedFix:
+          'Read the router inside the component body after hook initialization.',
+        likelyArea: 'apps/web/src/pages/Settings.tsx',
+        nextStep:
+          'Inspect the component branch that references router on first render.',
+        preventionTip: 'Add a test for first-render navigation state.',
+        severity: 'medium',
+        confidence: 'medium',
+        summary: null,
+      },
+      aiAnalysis: {
+        rootCause:
+          'The settings page uses router before the hook result is available.',
+        suggestedFix:
+          'Read the router inside the component body after hook initialization.',
+        likelyArea: 'apps/web/src/pages/Settings.tsx',
+        nextStep:
+          'Inspect the component branch that references router on first render.',
+        preventionTip: 'Add a test for first-render navigation state.',
+        severity: 'medium',
+        confidence: 'medium',
+        summary: null,
+      },
+      sourceMap: null,
     });
   });
 });

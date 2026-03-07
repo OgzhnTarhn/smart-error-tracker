@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Headers,
+  Logger,
   Param,
   Post,
   Query,
@@ -18,6 +19,13 @@ import { IngestEventDto } from './dto/ingest-event.dto';
 import { IngestRateLimitGuard } from '../common/guards/ingest-rate-limit.guard';
 import { SourceMapService } from '../source-maps/source-map.service';
 import { DashboardStatsService } from '../dashboard/dashboard-stats.service';
+import {
+  createEmptyStructuredAiAnalysis,
+  normalizeStoredAiAnalysis,
+  parseStructuredAiAnalysisResponse,
+  serializeStoredAiAnalysis,
+  STRUCTURED_AI_ANALYSIS_RESPONSE_SCHEMA,
+} from './ai-analysis';
 import {
   EVENT_LEVEL_VALUES,
   GROUP_STATUS_VALUES,
@@ -152,13 +160,257 @@ function buildIngestGroupUpdate(
   return updateData;
 }
 
+function buildAiAnalysisPrompt(input: {
+  message: string;
+  environment: string | null;
+  releaseVersion: string | null;
+  context: Prisma.JsonValue | null;
+  stack: string | null;
+  sourceMap: unknown;
+}) {
+  return `You are an expert software engineer and debugger.
+Provide guided debugging assistance for a single error event.
+Do not claim that code has already been fixed, changed, or auto-remediated.
+If the evidence is weak, prefer null over guessing.
+Keep every populated field concise and actionable.
+
+Event context:
+- Message: ${input.message}
+- Environment: ${input.environment || 'unknown'}
+- Release: ${input.releaseVersion || 'unknown'}
+- Context: ${JSON.stringify(input.context ?? {}, null, 2)}
+
+Stack trace:
+${input.stack || 'No stack trace provided.'}
+
+Resolved top frame:
+${input.sourceMap ? JSON.stringify(input.sourceMap, null, 2) : 'No source-map resolution available.'}
+
+Return a JSON object only. Use these fields:
+- rootCause: likely explanation for why the event happened
+- suggestedFix: practical fix or code change to try next
+- likelyArea: most relevant file, layer, or subsystem to inspect
+- nextStep: single best immediate debugging step
+- preventionTip: short idea that could help prevent repeats
+- severity: one of low, medium, high, critical
+- confidence: one of low, medium, high
+- summary: optional one-line fallback summary`;
+}
+
+function isMissingEventAiAnalysisColumnError(error: unknown) {
+  if (!error || typeof error !== 'object') return false;
+
+  const errorLike = error as {
+    code?: unknown;
+    message?: unknown;
+    meta?: { modelName?: unknown; driverAdapterError?: { cause?: unknown } };
+  };
+  const code = typeof errorLike.code === 'string' ? errorLike.code : '';
+  const message =
+    typeof errorLike.message === 'string' ? errorLike.message.toLowerCase() : '';
+  const modelName =
+    typeof errorLike.meta?.modelName === 'string'
+      ? errorLike.meta.modelName
+      : '';
+  const driverMessage =
+    errorLike.meta?.driverAdapterError?.cause &&
+    typeof errorLike.meta.driverAdapterError.cause === 'object' &&
+    'originalMessage' in errorLike.meta.driverAdapterError.cause &&
+    typeof errorLike.meta.driverAdapterError.cause.originalMessage === 'string'
+      ? errorLike.meta.driverAdapterError.cause.originalMessage.toLowerCase()
+      : '';
+
+  return (
+    code === 'P2022' &&
+    modelName === 'Event' &&
+    (message.includes('event.aianalysis') ||
+      driverMessage.includes('event.aianalysis'))
+  );
+}
+
+type GroupDetailEventRow = {
+  id: string;
+  source: string;
+  message: string;
+  stack: string | null;
+  context: Prisma.JsonValue | null;
+  aiAnalysis: Prisma.JsonValue | null;
+  environment: string | null;
+  releaseVersion: string | null;
+  level: string | null;
+  timestamp: Date;
+};
+
+type AnalyzeEventRow = {
+  id: string;
+  groupId: string;
+  message: string;
+  stack: string | null;
+  context: Prisma.JsonValue | null;
+  aiAnalysis: Prisma.JsonValue | null;
+  environment: string | null;
+  releaseVersion: string | null;
+  group: {
+    aiAnalysis: Prisma.JsonValue | null;
+  };
+};
+
 @Controller()
 export class EventsController {
+  private readonly logger = new Logger(EventsController.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly sourceMaps: SourceMapService,
     private readonly dashboardStats: DashboardStatsService,
   ) {}
+
+  private async findGroupDetailEvents(
+    projectId: string,
+    groupId: string,
+  ): Promise<{
+    events: GroupDetailEventRow[];
+    eventAiAnalysisAvailable: boolean;
+  }> {
+    try {
+      const events = await this.prisma.event.findMany({
+        where: { groupId, projectId },
+        take: 20,
+        orderBy: { timestamp: 'desc' },
+        select: {
+          id: true,
+          source: true,
+          message: true,
+          stack: true,
+          context: true,
+          aiAnalysis: true,
+          environment: true,
+          releaseVersion: true,
+          level: true,
+          timestamp: true,
+        },
+      });
+
+      return { events, eventAiAnalysisAvailable: true };
+    } catch (error) {
+      if (!isMissingEventAiAnalysisColumnError(error)) {
+        throw error;
+      }
+
+      this.logger.warn(
+        'Event.aiAnalysis column is missing; falling back to group-only AI analysis until the migration is applied.',
+      );
+
+      const events = await this.prisma.event.findMany({
+        where: { groupId, projectId },
+        take: 20,
+        orderBy: { timestamp: 'desc' },
+        select: {
+          id: true,
+          source: true,
+          message: true,
+          stack: true,
+          context: true,
+          environment: true,
+          releaseVersion: true,
+          level: true,
+          timestamp: true,
+        },
+      });
+
+      return {
+        events: events.map((event) => ({ ...event, aiAnalysis: null })),
+        eventAiAnalysisAvailable: false,
+      };
+    }
+  }
+
+  private async findEventForAnalysis(
+    projectId: string,
+    eventId: string,
+  ): Promise<{
+    event: AnalyzeEventRow | null;
+    eventAiAnalysisAvailable: boolean;
+  }> {
+    try {
+      const event = await this.prisma.event.findFirst({
+        where: { id: eventId, projectId },
+        select: {
+          id: true,
+          groupId: true,
+          message: true,
+          stack: true,
+          context: true,
+          aiAnalysis: true,
+          environment: true,
+          releaseVersion: true,
+          group: {
+            select: {
+              aiAnalysis: true,
+            },
+          },
+        },
+      });
+
+      return { event, eventAiAnalysisAvailable: true };
+    } catch (error) {
+      if (!isMissingEventAiAnalysisColumnError(error)) {
+        throw error;
+      }
+
+      this.logger.warn(
+        'Event.aiAnalysis column is missing; analyzeEvent will use compatibility storage until the migration is applied.',
+      );
+
+      const event = await this.prisma.event.findFirst({
+        where: { id: eventId, projectId },
+        select: {
+          id: true,
+          groupId: true,
+          message: true,
+          stack: true,
+          context: true,
+          environment: true,
+          releaseVersion: true,
+          group: {
+            select: {
+              aiAnalysis: true,
+            },
+          },
+        },
+      });
+
+      return {
+        event: event ? { ...event, aiAnalysis: null } : null,
+        eventAiAnalysisAvailable: false,
+      };
+    }
+  }
+
+  private async updateEventAnalysisIfAvailable(
+    eventId: string,
+    aiAnalysis: Prisma.InputJsonValue | undefined,
+    eventAiAnalysisAvailable: boolean,
+  ) {
+    if (!eventAiAnalysisAvailable || !aiAnalysis) {
+      return;
+    }
+
+    try {
+      await this.prisma.event.update({
+        where: { id: eventId },
+        data: { aiAnalysis },
+      });
+    } catch (error) {
+      if (!isMissingEventAiAnalysisColumnError(error)) {
+        throw error;
+      }
+
+      this.logger.warn(
+        'Event.aiAnalysis update skipped because the database column is missing.',
+      );
+    }
+  }
 
   private async resolveProjectIdFromApiKey(apiKey: string | undefined) {
     if (!apiKey) return null;
@@ -432,34 +684,25 @@ export class EventsController {
     });
     if (!group) return { ok: false, error: 'not_found' };
 
-    const events = await this.prisma.event.findMany({
-      where: { groupId: id, projectId },
-      take: 20,
-      orderBy: { timestamp: 'desc' },
-      select: {
-        id: true,
-        source: true,
-        message: true,
-        stack: true,
-        context: true,
-        environment: true,
-        releaseVersion: true,
-        level: true,
-        timestamp: true,
-      },
-    });
+    const normalizedGroupAnalysis = normalizeStoredAiAnalysis(group.aiAnalysis);
+    const { events } = await this.findGroupDetailEvents(projectId, id);
 
     return {
       ok: true,
-      group,
+      group: {
+        ...group,
+        aiAnalysis: normalizedGroupAnalysis.analysis,
+      },
       events: events.map((e) => {
         const eventContext = asRecord(e.context);
+        const normalizedEventAnalysis = normalizeStoredAiAnalysis(e.aiAnalysis);
         return {
           id: e.id,
           source: e.source,
           message: e.message,
           stack: e.stack,
           context: eventContext,
+          aiAnalysis: normalizedEventAnalysis.analysis,
           environment: e.environment,
           releaseVersion: e.releaseVersion,
           level: e.level,
@@ -480,16 +723,45 @@ export class EventsController {
     const projectId = await this.resolveProjectIdFromApiKey(apiKey);
     if (!projectId) return { ok: false, error: 'unauthorized' };
 
-    const event = await this.prisma.event.findFirst({
-      where: { id: eventId, projectId },
-      include: { group: true },
-    });
+    const { event, eventAiAnalysisAvailable } = await this.findEventForAnalysis(
+      projectId,
+      eventId,
+    );
     if (!event) return { ok: false, error: 'not_found' };
     const sourceMap = await this.sourceMaps.resolveTopFrame(event.stack);
 
-    // If already analyzed, return cached result
-    if (event.group.aiAnalysis) {
-      return { ok: true, aiAnalysis: event.group.aiAnalysis, sourceMap };
+    const cachedEventAnalysis = normalizeStoredAiAnalysis(event.aiAnalysis);
+    if (cachedEventAnalysis.analysis) {
+      return {
+        ok: true,
+        analysis: cachedEventAnalysis.analysis,
+        aiAnalysis: cachedEventAnalysis.analysis,
+        sourceMap,
+      };
+    }
+
+    const cachedGroupAnalysis = normalizeStoredAiAnalysis(event.group.aiAnalysis);
+    if (
+      cachedGroupAnalysis.analysis &&
+      cachedGroupAnalysis.eventId === eventId
+    ) {
+      const storedAnalysis = serializeStoredAiAnalysis(
+        eventId,
+        cachedGroupAnalysis.analysis,
+      );
+
+      await this.updateEventAnalysisIfAvailable(
+        eventId,
+        storedAnalysis,
+        eventAiAnalysisAvailable,
+      );
+
+      return {
+        ok: true,
+        analysis: cachedGroupAnalysis.analysis,
+        aiAnalysis: cachedGroupAnalysis.analysis,
+        sourceMap,
+      };
     }
 
     const aiKey = process.env.GEMINI_API_KEY;
@@ -500,47 +772,45 @@ export class EventsController {
     try {
       const ai = new GoogleGenAI({ apiKey: aiKey });
 
-      const prompt = `You are an expert software engineer and debugger.
-Analyze this error event and provide a strictly formatted JSON response.
-
-Context:
-- Message: ${event.message}
-- Environment: ${event.environment || 'unknown'}
-- Release: ${event.releaseVersion || 'unknown'}
-- Route/Context: ${JSON.stringify(event.context || {})}
-
-Stack Trace:
-${event.stack || 'No stack trace provided.'}
-
-Resolved Top Frame (if available):
-${sourceMap ? JSON.stringify(sourceMap.original) : 'No source-map resolution available.'}
-
-Provide your response in this EXACT JSON format (no markdown code blocks, just raw JSON):
-{
-  "rootCause": "A concise explanation of why this error occurred (max 2 sentences)",
-  "suggestedFix": "A short, actionable fix or code snippet to resolve the issue",
-  "severity": "high" | "medium" | "low"
-}`;
+      const prompt = buildAiAnalysisPrompt({
+        message: event.message,
+        environment: event.environment,
+        releaseVersion: event.releaseVersion,
+        context: event.context,
+        stack: event.stack,
+        sourceMap: sourceMap?.original ?? null,
+      });
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
+        config: {
+          temperature: 0.2,
+          responseMimeType: 'application/json',
+          responseSchema: STRUCTURED_AI_ANALYSIS_RESPONSE_SCHEMA,
+        },
       });
 
-      const text = response.text || '{}';
-      // Clean up markdown ticks if AI mistakenly added them
-      const cleanJson = text
-        .replace(/^```json/i, '')
-        .replace(/```$/i, '')
-        .trim();
-      const aiAnalysis = JSON.parse(cleanJson);
+      const analysis =
+        parseStructuredAiAnalysisResponse(response.text) ??
+        createEmptyStructuredAiAnalysis();
+      const storedAnalysis = serializeStoredAiAnalysis(eventId, analysis);
 
-      await this.prisma.errorGroup.update({
-        where: { id: event.groupId },
-        data: { aiAnalysis },
-      });
+      if (storedAnalysis) {
+        await Promise.all([
+          this.updateEventAnalysisIfAvailable(
+            eventId,
+            storedAnalysis,
+            eventAiAnalysisAvailable,
+          ),
+          this.prisma.errorGroup.update({
+            where: { id: event.groupId },
+            data: { aiAnalysis: storedAnalysis },
+          }),
+        ]);
+      }
 
-      return { ok: true, aiAnalysis, sourceMap };
+      return { ok: true, analysis, aiAnalysis: analysis, sourceMap };
     } catch (err: any) {
       console.error('AI Analysis failed:', err);
       return { ok: false, error: 'ai_analysis_failed', sourceMap };

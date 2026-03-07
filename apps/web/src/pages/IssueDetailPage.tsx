@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import ReactMarkdown from 'react-markdown';
 import {
     BarChart,
     Bar,
@@ -16,10 +15,10 @@ import IssueRegressionBadge from '../components/issues/IssueRegressionBadge';
 import IssueStatusBadge from '../components/issues/IssueStatusBadge';
 import {
     analyzeEvent,
+    type EventAiAnalysis,
     type EventSourceMapResolution,
     getGroupDetail,
     setGroupStatus,
-    type GroupAiAnalysis,
     type GroupDetail,
     type GroupDetailEvent,
     type StatusAction,
@@ -89,6 +88,21 @@ function buildTimeline(events: GroupDetailEvent[]): TimelinePoint[] {
     }));
 }
 
+function hasAnalysisContent(analysis: EventAiAnalysis | null | undefined) {
+    if (!analysis) return false;
+
+    return Boolean(
+        analysis.rootCause
+        || analysis.suggestedFix
+        || analysis.likelyArea
+        || analysis.nextStep
+        || analysis.preventionTip
+        || analysis.severity
+        || analysis.confidence
+        || analysis.summary,
+    );
+}
+
 export default function IssueDetailPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -103,7 +117,6 @@ export default function IssueDetailPage() {
     const [actionLoading, setActionLoading] = useState<StatusAction | null>(null);
     const [aiAnalyzing, setAiAnalyzing] = useState(false);
     const [analysisError, setAnalysisError] = useState<string | null>(null);
-    const [analysisEventId, setAnalysisEventId] = useState<string | null>(null);
 
     const [copiedFingerprint, setCopiedFingerprint] = useState(false);
     const [stackCopied, setStackCopied] = useState(false);
@@ -165,9 +178,6 @@ export default function IssueDetailPage() {
                 }
                 return nextEvents[0]?.id ?? null;
             });
-            if (!data.group.aiAnalysis) {
-                setAnalysisEventId(null);
-            }
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to load');
             setGroup(null);
@@ -180,7 +190,6 @@ export default function IssueDetailPage() {
 
     useEffect(() => {
         setSourceMapByEventId({});
-        setAnalysisEventId(null);
         void fetchDetail();
     }, [fetchDetail, id]);
 
@@ -245,7 +254,7 @@ export default function IssueDetailPage() {
     };
 
     const handleAnalyze = async () => {
-        if (!selectedEvent || !group) return;
+        if (!selectedEvent) return;
 
         setAiAnalyzing(true);
         setAnalysisError(null);
@@ -256,9 +265,11 @@ export default function IssueDetailPage() {
                 [selectedEvent.id]: data.sourceMap ?? null,
             }));
 
-            if (data.ok && data.aiAnalysis) {
-                setGroup({ ...group, aiAnalysis: data.aiAnalysis as GroupAiAnalysis });
-                setAnalysisEventId(selectedEvent.id);
+            const nextAnalysis = data.analysis ?? data.aiAnalysis ?? null;
+            if (data.ok && nextAnalysis) {
+                setEvents((previous) => previous.map((event) => (event.id === selectedEvent.id
+                    ? { ...event, aiAnalysis: nextAnalysis }
+                    : event)));
                 return;
             }
 
@@ -506,9 +517,8 @@ export default function IssueDetailPage() {
                         />
 
                         <AiAnalysisPanel
-                            analysis={group.aiAnalysis}
-                            selectedEventId={selectedEvent?.id ?? null}
-                            analysisEventId={analysisEventId}
+                            analysis={selectedEvent?.aiAnalysis ?? null}
+                            selectedEvent={selectedEvent}
                             analyzing={aiAnalyzing}
                             error={analysisError}
                             onAnalyze={() => void handleAnalyze()}
@@ -550,10 +560,74 @@ function ActionButton({ loading, onClick, label, className }: ActionButtonProps)
     );
 }
 
+function getSeverityPillClass(severity: EventAiAnalysis['severity']) {
+    switch (severity) {
+        case 'critical':
+            return 'border-red-500/40 bg-red-500/15 text-red-200';
+        case 'high':
+            return 'border-orange-500/40 bg-orange-500/15 text-orange-200';
+        case 'medium':
+            return 'border-amber-500/40 bg-amber-500/15 text-amber-200';
+        case 'low':
+            return 'border-emerald-500/40 bg-emerald-500/15 text-emerald-200';
+        default:
+            return 'border-slate-600 bg-slate-800 text-slate-300';
+    }
+}
+
+function getConfidencePillClass(confidence: EventAiAnalysis['confidence']) {
+    switch (confidence) {
+        case 'high':
+            return 'border-sky-500/40 bg-sky-500/15 text-sky-200';
+        case 'medium':
+            return 'border-blue-500/40 bg-blue-500/15 text-blue-200';
+        case 'low':
+            return 'border-slate-600 bg-slate-800 text-slate-300';
+        default:
+            return 'border-slate-600 bg-slate-800 text-slate-300';
+    }
+}
+
+function AnalysisPill({
+    label,
+    value,
+    className,
+}: {
+    label: string;
+    value: string;
+    className: string;
+}) {
+    return (
+        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${className}`}>
+            {label}: {value}
+        </span>
+    );
+}
+
+function AnalysisSectionCard({
+    label,
+    value,
+    accentClassName,
+}: {
+    label: string;
+    value: string;
+    accentClassName: string;
+}) {
+    return (
+        <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-4">
+            <div className={`mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] ${accentClassName}`}>
+                {label}
+            </div>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-300">
+                {value}
+            </p>
+        </div>
+    );
+}
+
 interface AiAnalysisPanelProps {
-    analysis?: GroupAiAnalysis;
-    selectedEventId: string | null;
-    analysisEventId: string | null;
+    analysis?: EventAiAnalysis | null;
+    selectedEvent: GroupDetailEvent | null;
     analyzing: boolean;
     error: string | null;
     onAnalyze: () => void;
@@ -561,25 +635,58 @@ interface AiAnalysisPanelProps {
 
 function AiAnalysisPanel({
     analysis,
-    selectedEventId,
-    analysisEventId,
+    selectedEvent,
     analyzing,
     error,
     onAnalyze,
 }: AiAnalysisPanelProps) {
+    const sections = [
+        {
+            label: 'Root Cause',
+            value: analysis?.rootCause,
+            accentClassName: 'text-violet-300',
+        },
+        {
+            label: 'Suggested Fix',
+            value: analysis?.suggestedFix,
+            accentClassName: 'text-emerald-300',
+        },
+        {
+            label: 'Likely Area',
+            value: analysis?.likelyArea,
+            accentClassName: 'text-sky-300',
+        },
+        {
+            label: 'Next Step',
+            value: analysis?.nextStep,
+            accentClassName: 'text-amber-300',
+        },
+        {
+            label: 'Prevention Tip',
+            value: analysis?.preventionTip,
+            accentClassName: 'text-rose-300',
+        },
+    ].filter((section): section is {
+        label: string;
+        value: string;
+        accentClassName: string;
+    } => Boolean(section.value));
+
+    const showEmptyState = !selectedEvent || !analysis || !hasAnalysisContent(analysis);
+
     return (
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-violet-500/10 to-transparent">
                 <div>
-                    <h2 className="text-sm font-bold text-slate-200">AI Error Analysis</h2>
+                    <h2 className="text-sm font-bold text-slate-200">AI Debug Guidance</h2>
                     <p className="text-[10px] text-slate-400 uppercase tracking-wider">
-                        Issue-level analysis (analyzes selected event)
+                        Event-based analysis for the selected event
                     </p>
                 </div>
                 <button
                     type="button"
                     onClick={onAnalyze}
-                    disabled={analyzing || !selectedEventId}
+                    disabled={analyzing || !selectedEvent}
                     className="px-4 py-2 text-sm font-semibold bg-gradient-to-r from-violet-600 to-blue-600 text-white rounded-lg hover:from-violet-500 hover:to-blue-500 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                     {analyzing ? <Spinner /> : null}
@@ -593,42 +700,65 @@ function AiAnalysisPanel({
                     </div>
                 )}
 
-                {!analysis ? (
-                    <div className="text-center py-8">
+                {showEmptyState ? (
+                    <div className="py-8 text-center">
                         <h3 className="text-slate-300 font-medium mb-1">
-                            No analysis generated yet
+                            {selectedEvent ? 'No analysis for this event yet' : 'No event selected'}
                         </h3>
                         <p className="text-sm text-slate-500">
-                            Select an event and run analysis to generate root cause and fix suggestions.
+                            {selectedEvent
+                                ? 'Run analysis to get a concise root-cause readout, where to inspect, and the best next debugging step.'
+                                : 'Choose an event from the list to generate structured debugging guidance.'}
                         </p>
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {analysisEventId && (
-                            <div className="text-xs text-slate-500">
-                                Based on event <span className="font-mono text-slate-300">{analysisEventId}</span>
+                        <div className="flex flex-col gap-3 border border-slate-700/60 rounded-xl bg-slate-900/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="text-xs text-slate-400">
+                                Selected event{' '}
+                                <span className="font-mono text-slate-200">{selectedEvent.id}</span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                {analysis.severity && (
+                                    <AnalysisPill
+                                        label="Severity"
+                                        value={analysis.severity}
+                                        className={getSeverityPillClass(analysis.severity)}
+                                    />
+                                )}
+                                {analysis.confidence && (
+                                    <AnalysisPill
+                                        label="Confidence"
+                                        value={analysis.confidence}
+                                        className={getConfidencePillClass(analysis.confidence)}
+                                    />
+                                )}
+                            </div>
+                        </div>
+
+                        {analysis.summary && (
+                            <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-4">
+                                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                                    Summary
+                                </div>
+                                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-300">
+                                    {analysis.summary}
+                                </p>
                             </div>
                         )}
-                        <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-4">
-                            <div className="text-xs font-semibold text-violet-300 uppercase tracking-wider mb-2">
-                                Root Cause
+
+                        {sections.length > 0 && (
+                            <div className="grid gap-3 xl:grid-cols-2">
+                                {sections.map((section) => (
+                                    <AnalysisSectionCard
+                                        key={section.label}
+                                        label={section.label}
+                                        value={section.value}
+                                        accentClassName={section.accentClassName}
+                                    />
+                                ))}
                             </div>
-                            <p className="text-sm text-slate-300 leading-relaxed">{analysis.rootCause}</p>
-                        </div>
-                        <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-4">
-                            <div className="text-xs font-semibold text-emerald-300 uppercase tracking-wider mb-2">
-                                Suggested Fix
-                            </div>
-                            <div className="text-sm text-slate-300 leading-relaxed font-mono whitespace-pre-wrap">
-                                <ReactMarkdown>{analysis.suggestedFix}</ReactMarkdown>
-                            </div>
-                        </div>
-                        <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-4">
-                            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                                Severity
-                            </div>
-                            <p className="text-sm text-slate-200 uppercase tracking-wide">{analysis.severity}</p>
-                        </div>
+                        )}
                     </div>
                 )}
             </div>
