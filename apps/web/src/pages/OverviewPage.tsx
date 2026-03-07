@@ -39,6 +39,14 @@ const EMPTY_STATS: DashboardStatsData = {
     topIssues: [],
 };
 
+interface TrendTooltipProps {
+    active?: boolean;
+    label?: string | number;
+    payload?: Array<{
+        value?: number | string;
+    }>;
+}
+
 function formatTrendDate(value: string) {
     const date = new Date(`${value}T00:00:00`);
     if (Number.isNaN(date.getTime())) return value;
@@ -68,16 +76,46 @@ function formatRelativeTime(value: string) {
 
 function TrendSkeleton() {
     return (
-        <div className="h-72 flex items-end gap-3 animate-pulse">
-            {[36, 52, 28, 64, 40, 58, 72].map((height, index) => (
-                <div key={index} className="flex-1 flex flex-col justify-end gap-3">
-                    <div
-                        className="rounded-t-xl bg-slate-700/50"
-                        style={{ height: `${height}%` }}
-                    />
-                    <div className="h-3 rounded bg-slate-700/40" />
+        <div className="rounded-[1.35rem] border border-slate-800/80 bg-slate-950/35 p-4 animate-pulse">
+            <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="h-4 w-28 rounded-full bg-slate-700/50" />
+                <div className="h-4 w-16 rounded-full bg-slate-800/70" />
+            </div>
+            <div className="h-64 flex items-end gap-3">
+                {[36, 52, 28, 64, 40, 58, 72].map((height, index) => (
+                    <div key={index} className="flex-1 flex flex-col justify-end gap-3">
+                        <div
+                            className="rounded-t-xl bg-slate-700/50"
+                            style={{ height: `${height}%` }}
+                        />
+                        <div className="h-3 rounded bg-slate-700/40" />
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function TrendTooltip({ active, label, payload }: TrendTooltipProps) {
+    if (!active || !payload?.length) return null;
+
+    const value = typeof payload[0]?.value === 'number'
+        ? payload[0].value
+        : Number(payload[0]?.value ?? 0);
+
+    return (
+        <div className="min-w-36 rounded-2xl border border-slate-700/80 bg-slate-950/95 px-4 py-3 shadow-[0_22px_40px_-24px_rgba(15,23,42,1)] backdrop-blur">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                {typeof label === 'string' ? formatTrendDate(label) : String(label ?? '')}
+            </div>
+            <div className="mt-2 flex items-end justify-between gap-4">
+                <div className="text-2xl font-semibold tracking-tight text-slate-50 tabular-nums">
+                    {value.toLocaleString()}
                 </div>
-            ))}
+                <div className="text-xs text-slate-400">
+                    {value === 1 ? 'event' : 'events'}
+                </div>
+            </div>
         </div>
     );
 }
@@ -173,22 +211,22 @@ export default function OverviewPage() {
 
     return (
         <div className="min-h-screen bg-slate-900 text-slate-100">
-            <header className="border-b border-slate-800 px-6 py-4">
-                <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <header className="border-b border-slate-800/90 px-4 py-4 sm:px-6">
+                <div className="max-w-7xl mx-auto flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                         <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 via-violet-400 to-pink-400 bg-clip-text text-transparent">
                             Smart Error Tracker
                         </h1>
-                        <p className="text-sm text-slate-500 mt-0.5">Dashboard Overview</p>
+                        <p className="text-sm text-slate-400 mt-1">Dashboard Overview</p>
                     </div>
-                    <nav className="flex gap-2 flex-wrap justify-end">
-                        <span className="px-4 py-2 text-sm font-medium text-violet-400 bg-violet-500/10 border border-violet-500/30 rounded-lg">
+                    <nav className="flex flex-wrap items-center gap-2 lg:justify-end">
+                        <span className="inline-flex min-w-[104px] justify-center px-4 py-2.5 text-sm font-medium text-violet-300 bg-violet-500/10 border border-violet-500/30 rounded-xl">
                             Overview
                         </span>
                         <button
                             type="button"
                             onClick={() => navigate('/issues')}
-                            className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors"
+                            className="inline-flex min-w-[104px] justify-center px-4 py-2.5 text-sm font-medium text-slate-300 hover:text-slate-100 bg-slate-800/80 border border-slate-700/70 hover:bg-slate-800 rounded-xl transition-colors"
                         >
                             Issues
                         </button>
@@ -196,7 +234,7 @@ export default function OverviewPage() {
                             type="button"
                             onClick={() => void refresh()}
                             disabled={loading}
-                            className="px-4 py-2 text-sm font-medium text-slate-300 bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="inline-flex min-w-[104px] justify-center px-4 py-2.5 text-sm font-medium text-slate-200 bg-slate-800 border border-slate-700/80 rounded-xl hover:bg-slate-700/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             {loading ? 'Refreshing...' : 'Refresh'}
                         </button>
@@ -204,9 +242,9 @@ export default function OverviewPage() {
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+            <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-8 space-y-6 sm:space-y-8">
                 {error ? (
-                    <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                    <div className="flex items-start gap-3 rounded-[1.4rem] border border-amber-500/30 bg-amber-500/10 px-4 py-4 shadow-[0_18px_40px_-30px_rgba(245,158,11,0.7)]">
                         <svg
                             className="w-5 h-5 mt-0.5 shrink-0 text-amber-300"
                             fill="none"
@@ -221,8 +259,8 @@ export default function OverviewPage() {
                             />
                         </svg>
                         <div>
-                            <div className="font-semibold">Dashboard analytics unavailable</div>
-                            <div className="text-amber-100/80">
+                            <div className="font-semibold text-amber-50">Dashboard analytics unavailable</div>
+                            <div className="mt-1 text-sm leading-6 text-amber-100/80">
                                 {stats
                                     ? `${error}. Showing the last loaded dashboard data.`
                                     : `${error}. Showing empty fallback sections until data is available.`}
@@ -231,7 +269,7 @@ export default function OverviewPage() {
                     </div>
                 ) : null}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 sm:gap-5">
                     {statCards.map((card) => (
                         <OverviewMetricCard
                             key={card.label}
@@ -245,64 +283,86 @@ export default function OverviewPage() {
                     ))}
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)] gap-6">
+                <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,1fr)] gap-6">
                     <DashboardSectionCard
                         title="Events - Last 7 Days"
                         description="Daily event volume across the most recent seven-day window."
-                        contentClassName="p-5"
+                        action={(
+                            <span className="hidden sm:inline-flex items-center rounded-full border border-slate-700/80 bg-slate-900/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                                Daily buckets
+                            </span>
+                        )}
+                        contentClassName="p-5 sm:p-6"
                     >
                         {showInitialLoading ? (
                             <TrendSkeleton />
                         ) : data.trend7d.length === 0 ? (
-                            <div className="rounded-xl border border-dashed border-slate-700/70 bg-slate-900/40 px-4 py-16 text-center text-sm text-slate-500">
-                                No recent event trend yet. Trigger some errors to populate the chart.
+                            <div className="rounded-[1.35rem] border border-dashed border-slate-700/70 bg-slate-900/40 px-4 py-16 text-center">
+                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700/70 bg-slate-900/70 text-slate-500">
+                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M9 17v-6m3 6V7m3 10v-4m3 8H6a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2v14a2 2 0 01-2 2z" />
+                                    </svg>
+                                </div>
+                                <div className="mt-4 text-sm font-medium text-slate-200">No recent event trend yet</div>
+                                <div className="mt-1 text-sm text-slate-500">
+                                    Trigger some errors to populate the chart.
+                                </div>
                             </div>
                         ) : (
-                            <div className="h-72">
+                            <div className="rounded-[1.35rem] border border-slate-800/80 bg-slate-950/35 p-3 sm:p-4">
+                                <div className="h-64 sm:h-72">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={data.trend7d}>
+                                    <AreaChart
+                                        data={data.trend7d}
+                                        margin={{ top: 12, right: 12, left: -18, bottom: 4 }}
+                                    >
                                         <defs>
                                             <linearGradient id="overviewEventsGradient" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.35} />
+                                                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.42} />
                                                 <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
                                             </linearGradient>
                                         </defs>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                        <CartesianGrid
+                                            strokeDasharray="3 3"
+                                            stroke="#1e293b"
+                                            vertical={false}
+                                        />
                                         <XAxis
                                             dataKey="date"
                                             tickFormatter={formatTrendDate}
-                                            stroke="#64748b"
+                                            tickLine={false}
+                                            axisLine={false}
+                                            stroke="#94a3b8"
                                             fontSize={12}
                                         />
                                         <YAxis
-                                            stroke="#64748b"
+                                            tickLine={false}
+                                            axisLine={false}
+                                            stroke="#94a3b8"
                                             fontSize={12}
+                                            width={34}
                                             allowDecimals={false}
                                         />
                                         <Tooltip
-                                            contentStyle={{
-                                                backgroundColor: '#0f172a',
-                                                border: '1px solid #334155',
-                                                borderRadius: '12px',
-                                                fontSize: '13px',
+                                            cursor={{
+                                                stroke: '#8b5cf6',
+                                                strokeOpacity: 0.3,
+                                                strokeDasharray: '4 4',
                                             }}
-                                            labelFormatter={(value) =>
-                                                typeof value === 'string'
-                                                    ? formatTrendDate(value)
-                                                    : String(value)
-                                            }
+                                            content={<TrendTooltip />}
                                         />
                                         <Area
                                             type="monotone"
                                             dataKey="count"
                                             stroke="#8b5cf6"
-                                            strokeWidth={2}
+                                            strokeWidth={2.5}
                                             fillOpacity={1}
                                             fill="url(#overviewEventsGradient)"
                                             name="Events"
                                         />
                                     </AreaChart>
                                 </ResponsiveContainer>
+                            </div>
                             </div>
                         )}
                     </DashboardSectionCard>
@@ -315,7 +375,7 @@ export default function OverviewPage() {
                     />
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 sm:gap-6">
                     <DistributionListCard
                         title="Errors by Level"
                         description="How incoming events are distributed across severity levels."
