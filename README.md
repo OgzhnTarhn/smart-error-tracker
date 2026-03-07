@@ -1,141 +1,259 @@
 # Smart Error Tracker
 
-Smart Error Tracker, uygulama hatalarını toplayıp işlemek, gruplayıp görüntülemek ve SDK'lar aracılığıyla farklı ortamlardan ingest etmek için tasarlanmış bir örnek/ürün prototipidir.
+Smart Error Tracker is a Sentry-like error tracking system for modern web and backend applications.
 
-## Özet
-- Backend: `apps/api` — NestJS + Prisma (Postgres)
-- Frontend: `apps/web` — React + Vite
-- SDK'lar: `packages/sdk-node`, `packages/sdk-browser`
-- Monorepo yönetimi: `pnpm` workspace
+It is designed to:
+- ingest application errors from multiple runtimes
+- group related errors into actionable issues
+- accelerate debugging with stack, context, and raw event inspection
 
-Bu repo hem bir öğrenme/prototip projesi hem de portfolyo gösterimi amacıyla üretim-benzeri özellikleri barındırır: SDK'lar, ingest pipeline, deduplication/transport mantığı ve basit UI.
+## Project Overview
 
----
+This repository is a production-style monorepo prototype that includes:
+- a NestJS ingest and issue management API
+- a React dashboard for triage and investigation
+- Node and Browser SDK packages
+- demo apps for integration scenarios
 
-## Repo yapısı (kısa)
-- `apps/api` — NestJS backend, Prisma schema ve migrationlar, e2e/unit testler
-- `apps/web` — React uygulaması (Vite)
-- `apps/demo-api`, `apps/demo-web` — küçük demo projeler (örnek entegrasyonlar)
-- `packages/sdk-node`, `packages/sdk-browser` — SDK paketleri (tsup ile build ediliyor)
-- `infra/docker-compose.yml` — development için Postgres servisi
+## Architecture
 
----
+High-level flow:
 
-## Hızlı Başlangıç (lokal geliştirme)
-
-1. Kök dizinde bağımlılıkları kurun:
-
-```bash
-pnpm install
+```text
+Application (Browser / Node)
+  ->
+SDK
+  ->
+Ingest API (NestJS)
+  ->
+Fingerprint grouping
+  ->
+PostgreSQL
+  ->
+React Dashboard
 ```
 
-2. Postgres başlatın (infra):
+## Core Features
 
-```bash
-docker compose -f infra/docker-compose.yml up -d
-```
+- Event ingestion pipeline  
+  Errors are captured via Browser and Node SDKs and sent to the ingest API.
 
-3. API için Prisma hazırlığı:
+- Issue grouping  
+  Similar events are grouped by fingerprint into a single issue.
 
-```bash
-cd apps/api
-pnpm install
-npx prisma generate
-# Geliştirme sırasında migrate yerine db push tercih edilebilir:
-npx prisma migrate deploy   # production/migrate şemasını uygulamak için
-# veya geliştirme için
-npx prisma db push
-```
+- Issue lifecycle management  
+  Issues support `open`, `resolved`, and `ignored` states.
 
-4. (Opsiyonel) Seed verisi yükleyin (var ise):
+- Regression detection  
+  If a `resolved` issue receives a matching event again, it is automatically reopened and marked as regression.
 
-```bash
-pnpm exec ts-node -r tsconfig-paths/register scripts/seed.ts
-```
+- Event drill-down  
+  Every issue exposes a latest-events list with selectable event detail.
 
-5. API'yi geliştirme modunda çalıştırın:
+- Stack trace viewer  
+  Stack traces are displayed in a readable monospace viewer.
 
-```bash
-pnpm --filter api run start:dev
-```
+- Context inspection  
+  Event context is visible in structured form.
 
-6. Web uygulamasını çalıştırın (ayrı terminal):
+- Raw payload viewer  
+  Raw event JSON can be inspected directly.
 
-```bash
-pnpm --filter web run dev
-```
+- Source map resolution  
+  Minified frames can be resolved to original source locations.
 
-7. SDK'ları build etmek için:
+- AI error analysis  
+  Event-based AI analysis can generate root-cause and fix suggestions.
 
-```bash
-pnpm --filter @smart-error-tracker/node run build
-pnpm --filter @smart-error-tracker/browser run build
-```
+## Dashboard
 
-8. Testleri çalıştırma (API):
+The Overview dashboard includes:
+- Total events
+- Total issues
+- Open issues
+- Resolved issues
+- Ignored issues
 
-```bash
-pnpm --filter api run test
-```
+It also shows:
+- 7-day event trend chart
+- Top issues list by event count
 
----
+## Issue Lifecycle
 
-## SDK Kullanımı — Örnekler
+Issue status flow:
+- `open` -> active issue
+- `resolved` -> fixed/closed
+- `ignored` -> intentionally muted
 
-Node (Express) örnek:
+Manual actions are supported from the issue detail page:
+- Resolve
+- Ignore
+- Reopen
+
+## Issue List
+
+The Issues page supports advanced filtering:
+- Search (title/message)
+- Status filter
+- Environment filter
+- Level filter
+- Release filter
+
+Filter state is synchronized with URL query parameters, so refresh/share keeps state.
+
+## Event Inspection
+
+Issue detail supports event-level investigation:
+- selectable latest events list
+- event metadata (timestamp, source, level, environment, release, SDK)
+- `Stack` tab
+- `Context` tab
+- `Raw` tab
+
+Issue-level overview remains separate from event-level detail.
+
+## Source Map Resolution
+
+For minified production stacks, source maps can resolve frames to original source.
+
+UI highlights include:
+- `Source mapped` badge
+- Original source location (file:line:column)
+- Minified frame location
+- Function name (when available)
+
+If source mapping cannot be resolved, stack trace still renders with graceful fallback messaging.
+
+## Regression Detection
+
+When a new event matches a previously `resolved` issue:
+- issue is automatically reopened (`resolved` -> `open`)
+- issue is marked as regression
+- regression count increments
+- last regressed timestamp is updated
+
+Ignored issues remain ignored by design.
+
+## SDK Usage
+
+Node.js and Browser SDK packages are available:
+- `@smart-error-tracker/node`
+- `@smart-error-tracker/browser`
+
+Node example:
 
 ```ts
 import express from 'express'
 import { initTracker } from '@smart-error-tracker/node'
 
 const app = express()
-initTracker({ dsn: 'http://localhost:3000/ingest' })
-// middleware veya manuel capture kullanımı
+
+initTracker({
+  dsn: 'http://localhost:3000/events',
+})
 
 app.listen(3001)
 ```
 
-Browser örnek (basit):
+Browser example:
 
 ```html
 <script type="module">
   import { init } from '@smart-error-tracker/browser'
-  init({ dsn: 'https://your-api/ingest' })
-  // otomatik hata yakalama ve gönderme
+
+  init({
+    dsn: 'http://localhost:3000/events',
+  })
 </script>
 ```
 
-Detaylı API/SDK kullanım örnekleri ve konfigurasyon seçenekleri için `packages/*/README.md` dosyalarını ve `apps/demo-*` dizinlerini kullanın.
+For package-level options and integration details, see `packages/*/README.md` and `apps/demo-*`.
 
----
+## Monorepo Structure
 
-## Geliştirme Notları & Öneriler
-- Kök `README.md` ile birlikte `DEVELOPMENT.md` ekleyip ortam değişkenleri, nasıl migrate/seed yapılacağı daha ayrıntılı yazılmalı.
-- CI: GitHub Actions ile `install`, `build`, `test`, `lint` adımlarını ekleyin.
-- Observability: basit log formatı, `/metrics` endpoint ve Prometheus/Grafana örneği eklenebilir.
-- Güvenlik: `env.example`, dependabot veya Renovate, secret yönetimi.
+- `apps/api` - NestJS backend (Prisma + PostgreSQL)
+- `apps/web` - React + Vite dashboard
+- `packages/sdk-node` - Node SDK
+- `packages/sdk-browser` - Browser SDK
+- `apps/demo-api`, `apps/demo-web` - demo integrations
+- `infra/docker-compose.yml` - local PostgreSQL service
 
----
+## Local Development
 
-## Deploy önerileri
-- Frontend: Vercel / Netlify (Vite destekli)
-- Backend: Docker image + küçük host (DigitalOcean App Platform / Heroku / AWS ECS) veya serverless tercihleri
-- DB: Managed Postgres (Supabase, RDS) ve migrationları CI ile koordine edin
+1. Install dependencies:
 
----
+```bash
+pnpm install
+```
 
-## Roadmap (kısa)
-1. README & docs tamamlanması
-2. CI ve test coverage badge
-3. SDK örnekleri ve demo entegrasyonlar genişletme
-4. Dedupe, batching, retry stratejileri ile sağlamlaştırma
-5. Observability + production deploy örneği
+2. Start PostgreSQL:
 
----
+```bash
+docker compose -f infra/docker-compose.yml up -d
+```
 
-## Katkıda bulunma
-1. Fork -> feature branch -> PR
-2. Kod tarzı: Prettier + ESLint kuralları repo içinde uygulanmıştır
-3. Yeni feature eklerken test ve dokümantasyon ekleyin
+3. Prepare Prisma for API:
 
-Teşekkürler — isterseniz bu `README.md`'yi daha kısa bir versiyonla ana GitHub sayfasında kullanılacak hale getireyim veya aynı anda `.github/workflows/ci.yml` ekleyip CI kurulumunu tamamlayayım.
+```bash
+cd apps/api
+pnpm install
+npx prisma generate
+# Use migrate deploy for migration-based environments:
+npx prisma migrate deploy
+# Or use db push for local schema iteration:
+npx prisma db push
+```
+
+4. Optional seed step (if available):
+
+```bash
+pnpm exec ts-node -r tsconfig-paths/register scripts/seed.ts
+```
+
+5. Run API:
+
+```bash
+pnpm --filter api run start:dev
+```
+
+6. Run Web (in another terminal):
+
+```bash
+pnpm --filter web run dev
+```
+
+7. Build SDK packages:
+
+```bash
+pnpm --filter @smart-error-tracker/node run build
+pnpm --filter @smart-error-tracker/browser run build
+```
+
+8. Run API tests:
+
+```bash
+pnpm --filter api run test
+```
+
+## Deployment Suggestions
+
+Frontend:
+- Vercel
+- Netlify
+
+Backend:
+- Docker container deployment
+- DigitalOcean App Platform
+- AWS ECS
+
+Database:
+- Managed PostgreSQL (Supabase / AWS RDS)
+
+## Roadmap
+
+Planned improvements:
+- Alerting system
+- Webhook integrations
+- Advanced analytics
+- Session replay
+- Error rate monitoring

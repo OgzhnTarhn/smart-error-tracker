@@ -17,6 +17,7 @@ import { Prisma } from '@prisma/client';
 import { IngestEventDto } from './dto/ingest-event.dto';
 import { IngestRateLimitGuard } from '../common/guards/ingest-rate-limit.guard';
 import { SourceMapService } from '../source-maps/source-map.service';
+import { DashboardStatsService } from '../dashboard/dashboard-stats.service';
 import {
   EVENT_LEVEL_VALUES,
   GROUP_STATUS_VALUES,
@@ -156,6 +157,7 @@ export class EventsController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sourceMaps: SourceMapService,
+    private readonly dashboardStats: DashboardStatsService,
   ) {}
 
   private async resolveProjectIdFromApiKey(apiKey: string | undefined) {
@@ -262,87 +264,7 @@ export class EventsController {
     const projectId = await this.resolveProjectIdFromApiKey(apiKey);
     if (!projectId) return { ok: false, error: 'unauthorized' };
 
-    // 1) Group counts by status
-    const [totalGroups, openCount, resolvedCount, ignoredCount, eventAgg] =
-      await Promise.all([
-        this.prisma.errorGroup.count({ where: { projectId } }),
-        this.prisma.errorGroup.count({
-          where: { projectId, status: GROUP_STATUS.OPEN },
-        }),
-        this.prisma.errorGroup.count({
-          where: { projectId, status: GROUP_STATUS.RESOLVED },
-        }),
-        this.prisma.errorGroup.count({
-          where: { projectId, status: GROUP_STATUS.IGNORED },
-        }),
-        this.prisma.errorGroup.aggregate({
-          where: { projectId },
-          _sum: { eventCount: true },
-        }),
-      ]);
-
-    const totalEvents = eventAgg._sum.eventCount || 0;
-
-    // 2) Daily event trend (last 7 days)
-    const now = new Date();
-    const sevenDaysAgo = new Date(now);
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    sevenDaysAgo.setHours(0, 0, 0, 0);
-
-    const events7d = await this.prisma.event.findMany({
-      where: { projectId, timestamp: { gte: sevenDaysAgo } },
-      select: { timestamp: true },
-      orderBy: { timestamp: 'asc' },
-    });
-
-    // Bucket by date string
-    const dailyMap: Record<string, number> = {};
-    for (let d = 0; d < 7; d++) {
-      const dt = new Date(sevenDaysAgo);
-      dt.setDate(dt.getDate() + d);
-      dailyMap[dt.toISOString().slice(0, 10)] = 0;
-    }
-    // also include today
-    dailyMap[now.toISOString().slice(0, 10)] = 0;
-
-    for (const ev of events7d) {
-      const key = new Date(ev.timestamp).toISOString().slice(0, 10);
-      if (key in dailyMap) dailyMap[key]++;
-    }
-
-    const dailyTrend = Object.entries(dailyMap)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, count]) => ({ date, count }));
-
-    // 3) Top 5 issues by event count
-    const topIssues = await this.prisma.errorGroup.findMany({
-      where: { projectId },
-      take: 5,
-      orderBy: { eventCount: 'desc' },
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        isRegression: true,
-        regressionCount: true,
-        lastRegressedAt: true,
-        eventCount: true,
-        lastSeenAt: true,
-      },
-    });
-
-    return {
-      ok: true,
-      counts: {
-        totalGroups,
-        open: openCount,
-        resolved: resolvedCount,
-        ignored: ignoredCount,
-        totalEvents,
-      },
-      dailyTrend,
-      topIssues,
-    };
+    return this.dashboardStats.getStats(projectId);
   }
 
   @Get('groups')

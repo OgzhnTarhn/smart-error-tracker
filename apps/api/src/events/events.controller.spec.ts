@@ -20,12 +20,15 @@ describe('EventsController', () => {
   const sourceMaps = {
     resolveTopFrame: jest.fn(),
   } as any;
+  const dashboardStats = {
+    getStats: jest.fn(),
+  } as any;
 
   let controller: EventsController;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    controller = new EventsController(prisma, sourceMaps);
+    controller = new EventsController(prisma, sourceMaps, dashboardStats);
   });
 
   it('creates a new group and event in a transaction for ingest', async () => {
@@ -327,6 +330,55 @@ describe('EventsController', () => {
       environments: ['dev', 'production'],
       releases: ['0.0.0-demo', '1.0.0'],
     });
+  });
+
+  it('delegates stats retrieval to dashboard service', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    dashboardStats.getStats.mockResolvedValue({
+      ok: true,
+      totals: {
+        totalEvents: 10,
+        totalIssues: 4,
+        openIssues: 2,
+        resolvedIssues: 1,
+        ignoredIssues: 1,
+      },
+      trend7d: [{ date: '2026-03-07', count: 10 }],
+      errorsByLevel: [{ name: 'error', count: 10 }],
+      errorsByEnvironment: [{ name: 'production', count: 8 }],
+      errorsByRelease: [{ name: '1.0.0', count: 7 }],
+      topRoutes: [{ name: '/checkout', count: 5 }],
+      topIssues: [],
+      counts: {
+        totalGroups: 4,
+        open: 2,
+        resolved: 1,
+        ignored: 1,
+        totalEvents: 10,
+      },
+      dailyTrend: [{ date: '2026-03-07', count: 10 }],
+    });
+
+    const result = await controller.getStats('set_valid_key');
+
+    expect(dashboardStats.getStats).toHaveBeenCalledWith('proj_1');
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        counts: {
+          totalGroups: 4,
+          open: 2,
+          resolved: 1,
+          ignored: 1,
+          totalEvents: 10,
+        },
+        dailyTrend: [{ date: '2026-03-07', count: 10 }],
+        topIssues: [],
+      }),
+    );
   });
 
   it('returns event-level and regression fields in groupDetail response', async () => {

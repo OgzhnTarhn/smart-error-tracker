@@ -24,6 +24,63 @@ export const apiFetch = async <T = unknown>(
     return response.json() as Promise<T>;
 };
 
+export interface DashboardBreakdownItem {
+    name: string;
+    count: number;
+}
+
+export interface DashboardTotals {
+    totalEvents: number;
+    totalIssues: number;
+    openIssues: number;
+    resolvedIssues: number;
+    ignoredIssues: number;
+}
+
+export interface DashboardTrendPoint {
+    date: string;
+    count: number;
+}
+
+export interface DashboardTopIssue {
+    id: string;
+    title: string;
+    status: string;
+    isRegression: boolean;
+    regressionCount: number;
+    lastRegressedAt: string | null;
+    eventCount: number;
+    lastSeenAt: string;
+}
+
+export interface DashboardStatsCounts {
+    totalGroups: number;
+    open: number;
+    resolved: number;
+    ignored: number;
+    totalEvents: number;
+}
+
+export interface DashboardStatsData {
+    totals: DashboardTotals;
+    trend7d: DashboardTrendPoint[];
+    errorsByLevel: DashboardBreakdownItem[];
+    errorsByEnvironment: DashboardBreakdownItem[];
+    errorsByRelease: DashboardBreakdownItem[];
+    topRoutes: DashboardBreakdownItem[];
+    topIssues: DashboardTopIssue[];
+}
+
+export interface DashboardStatsResponse extends Partial<DashboardStatsData> {
+    ok: boolean;
+    counts?: DashboardStatsCounts;
+    dailyTrend?: DashboardTrendPoint[];
+    error?: string;
+}
+
+export const getDashboardStats = () =>
+    apiFetch<DashboardStatsResponse>('/stats');
+
 export interface GroupAiAnalysis {
     rootCause: string;
     suggestedFix: string;

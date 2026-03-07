@@ -6,10 +6,16 @@ import { AdminController } from './admin/admin.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { IngestRateLimitGuard } from './common/guards/ingest-rate-limit.guard';
 import { SourceMapService } from './source-maps/source-map.service';
+import { DashboardStatsService } from './dashboard/dashboard-stats.service';
 
 @Module({
   imports: [PrismaModule],
   controllers: [AppController, EventsController, AdminController],
-  providers: [AppService, IngestRateLimitGuard, SourceMapService],
+  providers: [
+    AppService,
+    IngestRateLimitGuard,
+    SourceMapService,
+    DashboardStatsService,
+  ],
 })
 export class AppModule {}
