@@ -117,6 +117,9 @@ describe('EventsController', () => {
   const dashboardStats = {
     getStats: jest.fn(),
   } as any;
+  const similarIssues = {
+    findSimilarIssues: jest.fn(),
+  } as any;
 
   let controller: EventsController;
 
@@ -125,7 +128,12 @@ describe('EventsController', () => {
     sourceMaps.resolveTopFrameDetailed.mockResolvedValue(
       makeNoSourceMapNeededResult(),
     );
-    controller = new EventsController(prisma, sourceMaps, dashboardStats);
+    controller = new EventsController(
+      prisma,
+      sourceMaps,
+      dashboardStats,
+      similarIssues,
+    );
   });
 
   it('creates a new group and event in a transaction for ingest', async () => {
@@ -571,6 +579,67 @@ describe('EventsController', () => {
         },
       ],
     });
+  });
+
+  it('returns similar issues for a group', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    similarIssues.findSimilarIssues.mockResolvedValue([
+      {
+        id: 'group_2',
+        title: "Cannot read properties of null (reading 'summary')",
+        status: 'resolved',
+        similarityReason: 'Similar null-access error on the same frontend route',
+        resolutionNote: 'Added null guard before rendering checkout summary.',
+        lastSeenAt: new Date('2026-03-07T10:00:00.000Z'),
+        isRegression: false,
+        score: 0.92,
+      },
+    ]);
+
+    const result = await controller.listSimilarGroups(
+      'set_valid_key',
+      'group_1',
+    );
+
+    expect(similarIssues.findSimilarIssues).toHaveBeenCalledWith(
+      'proj_1',
+      'group_1',
+    );
+    expect(result).toEqual({
+      ok: true,
+      items: [
+        {
+          id: 'group_2',
+          title: "Cannot read properties of null (reading 'summary')",
+          status: 'resolved',
+          similarityReason:
+            'Similar null-access error on the same frontend route',
+          resolutionNote:
+            'Added null guard before rendering checkout summary.',
+          lastSeenAt: new Date('2026-03-07T10:00:00.000Z'),
+          isRegression: false,
+          score: 0.92,
+        },
+      ],
+    });
+  });
+
+  it('returns not_found for similar issues when the group does not exist', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    similarIssues.findSimilarIssues.mockResolvedValue(null);
+
+    const result = await controller.listSimilarGroups(
+      'set_valid_key',
+      'group_missing',
+    );
+
+    expect(result).toEqual({ ok: false, error: 'not_found' });
   });
 
   it('resolves a group with a resolution note', async () => {

@@ -143,6 +143,26 @@ export interface GroupDetailResponse {
 export const getGroupDetail = (id: string) =>
     apiFetch<GroupDetailResponse>(`/groups/${id}`);
 
+export interface SimilarIssue {
+    id: string;
+    title: string;
+    status: string;
+    similarityReason: string;
+    resolutionNote: string | null;
+    lastSeenAt: string;
+    isRegression: boolean;
+    score: number;
+}
+
+export interface SimilarIssuesResponse {
+    ok: boolean;
+    items?: SimilarIssue[];
+    error?: string;
+}
+
+export const getSimilarIssues = (id: string) =>
+    apiFetch<SimilarIssuesResponse>(`/groups/${id}/similar`);
+
 export type StatusAction = 'resolve' | 'open' | 'ignore';
 export interface SetGroupStatusRequest {
     note?: string;

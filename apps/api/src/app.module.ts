@@ -7,6 +7,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { IngestRateLimitGuard } from './common/guards/ingest-rate-limit.guard';
 import { SourceMapService } from './source-maps/source-map.service';
 import { DashboardStatsService } from './dashboard/dashboard-stats.service';
+import { SimilarIssuesService } from './events/similar-issues.service';
 
 @Module({
   imports: [PrismaModule],
@@ -16,6 +17,7 @@ import { DashboardStatsService } from './dashboard/dashboard-stats.service';
     IngestRateLimitGuard,
     SourceMapService,
     DashboardStatsService,
+    SimilarIssuesService,
   ],
 })
 export class AppModule {}

@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import EventDetailPanel from '../components/issue-detail/EventDetailPanel';
 import EventList from '../components/issue-detail/EventList';
+import SimilarPastIssuesPanel from '../components/issue-detail/SimilarPastIssuesPanel';
 import type { EventTab } from '../components/issue-detail/types';
 import IssueRegressionBadge from '../components/issues/IssueRegressionBadge';
 import IssueStatusBadge from '../components/issues/IssueStatusBadge';
@@ -18,10 +19,12 @@ import {
     type EventAiAnalysis,
     type EventSourceMapResult,
     getGroupDetail,
+    getSimilarIssues,
     resolveEventSourceMap,
     setGroupStatus,
     type GroupDetail,
     type GroupDetailEvent,
+    type SimilarIssue,
     type StatusAction,
 } from '../lib/api';
 
@@ -114,6 +117,9 @@ export default function IssueDetailPage() {
     const [resolveDialogOpen, setResolveDialogOpen] = useState(false);
     const [resolutionNoteDraft, setResolutionNoteDraft] = useState('');
     const [resolveDialogError, setResolveDialogError] = useState<string | null>(null);
+    const [similarIssues, setSimilarIssues] = useState<SimilarIssue[]>([]);
+    const [similarIssuesLoading, setSimilarIssuesLoading] = useState(false);
+    const [similarIssuesError, setSimilarIssuesError] = useState<string | null>(null);
 
     const [copiedFingerprint, setCopiedFingerprint] = useState(false);
     const [stackCopied, setStackCopied] = useState(false);
@@ -190,6 +196,49 @@ export default function IssueDetailPage() {
         setResolveDialogError(null);
         void fetchDetail();
     }, [fetchDetail, id]);
+
+    useEffect(() => {
+        if (!id) {
+            setSimilarIssues([]);
+            setSimilarIssuesLoading(false);
+            setSimilarIssuesError(null);
+            return;
+        }
+
+        let cancelled = false;
+
+        setSimilarIssues([]);
+        setSimilarIssuesLoading(true);
+        setSimilarIssuesError(null);
+
+        void getSimilarIssues(id)
+            .then((data) => {
+                if (cancelled) return;
+
+                if (!data.ok) {
+                    setSimilarIssuesError(data.error || 'Failed to load similar issues');
+                    setSimilarIssues([]);
+                    return;
+                }
+
+                setSimilarIssues(data.items ?? []);
+            })
+            .catch((err: unknown) => {
+                if (cancelled) return;
+                setSimilarIssuesError(
+                    err instanceof Error ? err.message : 'Failed to load similar issues',
+                );
+                setSimilarIssues([]);
+            })
+            .finally(() => {
+                if (cancelled) return;
+                setSimilarIssuesLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [id]);
 
     const handleAction = async (action: StatusAction) => {
         if (!id) return;
@@ -651,6 +700,13 @@ export default function IssueDetailPage() {
                             rawCopied={rawCopied}
                             sourceMapResult={selectedSourceMapResult}
                             resolvingSourceMap={sourceMapResolving}
+                        />
+
+                        <SimilarPastIssuesPanel
+                            items={similarIssues}
+                            loading={similarIssuesLoading}
+                            error={similarIssuesError}
+                            formatDate={formatDate}
                         />
 
                         <AiAnalysisPanel

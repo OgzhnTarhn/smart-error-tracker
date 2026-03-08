@@ -21,6 +21,7 @@ import {
   SourceMapService,
 } from '../source-maps/source-map.service';
 import { DashboardStatsService } from '../dashboard/dashboard-stats.service';
+import { SimilarIssuesService } from './similar-issues.service';
 import {
   createEmptyStructuredAiAnalysis,
   normalizeStoredAiAnalysis,
@@ -357,6 +358,7 @@ export class EventsController {
     private readonly prisma: PrismaService,
     private readonly sourceMaps: SourceMapService,
     private readonly dashboardStats: DashboardStatsService,
+    private readonly similarIssues: SimilarIssuesService,
   ) {}
 
   private async findGroupDetailEvents(
@@ -934,6 +936,24 @@ export class EventsController {
       releases: releaseRows
         .map((row) => row.releaseVersion)
         .filter((value): value is string => Boolean(value)),
+    };
+  }
+
+  @Get('groups/:id/similar')
+  async listSimilarGroups(
+    @Headers('x-api-key') apiKey: string | undefined,
+    @Param('id') id: string,
+  ) {
+    const projectId = await this.resolveProjectIdFromApiKey(apiKey);
+    if (!projectId) return { ok: false, error: 'unauthorized' };
+    if (!id) return { ok: false, error: 'invalid' };
+
+    const items = await this.similarIssues.findSimilarIssues(projectId, id);
+    if (items === null) return { ok: false, error: 'not_found' };
+
+    return {
+      ok: true,
+      items,
     };
   }
 
