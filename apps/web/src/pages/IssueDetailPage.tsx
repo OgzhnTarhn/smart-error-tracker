@@ -81,6 +81,102 @@ function formatDate(value: string) {
     return DATE_FORMATTER.format(date);
 }
 
+function formatRelativeTime(value: string) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+
+    const diffMs = Date.now() - date.getTime();
+    const absDiffMs = Math.abs(diffMs);
+
+    if (absDiffMs < 60_000) {
+        return diffMs >= 0 ? 'just now' : 'soon';
+    }
+
+    if (absDiffMs < 3_600_000) {
+        const minutes = Math.round(absDiffMs / 60_000);
+        return diffMs >= 0 ? `${minutes}m ago` : `in ${minutes}m`;
+    }
+
+    if (absDiffMs < 86_400_000) {
+        const hours = Math.round(absDiffMs / 3_600_000);
+        return diffMs >= 0 ? `${hours}h ago` : `in ${hours}h`;
+    }
+
+    const days = Math.round(absDiffMs / 86_400_000);
+    if (days <= 7) {
+        return diffMs >= 0 ? `${days}d ago` : `in ${days}d`;
+    }
+
+    return formatDate(value);
+}
+
+function truncateIdentifier(value: string, leading = 10, trailing = 4) {
+    if (value.length <= leading + trailing + 3) return value;
+    return `${value.slice(0, leading)}...${value.slice(-trailing)}`;
+}
+
+function getSeveritySummary(severity: EventAiAnalysis['severity']) {
+    switch (severity) {
+        case 'critical':
+            return 'Critical Risk';
+        case 'high':
+            return 'High Risk';
+        case 'medium':
+            return 'Medium Risk';
+        case 'low':
+            return 'Low Risk';
+        default:
+            return 'Pending';
+    }
+}
+
+function getSeverityValueClass(severity: EventAiAnalysis['severity']) {
+    switch (severity) {
+        case 'critical':
+            return 'text-red-200';
+        case 'high':
+            return 'text-orange-200';
+        case 'medium':
+            return 'text-amber-200';
+        case 'low':
+            return 'text-emerald-200';
+        default:
+            return 'text-slate-300';
+    }
+}
+
+function getConfidenceSummary(confidence: EventAiAnalysis['confidence']) {
+    switch (confidence) {
+        case 'high':
+            return 'High Confidence';
+        case 'medium':
+            return 'Medium Confidence';
+        case 'low':
+            return 'Low Confidence';
+        default:
+            return 'Awaiting analysis';
+    }
+}
+
+function getConfidenceValueClass(confidence: EventAiAnalysis['confidence']) {
+    switch (confidence) {
+        case 'high':
+            return 'text-violet-200';
+        case 'medium':
+            return 'text-sky-200';
+        case 'low':
+            return 'text-slate-300';
+        default:
+            return 'text-slate-300';
+    }
+}
+
+function getEventEnvironmentLabel(event: GroupDetailEvent | null) {
+    if (event?.environment) return event.environment;
+    if (event?.releaseVersion) return `Release ${event.releaseVersion}`;
+    return 'Unknown';
+}
+
 function buildTimeline(events: GroupDetailEvent[]): TimelinePoint[] {
     const now = new Date();
     const map: Record<string, number> = {};
@@ -577,8 +673,8 @@ export default function IssueDetailPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-900 text-slate-100">
-            <header className="border-b border-slate-800 px-5 py-4 md:px-6">
+        <div className="issue-detail-shell min-h-screen text-slate-100">
+            <header className="issue-header-glass border-b border-white/5 px-5 py-4 md:px-6">
                 <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-4">
                     <div className="flex items-center gap-4 min-w-0">
                         <button
@@ -631,14 +727,14 @@ export default function IssueDetailPage() {
                                 loading={actionLoading === 'open'}
                                 onClick={() => void handleAction('open')}
                                 className="bg-blue-500/10 border-blue-500/30 text-blue-300 hover:bg-blue-500/20"
-                                label="Reopen"
+                                label="Reopen Issue"
                             />
                         )}
                     </div>
                 </div>
             </header>
 
-            <main className="mx-auto max-w-[1480px] px-5 py-6 md:px-6 xl:px-8 xl:py-7">
+            <main className="mx-auto max-w-[1480px] px-5 py-6 md:px-6 xl:px-8 xl:py-8">
                 <IssueDetailTopTabs
                     activeView={activeView}
                     onChange={handleViewChange}
@@ -705,27 +801,23 @@ function IssueDetailTopTabs({
     const tabs: Array<{
         value: IssueDetailView;
         label: string;
-        description: string;
     }> = [
         {
             value: 'investigation',
             label: 'Investigation',
-            description: 'Overview, event flow, stack inspection, and source maps.',
         },
         {
             value: 'guidance',
-            label: 'Guidance',
-            description: 'AI analysis, prevention signals, and related issue history.',
+            label: 'Guidance Workspace',
         },
     ];
-    const activeMeta = tabs.find((tab) => tab.value === activeView) ?? tabs[0];
 
     return (
-        <div className="mb-7 border-b border-slate-800/80">
+        <div className="mb-8 border-b border-white/5">
             <div
                 role="tablist"
                 aria-label="Issue detail sections"
-                className="flex items-end gap-7"
+                className="flex flex-wrap items-end gap-8"
             >
                 {tabs.map((tab) => {
                     const isActive = tab.value === activeView;
@@ -737,9 +829,9 @@ function IssueDetailTopTabs({
                             role="tab"
                             aria-selected={isActive}
                             onClick={() => onChange(tab.value)}
-                            className={`border-b-2 px-0 pb-3 pt-1 text-base transition-colors ${
+                            className={`border-b-2 px-0 pb-4 pt-1 text-base transition-colors ${
                                 isActive
-                                    ? 'border-blue-500 text-blue-400'
+                                    ? 'border-indigo-400 text-indigo-300'
                                     : 'border-transparent text-slate-400 hover:text-slate-200'
                             }`}
                         >
@@ -747,8 +839,13 @@ function IssueDetailTopTabs({
                         </button>
                     );
                 })}
+                <div className="flex items-center gap-2 border-b-2 border-transparent pb-4 pt-1 text-base text-slate-500">
+                    <span>Fix Memory</span>
+                    <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-200">
+                        Beta
+                    </span>
+                </div>
             </div>
-            <p className="pb-3 pt-2 text-sm text-slate-500">{activeMeta.description}</p>
         </div>
     );
 }
@@ -975,17 +1072,47 @@ function GuidanceTabContent({
     formatDate: (value: string) => string;
 }) {
     return (
-        <div className="space-y-6">
-            <div>
-                <h2 className="text-base font-semibold text-slate-100">
-                    Guidance Workspace
-                </h2>
-                <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
-                    Use event-level analysis, prevention signals, and related issue history to decide how to fix the problem and reduce repeat failures.
-                </p>
+        <div className="space-y-8">
+            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                <div>
+                    <h2 className="text-[2rem] font-semibold tracking-tight text-white">
+                        Guidance &amp; Prevention
+                    </h2>
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+                        Intelligent analysis and historical context to help you resolve this issue permanently and prevent future regressions.
+                    </p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <GuidanceChromeButton label="Share guidance">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="1.8"
+                                d="M8.684 13.342l6.632 3.316m0-9.316l-6.632 3.316M17 5a3 3 0 110 6 3 3 0 010-6zM6 10a3 3 0 110 6 3 3 0 010-6zm11 3a3 3 0 110 6 3 3 0 010-6z"
+                            />
+                        </svg>
+                    </GuidanceChromeButton>
+                    <GuidanceChromeButton label="Guidance settings">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="1.8"
+                                d="M10.325 4.317a1 1 0 011.35-.936l.963.385a1 1 0 00.772 0l.963-.385a1 1 0 011.35.936l.094 1.034a1 1 0 00.552.8l.915.527a1 1 0 01.432 1.303l-.431.945a1 1 0 000 .83l.431.945a1 1 0 01-.432 1.303l-.915.527a1 1 0 00-.552.8l-.094 1.034a1 1 0 01-1.35.936l-.963-.385a1 1 0 00-.772 0l-.963.385a1 1 0 01-1.35-.936l-.094-1.034a1 1 0 00-.552-.8l-.915-.527a1 1 0 01-.432-1.303l.431-.945a1 1 0 000-.83l-.431-.945a1 1 0 01.432-1.303l.915-.527a1 1 0 00.552-.8l.094-1.034z"
+                            />
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="1.8"
+                                d="M12 15a3 3 0 100-6 3 3 0 000 6z"
+                            />
+                        </svg>
+                    </GuidanceChromeButton>
+                </div>
             </div>
 
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_360px] xl:items-start">
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_360px] xl:items-start">
                 <AiAnalysisPanel
                     analysis={selectedEvent?.aiAnalysis ?? null}
                     selectedEvent={selectedEvent}
@@ -1000,6 +1127,8 @@ function GuidanceTabContent({
                     error={preventionInsightsError}
                 />
             </div>
+
+            <FixMemoryPreviewCard />
 
             <SimilarPastIssuesPanel
                 items={similarIssues}
@@ -1141,67 +1270,125 @@ function ResolveIssueDialog({
     );
 }
 
-function getSeverityPillClass(severity: EventAiAnalysis['severity']) {
-    switch (severity) {
-        case 'critical':
-            return 'border-red-500/40 bg-red-500/15 text-red-200';
-        case 'high':
-            return 'border-orange-500/40 bg-orange-500/15 text-orange-200';
-        case 'medium':
-            return 'border-amber-500/40 bg-amber-500/15 text-amber-200';
-        case 'low':
-            return 'border-emerald-500/40 bg-emerald-500/15 text-emerald-200';
-        default:
-            return 'border-slate-600 bg-slate-800 text-slate-300';
-    }
+function GuidanceChromeButton({
+    label,
+    children,
+}: {
+    label: string;
+    children: ReactNode;
+}) {
+    return (
+        <button
+            type="button"
+            aria-label={label}
+            disabled
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-400 shadow-[0_8px_24px_rgba(0,0,0,0.22)] transition-colors disabled:cursor-default disabled:opacity-100"
+        >
+            {children}
+        </button>
+    );
 }
 
-function getConfidencePillClass(confidence: EventAiAnalysis['confidence']) {
-    switch (confidence) {
-        case 'high':
-            return 'border-sky-500/40 bg-sky-500/15 text-sky-200';
-        case 'medium':
-            return 'border-blue-500/40 bg-blue-500/15 text-blue-200';
-        case 'low':
-            return 'border-slate-600 bg-slate-800 text-slate-300';
-        default:
-            return 'border-slate-600 bg-slate-800 text-slate-300';
-    }
+function FixMemoryPreviewCard() {
+    return (
+        <div className="guidance-dashed-panel relative overflow-hidden rounded-[28px] border border-dashed border-slate-700/80 px-6 py-6 ring-1 ring-white/5">
+            <div className="pointer-events-none absolute right-6 top-1/2 hidden -translate-y-1/2 text-[5rem] font-black tracking-[-0.1em] text-white/[0.03] md:block">
+                MEMORY
+            </div>
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-start gap-4">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-slate-700/80 bg-slate-900/70 text-slate-400">
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="1.8"
+                                d="M9 3h6m-7 4h8m-9 4h10m-5 4v6m-5-6h10"
+                            />
+                        </svg>
+                    </div>
+                    <div className="max-w-2xl">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-[1.75rem] font-semibold tracking-tight text-slate-100">
+                                Fix Memory
+                            </h3>
+                            <span className="rounded-full border border-slate-600/80 bg-slate-800/75 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                Coming Soon
+                            </span>
+                        </div>
+                        <p className="mt-2 text-sm leading-7 text-slate-400">
+                            Connect your resolution notes directly to the codebase. Automate documentation and prevent future engineers from repeating past mistakes.
+                        </p>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    disabled
+                    className="self-start rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-slate-200 shadow-[0_10px_28px_rgba(0,0,0,0.22)] disabled:cursor-default disabled:opacity-100"
+                >
+                    Notify Me
+                </button>
+            </div>
+        </div>
+    );
 }
 
-function AnalysisPill({
+function GuidanceMetricCard({
     label,
     value,
-    className,
+    valueClassName,
 }: {
     label: string;
     value: string;
-    className: string;
+    valueClassName: string;
 }) {
     return (
-        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${className}`}>
-            {label}: {value}
-        </span>
+        <div className="guidance-panel-soft rounded-[20px] border border-slate-800/80 px-4 py-4 ring-1 ring-white/5">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                {label}
+            </div>
+            <div className={`mt-2 text-base font-semibold ${valueClassName}`}>
+                {value}
+            </div>
+        </div>
     );
 }
 
 function AnalysisSectionCard({
     label,
     value,
-    accentClassName,
+    labelClassName,
+    iconClassName,
+    icon,
+    codeValue = false,
 }: {
     label: string;
     value: string;
-    accentClassName: string;
+    labelClassName: string;
+    iconClassName: string;
+    icon: ReactNode;
+    codeValue?: boolean;
 }) {
     return (
-        <div className="rounded-xl bg-slate-950/45 p-4 ring-1 ring-white/5">
-            <div className={`mb-2 text-[11px] font-semibold ${accentClassName}`}>
-                {label}
+        <div className="guidance-panel-soft rounded-[22px] border border-slate-800/80 p-5 ring-1 ring-white/5">
+            <div className="flex items-center gap-3">
+                <span className={`flex h-9 w-9 items-center justify-center rounded-xl border ${iconClassName}`}>
+                    {icon}
+                </span>
+                <div className={`text-[11px] font-semibold uppercase tracking-[0.26em] ${labelClassName}`}>
+                    {label}
+                </div>
             </div>
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-300">
-                {value}
-            </p>
+
+            {codeValue ? (
+                <div className="mt-4 rounded-xl border border-slate-800/80 bg-slate-950/80 px-3 py-3 font-mono text-[13px] text-slate-200">
+                    {value}
+                </div>
+            ) : (
+                <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-100/90">
+                    {value}
+                </p>
+            )}
         </div>
     );
 }
@@ -1225,33 +1412,77 @@ function AiAnalysisPanel({
         {
             label: 'Root Cause',
             value: analysis?.rootCause,
-            accentClassName: 'text-violet-300',
+            labelClassName: 'text-violet-300',
+            iconClassName: 'border-violet-500/20 bg-violet-500/10 text-violet-200',
+            codeValue: false,
+            icon: (
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="1.8"
+                        d="M11.25 6.75a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zm-7.5 10.5a6.75 6.75 0 1113.5 0"
+                    />
+                </svg>
+            ),
         },
         {
             label: 'Suggested Fix',
             value: analysis?.suggestedFix,
-            accentClassName: 'text-emerald-300',
+            labelClassName: 'text-emerald-300',
+            iconClassName: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200',
+            codeValue: false,
+            icon: (
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="1.8"
+                        d="M14.7 6.3a1 1 0 010 1.4L9.4 13l-2.1.7.7-2.1 5.3-5.3a1 1 0 011.4 0l.7.7zM6 18h12"
+                    />
+                </svg>
+            ),
         },
         {
             label: 'Likely Area',
             value: analysis?.likelyArea,
-            accentClassName: 'text-sky-300',
+            labelClassName: 'text-sky-300',
+            iconClassName: 'border-sky-500/20 bg-sky-500/10 text-sky-200',
+            codeValue: true,
+            icon: (
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="1.8"
+                        d="M8.25 8.25L4.5 12l3.75 3.75m7.5-7.5L19.5 12l-3.75 3.75"
+                    />
+                </svg>
+            ),
         },
         {
-            label: 'Next Step',
+            label: 'Immediate Next Step',
             value: analysis?.nextStep,
-            accentClassName: 'text-amber-300',
+            labelClassName: 'text-amber-300',
+            iconClassName: 'border-amber-500/20 bg-amber-500/10 text-amber-200',
+            codeValue: false,
+            icon: (
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="1.8"
+                        d="M13 3L4 14h6l-1 7 9-11h-6l1-7z"
+                    />
+                </svg>
+            ),
         },
-        {
-            label: 'Prevention Tip',
-            value: analysis?.preventionTip,
-            accentClassName: 'text-rose-300',
-        },
-    ].filter((section): section is {
-        label: string;
-        value: string;
-        accentClassName: string;
-    } => Boolean(section.value));
+    ].flatMap((section) => (section.value
+        ? [{
+            ...section,
+            value: section.value,
+        }]
+        : []));
 
     const hasRenderableAnalysis = Boolean(
         analysis
@@ -1260,116 +1491,205 @@ function AiAnalysisPanel({
             || sections.length > 0
             || analysis.severity
             || analysis.confidence
+            || analysis.preventionTip
         ),
     );
     const showLoadingState = Boolean(selectedEvent && analyzing && !hasRenderableAnalysis);
     const showEmptyState = !selectedEvent || (!showLoadingState && !hasRenderableAnalysis);
 
     return (
-        <div className="overflow-hidden rounded-2xl bg-slate-800/35 ring-1 ring-white/5">
-            <div className="flex flex-col justify-between gap-3 border-b border-slate-800/80 px-5 pb-4 pt-5 sm:flex-row sm:items-center">
-                <div>
-                    <h2 className="text-base font-semibold text-slate-100">AI Debug Guidance</h2>
-                    <p className="mt-1 text-sm text-slate-500">
-                        Event-based analysis for the selected event
-                    </p>
+        <div className="guidance-panel relative overflow-hidden rounded-[28px] border border-slate-800/80 ring-1 ring-white/5">
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-400/70 to-transparent" />
+            <div className="flex flex-col justify-between gap-4 border-b border-slate-800/80 px-6 pb-5 pt-6 lg:flex-row lg:items-center">
+                <div className="flex items-start gap-4">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-500/10 text-violet-200">
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="1.8"
+                                d="M12 3l1.8 4.7L18 9.5l-3.3 2.8 1 4.7L12 14.8 8.3 17l1-4.7L6 9.5l4.2-1.8L12 3z"
+                            />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 className="text-[1.7rem] font-semibold tracking-tight text-white">
+                            AI Debug Guidance
+                        </h2>
+                        <p className="mt-1 text-sm leading-6 text-slate-400">
+                            {selectedEvent
+                                ? `Deep analysis for event ${truncateIdentifier(selectedEvent.id, 12, 4)}`
+                                : 'Choose an event from the list to generate structured debugging guidance.'}
+                        </p>
+                    </div>
                 </div>
                 <button
                     type="button"
                     onClick={onAnalyze}
                     disabled={analyzing || !selectedEvent}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-blue-600 px-3.5 py-2 text-sm font-semibold text-white transition-colors hover:from-violet-500 hover:to-blue-500 disabled:opacity-50"
+                    className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-400 px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_32px_rgba(99,102,241,0.35)] transition-transform duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     {analyzing ? <Spinner /> : null}
                     {analyzing ? 'Analyzing...' : 'Analyze Selected Event'}
                 </button>
             </div>
-            <div className="p-5">
+
+            <div className="p-6">
                 {error && (
-                    <div className="mb-4 rounded-lg bg-red-500/10 px-3 py-2.5 text-sm text-red-300 ring-1 ring-red-500/25">
+                    <div className="mb-5 rounded-2xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-200 ring-1 ring-red-500/15">
                         {error}
                         {hasRenderableAnalysis ? ' Previous guidance is still shown below.' : ''}
                     </div>
                 )}
 
                 {showLoadingState ? (
-                    <div className="py-8 text-center">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-xs text-violet-200">
+                    <div className="py-14 text-center">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/20 bg-violet-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-violet-200">
                             <Spinner />
                             Analyzing selected event
                         </div>
-                        <p className="mt-3 text-sm text-slate-500">
+                        <p className="mt-4 text-sm leading-6 text-slate-400">
                             Building structured debugging guidance from the event context and stack trace.
                         </p>
                     </div>
                 ) : showEmptyState ? (
-                    <div className="py-8 text-center">
-                        <h3 className="text-slate-300 font-medium mb-1">
+                    <div className="py-14 text-center">
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700/80 bg-slate-900/80 text-slate-400">
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="1.8"
+                                    d="M12 6v6l4 2m5-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                            </svg>
+                        </div>
+                        <h3 className="mt-4 text-base font-semibold text-slate-100">
                             {selectedEvent ? 'No analysis for this event yet' : 'No event selected'}
                         </h3>
-                        <p className="text-sm text-slate-500">
+                        <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-400">
                             {selectedEvent
-                                ? 'Run analysis to get a concise root-cause readout, where to inspect, and the best next debugging step.'
-                                : 'Choose an event from the list to generate structured debugging guidance.'}
+                                ? 'Run analysis to get a concise root-cause readout, likely inspection area, and the best next debugging step.'
+                                : 'Choose an event from the event list to populate the guidance workspace.'}
                         </p>
                     </div>
                 ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-5">
                         {analyzing && (
-                            <div className="rounded-xl bg-violet-500/10 px-4 py-3 text-sm text-violet-100 ring-1 ring-violet-500/20">
+                            <div className="rounded-2xl border border-violet-500/20 bg-violet-500/10 px-4 py-3 text-sm text-violet-100 ring-1 ring-violet-500/10">
                                 Refreshing guidance for the selected event.
                             </div>
                         )}
 
-                        <div className="flex flex-col gap-3 rounded-xl bg-slate-950/40 px-4 py-3 ring-1 ring-white/5 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="text-xs text-slate-400">
-                                Selected event{' '}
-                                <span className="font-mono text-slate-200">{selectedEvent.id}</span>
+                        {selectedEvent && (
+                            <div className="guidance-panel-soft rounded-[22px] border border-slate-800/80 px-5 py-4 ring-1 ring-white/5">
+                                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                                    <div>
+                                        <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                                            Selected Event
+                                        </div>
+                                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                                            <span className="rounded-full border border-slate-700/80 bg-slate-900/80 px-3 py-1 text-xs font-medium text-slate-200">
+                                                <span className="font-mono">{truncateIdentifier(selectedEvent.id, 14, 4)}</span>
+                                            </span>
+                                            {selectedEvent.releaseVersion && (
+                                                <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-200">
+                                                    {selectedEvent.releaseVersion}
+                                                </span>
+                                            )}
+                                            {selectedEvent.level && (
+                                                <span className="rounded-full border border-slate-700/80 bg-slate-900/80 px-3 py-1 text-xs font-medium text-slate-300">
+                                                    {selectedEvent.level}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="text-sm text-slate-400">
+                                        Updated {formatRelativeTime(selectedEvent.timestamp || selectedEvent.createdAt)}
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                                {analysis?.severity && (
-                                    <AnalysisPill
-                                        label="Severity"
-                                        value={analysis.severity}
-                                        className={getSeverityPillClass(analysis.severity)}
-                                    />
-                                )}
-                                {analysis?.confidence && (
-                                    <AnalysisPill
-                                        label="Confidence"
-                                        value={analysis.confidence}
-                                        className={getConfidencePillClass(analysis.confidence)}
-                                    />
-                                )}
-                            </div>
+                        )}
+
+                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                            <GuidanceMetricCard
+                                label="Severity"
+                                value={getSeveritySummary(analysis?.severity ?? null)}
+                                valueClassName={getSeverityValueClass(analysis?.severity ?? null)}
+                            />
+                            <GuidanceMetricCard
+                                label="Confidence"
+                                value={getConfidenceSummary(analysis?.confidence ?? null)}
+                                valueClassName={getConfidenceValueClass(analysis?.confidence ?? null)}
+                            />
+                            <GuidanceMetricCard
+                                label="Last Event"
+                                value={selectedEvent
+                                    ? formatRelativeTime(selectedEvent.timestamp || selectedEvent.createdAt)
+                                    : '-'}
+                                valueClassName="text-slate-100"
+                            />
+                            <GuidanceMetricCard
+                                label="Environment"
+                                value={getEventEnvironmentLabel(selectedEvent)}
+                                valueClassName="text-slate-100"
+                            />
                         </div>
 
                         {analysis?.summary && (
-                            <div className="rounded-xl bg-slate-950/45 p-4 ring-1 ring-white/5">
-                                <div className="mb-2 text-[11px] font-semibold text-slate-400">
+                            <div className="rounded-[22px] border border-slate-800/80 bg-slate-950/55 px-5 py-5 ring-1 ring-white/5">
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-slate-500">
                                     Summary
                                 </div>
-                                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-300">
+                                <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-200">
                                     {analysis.summary}
                                 </p>
                             </div>
                         )}
 
                         {sections.length > 0 && (
-                            <div className="grid gap-3 xl:grid-cols-2">
+                            <div className="grid gap-4 xl:grid-cols-2">
                                 {sections.map((section) => (
                                     <AnalysisSectionCard
                                         key={section.label}
                                         label={section.label}
                                         value={section.value}
-                                        accentClassName={section.accentClassName}
+                                        labelClassName={section.labelClassName}
+                                        iconClassName={section.iconClassName}
+                                        icon={section.icon}
+                                        codeValue={section.codeValue}
                                     />
                                 ))}
                             </div>
                         )}
 
-                        {!analysis?.summary && sections.length === 0 && (
-                            <div className="rounded-xl bg-slate-950/45 p-4 text-sm text-slate-400 ring-1 ring-white/5">
+                        {analysis?.preventionTip && (
+                            <div className="rounded-[22px] border border-indigo-500/20 bg-indigo-500/[0.08] px-5 py-4 text-sm ring-1 ring-indigo-500/10">
+                                <div className="flex items-center gap-3 text-indigo-100">
+                                    <span className="flex h-8 w-8 items-center justify-center rounded-full border border-indigo-400/20 bg-indigo-400/10 text-indigo-200">
+                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth="1.8"
+                                                d="M12 3a6 6 0 00-3.6 10.8V17a1 1 0 001 1h5.2a1 1 0 001-1v-3.2A6 6 0 0012 3zm-2 17h4m-3 0v1m2-1v1"
+                                            />
+                                        </svg>
+                                    </span>
+                                    <div>
+                                        <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-indigo-300">
+                                            Pro-tip
+                                        </div>
+                                        <p className="mt-1 leading-6 text-indigo-50/90">
+                                            {analysis.preventionTip}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {!analysis?.summary && sections.length === 0 && !analysis?.preventionTip && (
+                            <div className="rounded-[22px] border border-slate-800/80 bg-slate-950/55 px-5 py-4 text-sm text-slate-400 ring-1 ring-white/5">
                                 Analysis returned limited structured data for this event.
                             </div>
                         )}
