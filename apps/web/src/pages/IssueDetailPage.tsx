@@ -14,7 +14,6 @@ import PreventionInsightsPanel from '../components/issue-detail/PreventionInsigh
 import SimilarPastIssuesPanel from '../components/issue-detail/SimilarPastIssuesPanel';
 import type { EventTab } from '../components/issue-detail/types';
 import IssueRegressionBadge from '../components/issues/IssueRegressionBadge';
-import IssueStatusBadge from '../components/issues/IssueStatusBadge';
 import {
     analyzeEvent,
     type EventAiAnalysis,
@@ -133,11 +132,11 @@ function getSeveritySummary(severity: EventAiAnalysis['severity']) {
 function getSeverityValueClass(severity: EventAiAnalysis['severity']) {
     switch (severity) {
         case 'critical':
-            return 'text-red-200';
+            return 'text-red-300';
         case 'high':
-            return 'text-orange-200';
+            return 'text-orange-300';
         case 'medium':
-            return 'text-amber-200';
+            return 'text-orange-200';
         case 'low':
             return 'text-emerald-200';
         default:
@@ -161,9 +160,9 @@ function getConfidenceSummary(confidence: EventAiAnalysis['confidence']) {
 function getConfidenceValueClass(confidence: EventAiAnalysis['confidence']) {
     switch (confidence) {
         case 'high':
-            return 'text-violet-200';
+            return 'text-slate-50';
         case 'medium':
-            return 'text-sky-200';
+            return 'text-orange-200';
         case 'low':
             return 'text-slate-300';
         default:
@@ -674,71 +673,70 @@ export default function IssueDetailPage() {
 
     return (
         <div className="issue-detail-shell min-h-screen text-slate-100">
-            <header className="issue-header-glass border-b border-white/5 px-5 py-4 md:px-6">
-                <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 min-w-0">
-                        <button
-                            onClick={() => navigate('/issues')}
-                            className="shrink-0 p-2 rounded-lg hover:bg-slate-800 transition-colors text-slate-400 hover:text-slate-200"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                                />
-                            </svg>
-                        </button>
+            <IssueDetailTopNavigation
+                onGoDashboard={() => navigate('/')}
+                onGoIssues={() => navigate('/issues')}
+            />
+
+            <main className="mx-auto max-w-[1480px] px-5 py-8 md:px-6 xl:px-8 xl:py-9">
+                <section className="border-b border-[#222] pb-7">
+                    <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0">
-                            <h1 className="text-xl font-bold truncate">{group.title}</h1>
-                            <div className="flex items-center gap-2 mt-1">
-                                <IssueStatusBadge status={group.status} />
-                                <IssueRegressionBadge
-                                    isRegression={group.isRegression}
-                                    regressionCount={group.regressionCount}
-                                />
+                            <div className="flex flex-wrap items-center gap-3">
+                                <IssueHeaderStatusBadge status={group.status} />
                                 <span className="text-xs text-slate-500">
+                                    {formatRelativeTime(group.lastSeenAt)}
+                                </span>
+                                {group.isRegression && (
+                                    <IssueRegressionBadge
+                                        isRegression={group.isRegression}
+                                        regressionCount={group.regressionCount}
+                                    />
+                                )}
+                                <span className="text-xs text-slate-600">
                                     {group.eventCount} events
                                 </span>
                             </div>
+                            <h1 className="mt-4 max-w-5xl text-3xl font-semibold tracking-tight text-white md:text-[2.35rem]">
+                                {group.title}
+                            </h1>
+                        </div>
+
+                        <div className="flex shrink-0 items-center gap-3">
+                            {group.status === 'open' && (
+                                <>
+                                    <ActionButton
+                                        loading={actionLoading === 'resolve'}
+                                        onClick={openResolveDialog}
+                                        className="border-orange-500 bg-orange-500 text-white hover:bg-orange-400 hover:border-orange-400"
+                                        label="Resolve"
+                                    />
+                                    <ActionButton
+                                        loading={actionLoading === 'ignore'}
+                                        onClick={() => void handleAction('ignore')}
+                                        className="border-[#303030] bg-transparent text-slate-300 hover:border-slate-200 hover:text-white"
+                                        label="Ignore"
+                                    />
+                                </>
+                            )}
+                            {(group.status === 'resolved' || group.status === 'ignored') && (
+                                <ActionButton
+                                    loading={actionLoading === 'open'}
+                                    onClick={() => void handleAction('open')}
+                                    className="border-orange-500 bg-orange-500 text-white hover:bg-orange-400 hover:border-orange-400"
+                                    label="Reopen Issue"
+                                />
+                            )}
                         </div>
                     </div>
+                </section>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                        {group.status === 'open' && (
-                            <>
-                                <ActionButton
-                                    loading={actionLoading === 'resolve'}
-                                    onClick={openResolveDialog}
-                                    className="bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20"
-                                    label="Resolve"
-                                />
-                                <ActionButton
-                                    loading={actionLoading === 'ignore'}
-                                    onClick={() => void handleAction('ignore')}
-                                    className="bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20"
-                                    label="Ignore"
-                                />
-                            </>
-                        )}
-                        {(group.status === 'resolved' || group.status === 'ignored') && (
-                            <ActionButton
-                                loading={actionLoading === 'open'}
-                                onClick={() => void handleAction('open')}
-                                className="bg-blue-500/10 border-blue-500/30 text-blue-300 hover:bg-blue-500/20"
-                                label="Reopen Issue"
-                            />
-                        )}
-                    </div>
+                <div className="mt-5">
+                    <IssueDetailTopTabs
+                        activeView={activeView}
+                        onChange={handleViewChange}
+                    />
                 </div>
-            </header>
-
-            <main className="mx-auto max-w-[1480px] px-5 py-6 md:px-6 xl:px-8 xl:py-8">
-                <IssueDetailTopTabs
-                    activeView={activeView}
-                    onChange={handleViewChange}
-                />
 
                 {activeView === 'investigation' ? (
                     <InvestigationTabContent
@@ -791,6 +789,133 @@ export default function IssueDetailPage() {
     );
 }
 
+function IssueDetailTopNavigation({
+    onGoDashboard,
+    onGoIssues,
+}: {
+    onGoDashboard: () => void;
+    onGoIssues: () => void;
+}) {
+    return (
+        <header className="issue-header-glass sticky top-0 z-30 border-b border-[#1b1b1b]">
+            <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-4 px-5 py-3 md:px-6 xl:px-8">
+                <div className="flex min-w-0 items-center gap-8">
+                    <button
+                        type="button"
+                        onClick={onGoDashboard}
+                        className="flex shrink-0 items-center gap-3 text-left"
+                    >
+                        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-orange-500 text-white shadow-[0_0_18px_rgba(249,115,22,0.25)]">
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M7 17V9m5 8V5m5 12v-6"
+                                />
+                            </svg>
+                        </div>
+                        <div className="hidden leading-none sm:block">
+                            <div className="text-sm font-bold uppercase tracking-[0.04em] text-white">
+                                Smart Error Tracker
+                            </div>
+                            <div className="mt-1 text-[10px] uppercase tracking-[0.24em] text-slate-500">
+                                Enterprise Monitor
+                            </div>
+                        </div>
+                    </button>
+
+                    <nav className="hidden items-center gap-6 md:flex">
+                        <TopNavButton label="Dashboard" onClick={onGoDashboard} />
+                        <TopNavButton label="Issues" onClick={onGoIssues} active />
+                        <TopNavButton label="Projects" disabled />
+                        <TopNavButton label="Alerts" disabled />
+                    </nav>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <div className="relative hidden lg:block">
+                        <svg
+                            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"
+                            />
+                        </svg>
+                        <input
+                            type="text"
+                            placeholder="Search traces, users..."
+                            className="w-60 rounded-full border border-[#262626] bg-[#111] py-2 pl-9 pr-4 text-sm text-slate-200 outline-none placeholder:text-slate-500 focus:border-orange-500/60"
+                        />
+                    </div>
+                    <button
+                        type="button"
+                        className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition-colors hover:text-slate-200"
+                    >
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="1.9"
+                                d="M15 17h5l-1.4-1.4a2 2 0 01-.6-1.44V11a6 6 0 00-4-5.66V5a2 2 0 10-4 0v.34A6 6 0 006 11v3.16c0 .53-.21 1.04-.59 1.41L4 17h5m6 0a3 3 0 11-6 0"
+                            />
+                        </svg>
+                    </button>
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1d3b3b] text-xs font-semibold text-emerald-100">
+                        OG
+                    </div>
+                </div>
+            </div>
+        </header>
+    );
+}
+
+function TopNavButton({
+    label,
+    onClick,
+    active = false,
+    disabled = false,
+}: {
+    label: string;
+    onClick?: () => void;
+    active?: boolean;
+    disabled?: boolean;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            className={`border-b-2 pb-1 text-sm font-medium transition-colors ${active
+                ? 'border-orange-500 text-white'
+                : 'border-transparent text-slate-500 hover:text-slate-200'
+                } ${disabled ? 'cursor-default opacity-100 hover:text-slate-500' : ''}`}
+        >
+            {label}
+        </button>
+    );
+}
+
+function IssueHeaderStatusBadge({ status }: { status: string }) {
+    const classes = status === 'resolved'
+        ? 'bg-emerald-500/18 text-emerald-300'
+        : status === 'ignored'
+            ? 'bg-amber-500/18 text-amber-300'
+            : 'bg-red-500/18 text-red-300';
+
+    return (
+        <span className={`rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${classes}`}>
+            {status}
+        </span>
+    );
+}
+
 function IssueDetailTopTabs({
     activeView,
     onChange,
@@ -813,7 +938,7 @@ function IssueDetailTopTabs({
     ];
 
     return (
-        <div className="mb-8 border-b border-white/5">
+        <div className="mb-8 border-b border-[#222]">
             <div
                 role="tablist"
                 aria-label="Issue detail sections"
@@ -831,7 +956,7 @@ function IssueDetailTopTabs({
                             onClick={() => onChange(tab.value)}
                             className={`border-b-2 px-0 pb-4 pt-1 text-base transition-colors ${
                                 isActive
-                                    ? 'border-indigo-400 text-indigo-300'
+                                    ? 'border-orange-500 text-white'
                                     : 'border-transparent text-slate-400 hover:text-slate-200'
                             }`}
                         >
@@ -841,7 +966,7 @@ function IssueDetailTopTabs({
                 })}
                 <div className="flex items-center gap-2 border-b-2 border-transparent pb-4 pt-1 text-base text-slate-500">
                     <span>Fix Memory</span>
-                    <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-200">
+                    <span className="rounded bg-orange-500/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-300">
                         Beta
                     </span>
                 </div>
@@ -1079,63 +1204,61 @@ function GuidanceTabContent({
                         Guidance &amp; Prevention
                     </h2>
                     <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-                        Intelligent analysis and historical context to help you resolve this issue permanently and prevent future regressions.
+                        Intelligent analysis and historical context to help you resolve this issue permanently.
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <GuidanceChromeButton label="Share guidance">
+                    <GuidanceChromeButton label="Previous guidance">
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth="1.8"
-                                d="M8.684 13.342l6.632 3.316m0-9.316l-6.632 3.316M17 5a3 3 0 110 6 3 3 0 010-6zM6 10a3 3 0 110 6 3 3 0 010-6zm11 3a3 3 0 110 6 3 3 0 010-6z"
+                                d="M15 19l-7-7 7-7"
                             />
                         </svg>
                     </GuidanceChromeButton>
-                    <GuidanceChromeButton label="Guidance settings">
+                    <GuidanceChromeButton label="Next guidance">
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth="1.8"
-                                d="M10.325 4.317a1 1 0 011.35-.936l.963.385a1 1 0 00.772 0l.963-.385a1 1 0 011.35.936l.094 1.034a1 1 0 00.552.8l.915.527a1 1 0 01.432 1.303l-.431.945a1 1 0 000 .83l.431.945a1 1 0 01-.432 1.303l-.915.527a1 1 0 00-.552.8l-.094 1.034a1 1 0 01-1.35.936l-.963-.385a1 1 0 00-.772 0l-.963.385a1 1 0 01-1.35-.936l-.094-1.034a1 1 0 00-.552-.8l-.915-.527a1 1 0 01-.432-1.303l.431-.945a1 1 0 000-.83l-.431-.945a1 1 0 01.432-1.303l.915-.527a1 1 0 00.552-.8l.094-1.034z"
-                            />
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="1.8"
-                                d="M12 15a3 3 0 100-6 3 3 0 000 6z"
+                                d="M9 5l7 7-7 7"
                             />
                         </svg>
                     </GuidanceChromeButton>
                 </div>
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_360px] xl:items-start">
-                <AiAnalysisPanel
-                    analysis={selectedEvent?.aiAnalysis ?? null}
-                    selectedEvent={selectedEvent}
-                    analyzing={aiAnalyzing}
-                    error={analysisError}
-                    onAnalyze={onAnalyze}
-                />
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_330px] xl:items-start">
+                <div className="space-y-8">
+                    <AiAnalysisPanel
+                        analysis={selectedEvent?.aiAnalysis ?? null}
+                        selectedEvent={selectedEvent}
+                        analyzing={aiAnalyzing}
+                        error={analysisError}
+                        onAnalyze={onAnalyze}
+                    />
 
-                <PreventionInsightsPanel
-                    insights={preventionInsights}
-                    loading={preventionInsightsLoading}
-                    error={preventionInsightsError}
-                />
+                    <FixMemoryPreviewCard />
+
+                    <SimilarPastIssuesPanel
+                        items={similarIssues}
+                        loading={similarIssuesLoading}
+                        error={similarIssuesError}
+                        formatDate={formatDate}
+                    />
+                </div>
+
+                <div className="min-w-0">
+                    <PreventionInsightsPanel
+                        insights={preventionInsights}
+                        loading={preventionInsightsLoading}
+                        error={preventionInsightsError}
+                    />
+                </div>
             </div>
-
-            <FixMemoryPreviewCard />
-
-            <SimilarPastIssuesPanel
-                items={similarIssues}
-                loading={similarIssuesLoading}
-                error={similarIssuesError}
-                formatDate={formatDate}
-            />
         </div>
     );
 }
@@ -1162,7 +1285,7 @@ function ActionButton({ loading, onClick, label, className }: ActionButtonProps)
             type="button"
             onClick={onClick}
             disabled={loading}
-            className={`px-4 py-2 text-sm font-medium border rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2 ${className}`}
+            className={`flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 ${className}`}
         >
             {loading ? <Spinner /> : null}
             {label}
@@ -1217,9 +1340,9 @@ function ResolveIssueDialog({
     onSubmit: () => void;
 }) {
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm">
-            <div className="w-full max-w-xl rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl shadow-slate-950/40">
-                <div className="border-b border-slate-800 px-5 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-sm">
+            <div className="w-full max-w-xl rounded-[24px] border border-[#2b2b2b] bg-[#101010] shadow-2xl shadow-black/50">
+                <div className="border-b border-[#232323] px-5 py-4">
                     <h2 className="text-base font-semibold text-slate-100">Resolve Issue</h2>
                     <p className="mt-1 text-sm text-slate-400">
                         Add an optional note describing what fixed the issue.
@@ -1235,7 +1358,7 @@ function ResolveIssueDialog({
                             onChange={(event) => onChangeNote(event.target.value)}
                             rows={5}
                             placeholder="Added null guard before rendering checkout summary."
-                            className="mt-2 w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 outline-none transition-colors placeholder:text-slate-600 focus:border-violet-500/60"
+                            className="mt-2 w-full resize-y rounded-xl border border-[#2c2c2c] bg-black px-3 py-2.5 text-sm text-slate-100 outline-none transition-colors placeholder:text-slate-600 focus:border-orange-500/60"
                         />
                     </label>
 
@@ -1246,12 +1369,12 @@ function ResolveIssueDialog({
                     )}
                 </div>
 
-                <div className="flex items-center justify-end gap-3 border-t border-slate-800 px-5 py-4">
+                <div className="flex items-center justify-end gap-3 border-t border-[#232323] px-5 py-4">
                     <button
                         type="button"
                         onClick={onCancel}
                         disabled={loading}
-                        className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 disabled:opacity-50"
+                        className="rounded-xl border border-[#2f2f2f] px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:border-slate-200 hover:text-white disabled:opacity-50"
                     >
                         Cancel
                     </button>
@@ -1259,7 +1382,7 @@ function ResolveIssueDialog({
                         type="button"
                         onClick={onSubmit}
                         disabled={loading}
-                        className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
+                        className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-400 disabled:opacity-50"
                     >
                         {loading ? <Spinner /> : null}
                         {loading ? 'Resolving...' : 'Resolve Issue'}
@@ -1282,7 +1405,7 @@ function GuidanceChromeButton({
             type="button"
             aria-label={label}
             disabled
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-400 shadow-[0_8px_24px_rgba(0,0,0,0.22)] transition-colors disabled:cursor-default disabled:opacity-100"
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#232323] bg-[#111] text-slate-500 transition-colors disabled:cursor-default disabled:opacity-100"
         >
             {children}
         </button>
@@ -1291,13 +1414,13 @@ function GuidanceChromeButton({
 
 function FixMemoryPreviewCard() {
     return (
-        <div className="guidance-dashed-panel relative overflow-hidden rounded-[28px] border border-dashed border-slate-700/80 px-6 py-6 ring-1 ring-white/5">
-            <div className="pointer-events-none absolute right-6 top-1/2 hidden -translate-y-1/2 text-[5rem] font-black tracking-[-0.1em] text-white/[0.03] md:block">
+        <div className="guidance-dashed-panel relative overflow-hidden rounded-[28px] border border-dashed border-[#313131] px-6 py-7 ring-1 ring-white/5">
+            <div className="pointer-events-none absolute right-6 top-1/2 hidden -translate-y-1/2 text-[5.5rem] font-black italic tracking-[-0.08em] text-white/[0.05] md:block">
                 MEMORY
             </div>
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-start gap-4">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-slate-700/80 bg-slate-900/70 text-slate-400">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[#2e2e2e] bg-[#111] text-slate-400">
                         <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path
                                 strokeLinecap="round"
@@ -1312,19 +1435,19 @@ function FixMemoryPreviewCard() {
                             <h3 className="text-[1.75rem] font-semibold tracking-tight text-slate-100">
                                 Fix Memory
                             </h3>
-                            <span className="rounded-full border border-slate-600/80 bg-slate-800/75 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300">
+                            <span className="rounded bg-orange-500/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-300">
                                 Coming Soon
                             </span>
                         </div>
                         <p className="mt-2 text-sm leading-7 text-slate-400">
-                            Connect your resolution notes directly to the codebase. Automate documentation and prevent future engineers from repeating past mistakes.
+                            Connect your resolution notes directly to the codebase. Automate documentation and prevent future regressions from repeating past mistakes.
                         </p>
                     </div>
                 </div>
                 <button
                     type="button"
                     disabled
-                    className="self-start rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-slate-200 shadow-[0_10px_28px_rgba(0,0,0,0.22)] disabled:cursor-default disabled:opacity-100"
+                    className="self-start rounded-full bg-white px-6 py-2.5 text-xs font-bold uppercase tracking-[0.22em] text-black disabled:cursor-default disabled:opacity-100"
                 >
                     Notify Me
                 </button>
@@ -1343,11 +1466,11 @@ function GuidanceMetricCard({
     valueClassName: string;
 }) {
     return (
-        <div className="guidance-panel-soft rounded-[20px] border border-slate-800/80 px-4 py-4 ring-1 ring-white/5">
+        <div className="guidance-panel-soft rounded-[18px] border border-[#262626] px-4 py-4 ring-1 ring-white/5">
             <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
                 {label}
             </div>
-            <div className={`mt-2 text-base font-semibold ${valueClassName}`}>
+            <div className={`mt-2 text-[1.05rem] font-semibold ${valueClassName}`}>
                 {value}
             </div>
         </div>
@@ -1370,9 +1493,9 @@ function AnalysisSectionCard({
     codeValue?: boolean;
 }) {
     return (
-        <div className="guidance-panel-soft rounded-[22px] border border-slate-800/80 p-5 ring-1 ring-white/5">
+        <div className="guidance-panel-soft rounded-[20px] border border-[#262626] p-5 ring-1 ring-white/5">
             <div className="flex items-center gap-3">
-                <span className={`flex h-9 w-9 items-center justify-center rounded-xl border ${iconClassName}`}>
+                <span className={`flex h-8 w-8 items-center justify-center rounded-lg border ${iconClassName}`}>
                     {icon}
                 </span>
                 <div className={`text-[11px] font-semibold uppercase tracking-[0.26em] ${labelClassName}`}>
@@ -1381,11 +1504,11 @@ function AnalysisSectionCard({
             </div>
 
             {codeValue ? (
-                <div className="mt-4 rounded-xl border border-slate-800/80 bg-slate-950/80 px-3 py-3 font-mono text-[13px] text-slate-200">
+                <div className="mt-4 rounded-lg border border-[#2b2b2b] bg-black px-3 py-2.5 font-mono text-[13px] text-orange-300">
                     {value}
                 </div>
             ) : (
-                <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-100/90">
+                <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-300">
                     {value}
                 </p>
             )}
@@ -1412,8 +1535,8 @@ function AiAnalysisPanel({
         {
             label: 'Root Cause',
             value: analysis?.rootCause,
-            labelClassName: 'text-violet-300',
-            iconClassName: 'border-violet-500/20 bg-violet-500/10 text-violet-200',
+            labelClassName: 'text-slate-500',
+            iconClassName: 'border-orange-500/20 bg-orange-500/10 text-orange-300',
             codeValue: false,
             icon: (
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1421,7 +1544,7 @@ function AiAnalysisPanel({
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth="1.8"
-                        d="M11.25 6.75a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zm-7.5 10.5a6.75 6.75 0 1113.5 0"
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
                     />
                 </svg>
             ),
@@ -1429,8 +1552,8 @@ function AiAnalysisPanel({
         {
             label: 'Suggested Fix',
             value: analysis?.suggestedFix,
-            labelClassName: 'text-emerald-300',
-            iconClassName: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200',
+            labelClassName: 'text-slate-500',
+            iconClassName: 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300',
             codeValue: false,
             icon: (
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1438,7 +1561,7 @@ function AiAnalysisPanel({
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth="1.8"
-                        d="M14.7 6.3a1 1 0 010 1.4L9.4 13l-2.1.7.7-2.1 5.3-5.3a1 1 0 011.4 0l.7.7zM6 18h12"
+                        d="M4 7h16M4 12h16M4 17h16"
                     />
                 </svg>
             ),
@@ -1446,8 +1569,8 @@ function AiAnalysisPanel({
         {
             label: 'Likely Area',
             value: analysis?.likelyArea,
-            labelClassName: 'text-sky-300',
-            iconClassName: 'border-sky-500/20 bg-sky-500/10 text-sky-200',
+            labelClassName: 'text-slate-500',
+            iconClassName: 'border-slate-700 bg-[#171717] text-slate-300',
             codeValue: true,
             icon: (
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1455,7 +1578,7 @@ function AiAnalysisPanel({
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth="1.8"
-                        d="M8.25 8.25L4.5 12l3.75 3.75m7.5-7.5L19.5 12l-3.75 3.75"
+                        d="M7 4h7l5 5v11a1 1 0 01-1 1H7a2 2 0 01-2-2V6a2 2 0 012-2z"
                     />
                 </svg>
             ),
@@ -1463,7 +1586,7 @@ function AiAnalysisPanel({
         {
             label: 'Immediate Next Step',
             value: analysis?.nextStep,
-            labelClassName: 'text-amber-300',
+            labelClassName: 'text-slate-500',
             iconClassName: 'border-amber-500/20 bg-amber-500/10 text-amber-200',
             codeValue: false,
             icon: (
@@ -1498,11 +1621,10 @@ function AiAnalysisPanel({
     const showEmptyState = !selectedEvent || (!showLoadingState && !hasRenderableAnalysis);
 
     return (
-        <div className="guidance-panel relative overflow-hidden rounded-[28px] border border-slate-800/80 ring-1 ring-white/5">
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-400/70 to-transparent" />
-            <div className="flex flex-col justify-between gap-4 border-b border-slate-800/80 px-6 pb-5 pt-6 lg:flex-row lg:items-center">
+        <div className="guidance-panel relative overflow-hidden rounded-[28px] border border-[#2b241f] ring-1 ring-white/5">
+            <div className="flex flex-col justify-between gap-4 border-b border-[#252525] px-6 pb-5 pt-6 lg:flex-row lg:items-center">
                 <div className="flex items-start gap-4">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-500/10 text-violet-200">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-500/12 text-orange-300">
                         <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path
                                 strokeLinecap="round"
@@ -1518,7 +1640,7 @@ function AiAnalysisPanel({
                         </h2>
                         <p className="mt-1 text-sm leading-6 text-slate-400">
                             {selectedEvent
-                                ? `Deep analysis for event ${truncateIdentifier(selectedEvent.id, 12, 4)}`
+                                ? <>Deep analysis for event: <span className="font-mono text-orange-300">{truncateIdentifier(selectedEvent.id, 12, 4)}</span></>
                                 : 'Choose an event from the list to generate structured debugging guidance.'}
                         </p>
                     </div>
@@ -1527,7 +1649,7 @@ function AiAnalysisPanel({
                     type="button"
                     onClick={onAnalyze}
                     disabled={analyzing || !selectedEvent}
-                    className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-400 px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_32px_rgba(99,102,241,0.35)] transition-transform duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-[0_0_24px_rgba(249,115,22,0.3)] transition-colors hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     {analyzing ? <Spinner /> : null}
                     {analyzing ? 'Analyzing...' : 'Analyze Selected Event'}
@@ -1544,7 +1666,7 @@ function AiAnalysisPanel({
 
                 {showLoadingState ? (
                     <div className="py-14 text-center">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/20 bg-violet-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-violet-200">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-orange-200">
                             <Spinner />
                             Analyzing selected event
                         </div>
@@ -1554,7 +1676,7 @@ function AiAnalysisPanel({
                     </div>
                 ) : showEmptyState ? (
                     <div className="py-14 text-center">
-                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700/80 bg-slate-900/80 text-slate-400">
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-[#2a2a2a] bg-black/40 text-slate-500">
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path
                                     strokeLinecap="round"
@@ -1576,38 +1698,8 @@ function AiAnalysisPanel({
                 ) : (
                     <div className="space-y-5">
                         {analyzing && (
-                            <div className="rounded-2xl border border-violet-500/20 bg-violet-500/10 px-4 py-3 text-sm text-violet-100 ring-1 ring-violet-500/10">
+                            <div className="rounded-2xl border border-orange-500/20 bg-orange-500/10 px-4 py-3 text-sm text-orange-100 ring-1 ring-orange-500/10">
                                 Refreshing guidance for the selected event.
-                            </div>
-                        )}
-
-                        {selectedEvent && (
-                            <div className="guidance-panel-soft rounded-[22px] border border-slate-800/80 px-5 py-4 ring-1 ring-white/5">
-                                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                                    <div>
-                                        <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                                            Selected Event
-                                        </div>
-                                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                                            <span className="rounded-full border border-slate-700/80 bg-slate-900/80 px-3 py-1 text-xs font-medium text-slate-200">
-                                                <span className="font-mono">{truncateIdentifier(selectedEvent.id, 14, 4)}</span>
-                                            </span>
-                                            {selectedEvent.releaseVersion && (
-                                                <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-200">
-                                                    {selectedEvent.releaseVersion}
-                                                </span>
-                                            )}
-                                            {selectedEvent.level && (
-                                                <span className="rounded-full border border-slate-700/80 bg-slate-900/80 px-3 py-1 text-xs font-medium text-slate-300">
-                                                    {selectedEvent.level}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="text-sm text-slate-400">
-                                        Updated {formatRelativeTime(selectedEvent.timestamp || selectedEvent.createdAt)}
-                                    </div>
-                                </div>
                             </div>
                         )}
 
@@ -1623,7 +1715,7 @@ function AiAnalysisPanel({
                                 valueClassName={getConfidenceValueClass(analysis?.confidence ?? null)}
                             />
                             <GuidanceMetricCard
-                                label="Last Event"
+                                label="Last Print"
                                 value={selectedEvent
                                     ? formatRelativeTime(selectedEvent.timestamp || selectedEvent.createdAt)
                                     : '-'}
@@ -1637,9 +1729,9 @@ function AiAnalysisPanel({
                         </div>
 
                         {analysis?.summary && (
-                            <div className="rounded-[22px] border border-slate-800/80 bg-slate-950/55 px-5 py-5 ring-1 ring-white/5">
+                            <div className="rounded-[20px] border border-[#2a2a2a] bg-black/35 px-5 py-5 ring-1 ring-white/5">
                                 <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-slate-500">
-                                    Summary
+                                    Analysis Summary
                                 </div>
                                 <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-200">
                                     {analysis.summary}
@@ -1664,9 +1756,9 @@ function AiAnalysisPanel({
                         )}
 
                         {analysis?.preventionTip && (
-                            <div className="rounded-[22px] border border-indigo-500/20 bg-indigo-500/[0.08] px-5 py-4 text-sm ring-1 ring-indigo-500/10">
-                                <div className="flex items-center gap-3 text-indigo-100">
-                                    <span className="flex h-8 w-8 items-center justify-center rounded-full border border-indigo-400/20 bg-indigo-400/10 text-indigo-200">
+                            <div className="rounded-[20px] border border-orange-500/20 bg-orange-500/[0.08] px-5 py-4 text-sm ring-1 ring-orange-500/10">
+                                <div className="flex items-center gap-3 text-orange-100">
+                                    <span className="flex h-8 w-8 items-center justify-center rounded-full border border-orange-400/20 bg-orange-400/10 text-orange-200">
                                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path
                                                 strokeLinecap="round"
@@ -1677,10 +1769,10 @@ function AiAnalysisPanel({
                                         </svg>
                                     </span>
                                     <div>
-                                        <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-indigo-300">
+                                        <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-orange-300">
                                             Pro-tip
                                         </div>
-                                        <p className="mt-1 leading-6 text-indigo-50/90">
+                                        <p className="mt-1 leading-6 text-orange-50/90">
                                             {analysis.preventionTip}
                                         </p>
                                     </div>
