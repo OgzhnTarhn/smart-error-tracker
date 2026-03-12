@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import DashboardNavbar from '../components/layout/DashboardNavbar';
 import IssueFilterBar from '../components/issues/IssueFilterBar';
 import IssueLevelBadge from '../components/issues/IssueLevelBadge';
 import IssueMetaRow from '../components/issues/IssueMetaRow';
@@ -306,6 +307,7 @@ export default function IssuesPage() {
 
     return (
         <div className="min-h-screen bg-slate-900 text-slate-100">
+            <DashboardNavbar />
             <header className="border-b border-slate-800 px-6 py-4">
                 <div className="max-w-7xl mx-auto flex items-center justify-between">
                     <div>
@@ -315,17 +317,6 @@ export default function IssuesPage() {
                         <p className="text-sm text-slate-500 mt-0.5">Issues</p>
                     </div>
                     <div className="flex gap-2 items-center">
-                        <nav className="flex gap-2 mr-4">
-                            <button
-                                onClick={() => navigate('/')}
-                                className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors"
-                            >
-                                Overview
-                            </button>
-                            <span className="px-4 py-2 text-sm font-medium text-violet-400 bg-violet-500/10 border border-violet-500/30 rounded-lg">
-                                Issues
-                            </span>
-                        </nav>
                         <button
                             onClick={handleRefresh}
                             disabled={loading}

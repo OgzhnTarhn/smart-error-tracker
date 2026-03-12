@@ -26,9 +26,9 @@ export default function OverviewMetricCard({
                 : 'text-slate-500';
 
     function formatValue(val: number): string {
-        if (val >= 1000) {
+        if (val >= 100_000) {
             const k = val / 1000;
-            return k % 1 === 0 ? `${k}k` : `${k.toFixed(1)}k`;
+            return `${k.toFixed(1)}k`;
         }
         return val.toLocaleString();
     }

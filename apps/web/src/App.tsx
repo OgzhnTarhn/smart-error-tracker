@@ -8,6 +8,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<OverviewPage />} />
+        <Route path="/dashboard" element={<OverviewPage />} />
         <Route path="/issues" element={<IssuesPage />} />
         <Route path="/issues/:id" element={<IssueDetailPage />} />
       </Routes>

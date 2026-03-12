@@ -81,6 +81,12 @@ function parseEnumQuery<T extends readonly string[]>(
     : undefined;
 }
 
+function parseStatsRangeDays(value: string | undefined) {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === '30d') return 30;
+  return 7;
+}
+
 const GROUP_STATUS = {
   OPEN: 'open',
   RESOLVED: 'resolved',
@@ -796,11 +802,18 @@ export class EventsController {
   }
 
   @Get('stats')
-  async getStats(@Headers('x-api-key') apiKey: string | undefined) {
+  async getStats(
+    @Headers('x-api-key') apiKey: string | undefined,
+    @Query('range') range?: string,
+  ) {
     const projectId = await this.resolveProjectIdFromApiKey(apiKey);
     if (!projectId) return { ok: false, error: 'unauthorized' };
 
-    return this.dashboardStats.getStats(projectId);
+    return this.dashboardStats.getStats(
+      projectId,
+      undefined,
+      parseStatsRangeDays(range),
+    );
   }
 
   @Get('groups')

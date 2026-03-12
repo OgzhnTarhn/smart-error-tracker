@@ -43,12 +43,6 @@ function formatEventCount(count: number): string {
     return count.toLocaleString();
 }
 
-function IssueToggle({ on }: { on: boolean }) {
-    return (
-        <div className={`toggle-switch ${on ? 'on' : 'off'}`} />
-    );
-}
-
 function TopIssuesSkeleton() {
     return (
         <div className="space-y-3 animate-pulse p-4">
@@ -74,7 +68,7 @@ export default function TopIssuesCard({
             action={
                 <button
                     type="button"
-                    className="text-xs text-[var(--dash-text-muted)] hover:text-white transition-colors"
+                    className="text-xs text-[var(--dash-text-muted)] hover:text-white transition-colors cursor-pointer"
                 >
                     View All
                 </button>
@@ -118,13 +112,10 @@ export default function TopIssuesCard({
                             <div className="mt-1 text-xs text-[var(--dash-text-dim)] font-mono truncate">
                                 {source}
                             </div>
-                            <div className="mt-3 flex items-center justify-between">
-                                <div className="flex items-center gap-1.5">
-                                    <IssueToggle on={issue.status === 'resolved'} />
-                                    <IssueToggle on={issue.eventCount > 1000} />
-                                </div>
-                                <span className="text-xs text-[var(--dash-text-muted)] tabular-nums">
-                                    {formatEventCount(issue.eventCount)} events
+                            <div className="mt-3 flex items-center justify-end">
+                                <span className="text-lg font-bold text-white tabular-nums">
+                                    {formatEventCount(issue.eventCount)}
+                                    <span className="text-xs font-normal text-[var(--dash-text-muted)] ml-1.5">events</span>
                                 </span>
                             </div>
                         </button>

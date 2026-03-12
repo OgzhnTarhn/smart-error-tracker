@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
     getDashboardStats,
     type DashboardBreakdownItem,
+    type DashboardRange,
     type DashboardStatsData,
     type DashboardStatsResponse,
 } from '../lib/api';
@@ -45,7 +46,7 @@ interface UseDashboardStatsResult {
     refresh: () => Promise<void>;
 }
 
-export function useDashboardStats(): UseDashboardStatsResult {
+export function useDashboardStats(range: DashboardRange = '7d'): UseDashboardStatsResult {
     const [stats, setStats] = useState<DashboardStatsData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -55,7 +56,7 @@ export function useDashboardStats(): UseDashboardStatsResult {
         setError(null);
 
         try {
-            const response = await getDashboardStats();
+            const response = await getDashboardStats(range);
             if (!response.ok) {
                 throw new Error(response.error ?? 'Failed to load dashboard analytics');
             }
@@ -70,7 +71,7 @@ export function useDashboardStats(): UseDashboardStatsResult {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [range]);
 
     useEffect(() => {
         void refresh();

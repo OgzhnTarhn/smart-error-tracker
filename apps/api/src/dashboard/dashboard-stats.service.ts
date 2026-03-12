@@ -4,6 +4,8 @@ import { PrismaService } from '../prisma/prisma.service';
 
 const UNKNOWN_LABEL = 'unknown';
 const TOP_ROUTES_LIMIT = 5;
+const DEFAULT_RANGE_DAYS = 7;
+const MAX_RANGE_DAYS = 30;
 
 export interface DashboardBreakdownItem {
   name: string;
@@ -61,7 +63,7 @@ type GroupByRow = {
 } & Partial<Record<GroupableEventField, string | null>>;
 type GroupByQuery = {
   by: [GroupableEventField];
-  where: { projectId: string };
+  where: Prisma.EventWhereInput;
   _count: { _all: true };
 };
 
@@ -113,7 +115,19 @@ export class DashboardStatsService {
   async getStats(
     projectId: string,
     now: Date = new Date(),
+    rangeDays = DEFAULT_RANGE_DAYS,
   ): Promise<DashboardStatsResult> {
+    const normalizedRangeDays = this.normalizeRangeDays(rangeDays);
+    const activeSince = this.getTrendStart(now, normalizedRangeDays);
+    const activeGroupWhere: Prisma.ErrorGroupWhereInput = {
+      projectId,
+      lastSeenAt: { gte: activeSince },
+    };
+    const activeEventWhere: Prisma.EventWhereInput = {
+      projectId,
+      timestamp: { gte: activeSince },
+    };
+
     const [
       totalIssues,
       openIssues,
@@ -127,28 +141,28 @@ export class DashboardStatsService {
       topRoutes,
       topIssues,
     ] = await Promise.all([
-      this.prisma.errorGroup.count({ where: { projectId } }),
+      this.prisma.errorGroup.count({ where: activeGroupWhere }),
       this.prisma.errorGroup.count({
-        where: { projectId, status: 'open' },
+        where: { ...activeGroupWhere, status: 'open' },
       }),
       this.prisma.errorGroup.count({
-        where: { projectId, status: 'resolved' },
+        where: { ...activeGroupWhere, status: 'resolved' },
       }),
       this.prisma.errorGroup.count({
-        where: { projectId, status: 'ignored' },
+        where: { ...activeGroupWhere, status: 'ignored' },
       }),
-      this.prisma.event.count({ where: { projectId } }),
+      this.prisma.event.count({ where: activeEventWhere }),
       this.prisma.event.findMany({
-        where: { projectId, timestamp: { gte: this.getTrendStart(now) } },
+        where: activeEventWhere,
         select: { timestamp: true },
         orderBy: { timestamp: 'asc' },
       }),
-      this.getLevelBreakdown(projectId),
-      this.getEnvironmentBreakdown(projectId),
-      this.getReleaseBreakdown(projectId),
-      this.getTopRoutes(projectId),
+      this.getLevelBreakdown(projectId, activeSince),
+      this.getEnvironmentBreakdown(projectId, activeSince),
+      this.getReleaseBreakdown(projectId, activeSince),
+      this.getTopRoutes(projectId, activeSince),
       this.prisma.errorGroup.findMany({
-        where: { projectId },
+        where: activeGroupWhere,
         take: 5,
         orderBy: { eventCount: 'desc' },
         select: {
@@ -171,7 +185,7 @@ export class DashboardStatsService {
       resolvedIssues,
       ignoredIssues,
     };
-    const trend7d = this.buildTrend7d(trendEvents, now);
+    const trend7d = this.buildTrend7d(trendEvents, now, normalizedRangeDays);
     const counts: DashboardStatsCounts = {
       totalGroups: totalIssues,
       open: openIssues,
@@ -194,9 +208,16 @@ export class DashboardStatsService {
     };
   }
 
-  private getTrendStart(now: Date) {
+  private normalizeRangeDays(rangeDays: number) {
+    const numericDays = Number.isFinite(rangeDays)
+      ? Math.floor(rangeDays)
+      : DEFAULT_RANGE_DAYS;
+    return Math.min(Math.max(numericDays, 1), MAX_RANGE_DAYS);
+  }
+
+  private getTrendStart(now: Date, rangeDays: number) {
     const start = this.startOfUtcDay(now);
-    start.setUTCDate(start.getUTCDate() - 6);
+    start.setUTCDate(start.getUTCDate() - (rangeDays - 1));
     return start;
   }
 
@@ -209,11 +230,12 @@ export class DashboardStatsService {
   private buildTrend7d(
     events: Array<{ timestamp: Date }>,
     now: Date,
+    rangeDays: number,
   ): DashboardTrendPoint[] {
     const buckets = new Map<string, number>();
-    const start = this.getTrendStart(now);
+    const start = this.getTrendStart(now, rangeDays);
 
-    for (let day = 0; day < 7; day += 1) {
+    for (let day = 0; day < rangeDays; day += 1) {
       const date = new Date(start);
       date.setUTCDate(start.getUTCDate() + day);
       buckets.set(date.toISOString().slice(0, 10), 0);
@@ -232,30 +254,30 @@ export class DashboardStatsService {
     }));
   }
 
-  private async getLevelBreakdown(projectId: string) {
+  private async getLevelBreakdown(projectId: string, activeSince: Date) {
     const rows = await this.groupEventRows({
       by: ['level'],
-      where: { projectId },
+      where: { projectId, timestamp: { gte: activeSince } },
       _count: { _all: true },
     });
 
     return this.mergeBreakdownRows(rows, 'level');
   }
 
-  private async getEnvironmentBreakdown(projectId: string) {
+  private async getEnvironmentBreakdown(projectId: string, activeSince: Date) {
     const rows = await this.groupEventRows({
       by: ['environment'],
-      where: { projectId },
+      where: { projectId, timestamp: { gte: activeSince } },
       _count: { _all: true },
     });
 
     return this.mergeBreakdownRows(rows, 'environment');
   }
 
-  private async getReleaseBreakdown(projectId: string) {
+  private async getReleaseBreakdown(projectId: string, activeSince: Date) {
     const rows = await this.groupEventRows({
       by: ['releaseVersion'],
-      where: { projectId },
+      where: { projectId, timestamp: { gte: activeSince } },
       _count: { _all: true },
     });
 
@@ -291,10 +313,12 @@ export class DashboardStatsService {
 
   private async getTopRoutes(
     projectId: string,
+    activeSince: Date,
   ): Promise<DashboardBreakdownItem[]> {
     const events = await this.prisma.event.findMany({
       where: {
         projectId,
+        timestamp: { gte: activeSince },
         NOT: { level: 'info' },
       },
       select: {

@@ -473,7 +473,7 @@ describe('EventsController', () => {
 
     const result = await controller.getStats('set_valid_key');
 
-    expect(dashboardStats.getStats).toHaveBeenCalledWith('proj_1');
+    expect(dashboardStats.getStats).toHaveBeenCalledWith('proj_1', undefined, 7);
     expect(result).toEqual(
       expect.objectContaining({
         ok: true,
@@ -487,6 +487,45 @@ describe('EventsController', () => {
         dailyTrend: [{ date: '2026-03-07', count: 10 }],
         topIssues: [],
       }),
+    );
+  });
+
+  it('passes 30 day stats range to dashboard service when requested', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    dashboardStats.getStats.mockResolvedValue({
+      ok: true,
+      totals: {
+        totalEvents: 0,
+        totalIssues: 0,
+        openIssues: 0,
+        resolvedIssues: 0,
+        ignoredIssues: 0,
+      },
+      trend7d: [],
+      errorsByLevel: [],
+      errorsByEnvironment: [],
+      errorsByRelease: [],
+      topRoutes: [],
+      topIssues: [],
+      counts: {
+        totalGroups: 0,
+        open: 0,
+        resolved: 0,
+        ignored: 0,
+        totalEvents: 0,
+      },
+      dailyTrend: [],
+    });
+
+    await controller.getStats('set_valid_key', '30d');
+
+    expect(dashboardStats.getStats).toHaveBeenCalledWith(
+      'proj_1',
+      undefined,
+      30,
     );
   });
 

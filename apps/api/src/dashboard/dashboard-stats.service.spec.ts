@@ -22,7 +22,7 @@ describe('DashboardStatsService', () => {
 
   function mockCountQueries() {
     prisma.errorGroup.count.mockImplementation(
-      ({ where }: { where?: { status?: string } }) => {
+      ({ where }: { where?: { status?: string } & Record<string, unknown> }) => {
         switch (where?.status) {
           case 'open':
             return Promise.resolve(3);
@@ -103,6 +103,33 @@ describe('DashboardStatsService', () => {
         title: 'TypeError: boom',
       }),
     ]);
+  });
+
+  it('supports a 30 day dashboard range', async () => {
+    mockCountQueries();
+    prisma.event.findMany.mockImplementation(
+      ({ select }: { select?: { timestamp?: boolean; source?: boolean } }) => {
+        if (select?.timestamp) {
+          return Promise.resolve([
+            { timestamp: new Date('2026-03-01T08:00:00.000Z') },
+            { timestamp: new Date('2026-03-30T08:00:00.000Z') },
+          ]);
+        }
+        return Promise.resolve([]);
+      },
+    );
+    prisma.event.groupBy.mockResolvedValue([]);
+    prisma.errorGroup.findMany.mockResolvedValue([]);
+
+    const result = await service.getStats(
+      'proj_1',
+      new Date('2026-03-30T12:00:00.000Z'),
+      30,
+    );
+
+    expect(result.trend7d).toHaveLength(30);
+    expect(result.trend7d[0]).toEqual({ date: '2026-03-01', count: 1 });
+    expect(result.trend7d[29]).toEqual({ date: '2026-03-30', count: 1 });
   });
 
   it('normalizes null and blank breakdown values to unknown', async () => {
@@ -253,6 +280,9 @@ describe('DashboardStatsService', () => {
       expect.objectContaining({
         where: {
           projectId: 'proj_1',
+          timestamp: expect.objectContaining({
+            gte: expect.any(Date),
+          }),
           NOT: { level: 'info' },
         },
       }),

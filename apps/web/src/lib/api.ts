@@ -78,8 +78,10 @@ export interface DashboardStatsResponse extends Partial<DashboardStatsData> {
     error?: string;
 }
 
-export const getDashboardStats = () =>
-    apiFetch<DashboardStatsResponse>('/stats');
+export type DashboardRange = '7d' | '30d';
+
+export const getDashboardStats = (range: DashboardRange = '7d') =>
+    apiFetch<DashboardStatsResponse>(`/stats?range=${range}`);
 
 export type AnalysisSeverity = 'low' | 'medium' | 'high' | 'critical';
 export type AnalysisConfidence = 'low' | 'medium' | 'high';
