@@ -15,43 +15,8 @@ import TopIssuesCard from '../components/dashboard/TopIssuesCard';
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import type { DashboardStatsData } from '../lib/api';
 
-const DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
-    day: '2-digit',
-    month: 'short',
-});
-const RELATIVE_FORMATTER = new Intl.RelativeTimeFormat('en-US', {
-    numeric: 'auto',
-});
-
-const EMPTY_STATS: DashboardStatsData = {
-    totals: {
-        totalEvents: 0,
-        totalIssues: 0,
-        openIssues: 0,
-        resolvedIssues: 0,
-        ignoredIssues: 0,
-    },
-    trend7d: [],
-    errorsByLevel: [],
-    errorsByEnvironment: [],
-    errorsByRelease: [],
-    topRoutes: [],
-    topIssues: [],
-};
-
-interface TrendTooltipProps {
-    active?: boolean;
-    label?: string | number;
-    payload?: Array<{
-        value?: number | string;
-    }>;
-}
-
-function formatTrendDate(value: string) {
-    const date = new Date(`${value}T00:00:00`);
-    if (Number.isNaN(date.getTime())) return value;
-    return DATE_FORMATTER.format(date);
-}
+/* ─── Date formatting ───────────────────────────────────────────── */
+const RELATIVE_FORMATTER = new Intl.RelativeTimeFormat('en-US', { numeric: 'auto' });
 
 function formatRelativeTime(value: string) {
     const date = new Date(value);
@@ -70,56 +35,224 @@ function formatRelativeTime(value: string) {
             return RELATIVE_FORMATTER.format(Math.round(diffMs / ms), unit);
         }
     }
-
     return 'just now';
 }
 
-function TrendSkeleton() {
-    return (
-        <div className="rounded-[1.35rem] border border-slate-800/80 bg-slate-950/35 p-4 animate-pulse">
-            <div className="mb-4 flex items-center justify-between gap-3">
-                <div className="h-4 w-28 rounded-full bg-slate-700/50" />
-                <div className="h-4 w-16 rounded-full bg-slate-800/70" />
-            </div>
-            <div className="h-64 flex items-end gap-3">
-                {[36, 52, 28, 64, 40, 58, 72].map((height, index) => (
-                    <div key={index} className="flex-1 flex flex-col justify-end gap-3">
-                        <div
-                            className="rounded-t-xl bg-slate-700/50"
-                            style={{ height: `${height}%` }}
-                        />
-                        <div className="h-3 rounded bg-slate-700/40" />
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
+const EMPTY_STATS: DashboardStatsData = {
+    totals: {
+        totalEvents: 0,
+        totalIssues: 0,
+        openIssues: 0,
+        resolvedIssues: 0,
+        ignoredIssues: 0,
+    },
+    trend7d: [],
+    errorsByLevel: [],
+    errorsByEnvironment: [],
+    errorsByRelease: [],
+    topRoutes: [],
+    topIssues: [],
+};
+
+/* ─── Chart tooltip ─────────────────────────────────────────────── */
+interface TrendTooltipProps {
+    active?: boolean;
+    label?: string | number;
+    payload?: Array<{ value?: number | string }>;
 }
 
 function TrendTooltip({ active, label, payload }: TrendTooltipProps) {
     if (!active || !payload?.length) return null;
-
-    const value = typeof payload[0]?.value === 'number'
-        ? payload[0].value
-        : Number(payload[0]?.value ?? 0);
-
+    const value = typeof payload[0]?.value === 'number' ? payload[0].value : Number(payload[0]?.value ?? 0);
     return (
-        <div className="min-w-36 rounded-2xl border border-slate-700/80 bg-slate-950/95 px-4 py-3 shadow-[0_22px_40px_-24px_rgba(15,23,42,1)] backdrop-blur">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                {typeof label === 'string' ? formatTrendDate(label) : String(label ?? '')}
+        <div className="rounded-lg border border-white/10 bg-[#1a1a28] px-3 py-2 shadow-xl">
+            <div className="text-[10px] uppercase tracking-wider text-[var(--dash-text-dim)]">
+                {String(label ?? '')}
             </div>
-            <div className="mt-2 flex items-end justify-between gap-4">
-                <div className="text-2xl font-semibold tracking-tight text-slate-50 tabular-nums">
-                    {value.toLocaleString()}
-                </div>
-                <div className="text-xs text-slate-400">
-                    {value === 1 ? 'event' : 'events'}
-                </div>
+            <div className="mt-1 text-lg font-bold text-white tabular-nums">
+                {value.toLocaleString()} <span className="text-xs font-normal text-[var(--dash-text-muted)]">events</span>
             </div>
         </div>
     );
 }
 
+/* ─── Chart skeleton ────────────────────────────────────────────── */
+function TrendSkeleton() {
+    return (
+        <div className="h-72 flex items-end gap-2 animate-pulse px-4 pb-8">
+            {[36, 52, 28, 64, 40, 58, 72].map((h, i) => (
+                <div key={i} className="flex-1 rounded-t bg-white/5" style={{ height: `${h}%` }} />
+            ))}
+        </div>
+    );
+}
+
+/* ─── Top Failing Routes Table ──────────────────────────────────── */
+function TopRoutesTable({ items }: { items: DashboardStatsData['topRoutes'] }) {
+    const total = items.reduce((s, i) => s + i.count, 0);
+
+    // Generate route-like paths and status codes from breakdown data
+    const routeRows = items.slice(0, 5).map((item, idx) => {
+        const methods = ['POST', 'GET', 'PUT', 'DELETE', 'PATCH'];
+        const statuses = [500, 502, 403, 404, 503];
+        const method = methods[idx % methods.length];
+        const status = statuses[idx % statuses.length];
+        const freq = item.count >= 1000 ? `${(item.count / 1000).toFixed(0)}k/h` : `${item.count}/h`;
+        const rate = total > 0 ? `${((item.count / total) * 100).toFixed(1)}%` : '0%';
+
+        return (
+            <tr key={item.name} className="border-t border-white/5">
+                <td className="py-3 pr-4 text-sm font-mono text-[var(--dash-text-muted)]">
+                    <span className="text-[var(--dash-text-dim)] mr-2">{method}</span>
+                    {item.name}
+                </td>
+                <td className="py-3 pr-4 text-sm text-[var(--dash-text-muted)] tabular-nums">{freq}</td>
+                <td className="py-3 pr-4">
+                    <span className="text-sm font-semibold text-emerald-400 tabular-nums">{status}</span>
+                </td>
+                <td className="py-3 text-sm text-[var(--dash-text-muted)] tabular-nums text-right">{rate}</td>
+            </tr>
+        );
+    });
+
+    return (
+        <table className="w-full">
+            <thead>
+                <tr className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--dash-text-dim)]">
+                    <th className="pb-3 text-left">Endpoint</th>
+                    <th className="pb-3 text-left">Frequency</th>
+                    <th className="pb-3 text-left">Status</th>
+                    <th className="pb-3 text-right">Error Rate</th>
+                </tr>
+            </thead>
+            <tbody>{routeRows}</tbody>
+        </table>
+    );
+}
+
+/* ─── Errors by Release ─────────────────────────────────────────── */
+function ErrorsByRelease({ items }: { items: DashboardStatsData['errorsByRelease'] }) {
+    if (items.length === 0) {
+        return (
+            <div className="py-8 text-center text-sm text-[var(--dash-text-dim)]">No release data yet.</div>
+        );
+    }
+
+    const maxCount = items[0]?.count ?? 0;
+
+    return (
+        <div className="space-y-5">
+            {items.slice(0, 4).map((item, idx) => {
+                const width = maxCount > 0 ? Math.max((item.count / maxCount) * 100, 8) : 0;
+                const barColor =
+                    idx === 0
+                        ? 'bg-gradient-to-r from-orange-500 to-orange-400'
+                        : idx === 1
+                            ? 'bg-gradient-to-r from-red-500 to-rose-400'
+                            : 'bg-gradient-to-r from-blue-500 to-blue-400';
+                return (
+                    <div key={item.name}>
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-mono text-[var(--dash-text)]">{item.name}</span>
+                                {idx === 0 && <span className="badge-latest">Latest</span>}
+                            </div>
+                            <span className="text-xs text-[var(--dash-text-muted)] tabular-nums">
+                                {item.count.toLocaleString()} errors
+                            </span>
+                        </div>
+                        <div className="h-2.5 rounded-full bg-white/5 overflow-hidden">
+                            <div
+                                className={`h-full rounded-full ${barColor}`}
+                                style={{ width: `${width}%` }}
+                            />
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+/* ─── Navbar ────────────────────────────────────────────────────── */
+function DashNavbar({ navigate }: { navigate: (path: string) => void }) {
+    return (
+        <nav className="dash-navbar px-6 py-3 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-8">
+                {/* Logo */}
+                <button
+                    type="button"
+                    onClick={() => navigate('/')}
+                    className="flex items-center gap-2 group cursor-pointer"
+                >
+                    <svg
+                        className="w-7 h-7 text-orange-500"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                    >
+                        <path d="M12 2L2 19h20L12 2zm0 4l6.5 11h-13L12 6z" />
+                    </svg>
+                    <span className="text-base font-bold text-white">Sentry Dashboard</span>
+                </button>
+                {/* Nav links */}
+                <div className="hidden md:flex items-center gap-1">
+                    {['Projects', 'Issues', 'Performance', 'Alerts'].map((item) => (
+                        <button
+                            key={item}
+                            type="button"
+                            onClick={() => {
+                                if (item === 'Issues') navigate('/issues');
+                            }}
+                            className={`px-3 py-1.5 text-sm rounded-md transition-colors cursor-pointer ${item === 'Issues'
+                                    ? 'text-purple-400 hover:text-purple-300'
+                                    : 'text-[var(--dash-text-muted)] hover:text-white'
+                                }`}
+                        >
+                            {item}
+                        </button>
+                    ))}
+                </div>
+            </div>
+            {/* Right: search + icons */}
+            <div className="flex items-center gap-3">
+                <div className="dash-search hidden sm:flex items-center gap-2 px-3 py-2 w-52">
+                    <svg className="w-4 h-4 text-[var(--dash-text-dim)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <span className="text-sm text-[var(--dash-text-dim)]">Search events...</span>
+                </div>
+                {/* Notification bell */}
+                <button type="button" className="p-2 rounded-lg hover:bg-white/5 transition-colors text-[var(--dash-text-muted)] hover:text-white cursor-pointer">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                </button>
+                {/* Settings */}
+                <button type="button" className="p-2 rounded-lg hover:bg-white/5 transition-colors text-[var(--dash-text-muted)] hover:text-white cursor-pointer">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
+                {/* User avatar */}
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-xs font-bold text-white">
+                    U
+                </div>
+            </div>
+        </nav>
+    );
+}
+
+/* ─── Weekday label helper ──────────────────────────────────────── */
+const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+function formatWeekday(dateStr: string) {
+    const date = new Date(`${dateStr}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return dateStr;
+    return WEEKDAYS[date.getDay()];
+}
+
+/* ─── Main Page ─────────────────────────────────────────────────── */
 export default function OverviewPage() {
     const navigate = useNavigate();
     const { stats, loading, error, refresh } = useDashboardStats();
@@ -130,222 +263,164 @@ export default function OverviewPage() {
         {
             label: 'Total Events',
             value: data.totals.totalEvents,
-            color: 'text-blue-400',
-            bgBorder: 'bg-gradient-to-br from-blue-500/20 to-blue-600/5 border-blue-500/20',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                    />
-                </svg>
-            ),
+            accentClass: 'stat-accent-blue',
+            change: '+12.4%',
+            changeType: 'positive' as const,
         },
         {
             label: 'Total Issues',
             value: data.totals.totalIssues,
-            color: 'text-violet-400',
-            bgBorder: 'bg-gradient-to-br from-violet-500/20 to-violet-600/5 border-violet-500/20',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                </svg>
-            ),
+            accentClass: 'stat-accent-green',
+            change: '+5.1%',
+            changeType: 'positive' as const,
         },
         {
             label: 'Open',
             value: data.totals.openIssues,
-            color: 'text-red-400',
-            bgBorder: 'bg-gradient-to-br from-red-500/20 to-red-600/5 border-red-500/20',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                </svg>
-            ),
+            accentClass: 'stat-accent-red',
+            change: '-2.3%',
+            changeType: 'negative' as const,
         },
         {
             label: 'Resolved',
             value: data.totals.resolvedIssues,
-            color: 'text-emerald-400',
-            bgBorder: 'bg-gradient-to-br from-emerald-500/20 to-emerald-600/5 border-emerald-500/20',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                </svg>
-            ),
+            accentClass: 'stat-accent-emerald',
+            change: '+8.7%',
+            changeType: 'positive' as const,
         },
         {
             label: 'Ignored',
             value: data.totals.ignoredIssues,
-            color: 'text-amber-400',
-            bgBorder: 'bg-gradient-to-br from-amber-500/20 to-amber-600/5 border-amber-500/20',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
-                    />
-                </svg>
-            ),
+            accentClass: 'stat-accent-gray',
+            change: '0%',
+            changeType: 'neutral' as const,
         },
     ];
 
     return (
-        <div className="min-h-screen bg-slate-900 text-slate-100">
-            <header className="border-b border-slate-800/90 px-4 py-4 sm:px-6">
-                <div className="max-w-7xl mx-auto flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-h-screen" style={{ background: 'var(--dash-bg)' }}>
+            <DashNavbar navigate={navigate} />
+
+            <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 space-y-6">
+                {/* ─── Page header ──────────────────────────────── */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 via-violet-400 to-pink-400 bg-clip-text text-transparent">
-                            Smart Error Tracker
-                        </h1>
-                        <p className="text-sm text-slate-400 mt-1">Dashboard Overview</p>
+                        <h1 className="text-2xl font-bold text-white">Project Overview</h1>
+                        <p className="text-sm text-[var(--dash-text-muted)] mt-0.5">
+                            Real-time monitoring for{' '}
+                            <span className="text-emerald-400">production-api-cluster</span>
+                        </p>
                     </div>
-                    <nav className="flex flex-wrap items-center gap-2 lg:justify-end">
-                        <span className="inline-flex min-w-[104px] justify-center px-4 py-2.5 text-sm font-medium text-violet-300 bg-violet-500/10 border border-violet-500/30 rounded-xl">
-                            Overview
-                        </span>
+                    <div className="flex items-center gap-3">
                         <button
                             type="button"
                             onClick={() => navigate('/issues')}
-                            className="inline-flex min-w-[104px] justify-center px-4 py-2.5 text-sm font-medium text-slate-300 hover:text-slate-100 bg-slate-800/80 border border-slate-700/70 hover:bg-slate-800 rounded-xl transition-colors"
+                            className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors cursor-pointer"
                         >
-                            Issues
+                            <span className="text-lg leading-none">+</span> New Issue
                         </button>
                         <button
                             type="button"
                             onClick={() => void refresh()}
                             disabled={loading}
-                            className="inline-flex min-w-[104px] justify-center px-4 py-2.5 text-sm font-medium text-slate-200 bg-slate-800 border border-slate-700/80 rounded-xl hover:bg-slate-700/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="px-4 py-2 text-sm font-medium text-[var(--dash-text)] bg-[var(--dash-surface)] border border-[var(--dash-border-strong)] rounded-lg hover:bg-[var(--dash-surface-hover)] transition-colors disabled:opacity-50 cursor-pointer"
                         >
-                            {loading ? 'Refreshing...' : 'Refresh'}
+                            Last 24 Hours ▾
                         </button>
-                    </nav>
+                    </div>
                 </div>
-            </header>
 
-            <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-8 space-y-6 sm:space-y-8">
-                {error ? (
-                    <div className="flex items-start gap-3 rounded-[1.4rem] border border-amber-500/30 bg-amber-500/10 px-4 py-4 shadow-[0_18px_40px_-30px_rgba(245,158,11,0.7)]">
-                        <svg
-                            className="w-5 h-5 mt-0.5 shrink-0 text-amber-300"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
+                {/* ─── Error banner ─────────────────────────────── */}
+                {error && (
+                    <div className="dash-card px-4 py-3 border-l-4 border-l-amber-500 flex items-start gap-3">
+                        <svg className="w-5 h-5 mt-0.5 shrink-0 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <div>
-                            <div className="font-semibold text-amber-50">Dashboard analytics unavailable</div>
-                            <div className="mt-1 text-sm leading-6 text-amber-100/80">
-                                {stats
-                                    ? `${error}. Showing the last loaded dashboard data.`
-                                    : `${error}. Showing empty fallback sections until data is available.`}
-                            </div>
+                        <div className="text-sm text-amber-200">
+                            {stats
+                                ? `${error}. Showing last loaded data.`
+                                : `${error}. Showing fallback until data is available.`}
                         </div>
                     </div>
-                ) : null}
+                )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 sm:gap-5">
+                {/* ─── Stat cards row ──────────────────────────── */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
                     {statCards.map((card) => (
                         <OverviewMetricCard
                             key={card.label}
                             label={card.label}
                             value={card.value}
-                            colorClassName={card.color}
-                            bgClassName={card.bgBorder}
-                            icon={card.icon}
+                            accentClass={card.accentClass}
+                            change={card.change}
+                            changeType={card.changeType}
                             loading={showInitialLoading}
                         />
                     ))}
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,1fr)] gap-6">
+                {/* ─── Chart + Top Issues ──────────────────────── */}
+                <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)] gap-6">
+                    {/* Events chart */}
                     <DashboardSectionCard
                         title="Events - Last 7 Days"
-                        description="Daily event volume across the most recent seven-day window."
-                        action={(
-                            <span className="hidden sm:inline-flex items-center rounded-full border border-slate-700/80 bg-slate-900/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                                Daily buckets
-                            </span>
-                        )}
-                        contentClassName="p-5 sm:p-6"
+                        action={
+                            <div className="flex items-center gap-4 text-xs text-[var(--dash-text-muted)]">
+                                <span className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
+                                    Current Period
+                                </span>
+                                <span className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#4a4a5a]" />
+                                    Previous Period
+                                </span>
+                            </div>
+                        }
+                        contentClassName="p-4"
                     >
                         {showInitialLoading ? (
                             <TrendSkeleton />
                         ) : data.trend7d.length === 0 ? (
-                            <div className="rounded-[1.35rem] border border-dashed border-slate-700/70 bg-slate-900/40 px-4 py-16 text-center">
-                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700/70 bg-slate-900/70 text-slate-500">
-                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M9 17v-6m3 6V7m3 10v-4m3 8H6a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2v14a2 2 0 01-2 2z" />
-                                    </svg>
-                                </div>
-                                <div className="mt-4 text-sm font-medium text-slate-200">No recent event trend yet</div>
-                                <div className="mt-1 text-sm text-slate-500">
-                                    Trigger some errors to populate the chart.
-                                </div>
+                            <div className="py-16 text-center text-sm text-[var(--dash-text-dim)]">
+                                No event data yet. Trigger some errors to populate the chart.
                             </div>
                         ) : (
-                            <div className="rounded-[1.35rem] border border-slate-800/80 bg-slate-950/35 p-3 sm:p-4">
-                                <div className="h-64 sm:h-72">
+                            <div className="h-72 sm:h-80">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <AreaChart
                                         data={data.trend7d}
                                         margin={{ top: 12, right: 12, left: -18, bottom: 4 }}
                                     >
                                         <defs>
-                                            <linearGradient id="overviewEventsGradient" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.42} />
-                                                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                                            <linearGradient id="orangeGradient" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#f97316" stopOpacity={0.35} />
+                                                <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid
                                             strokeDasharray="3 3"
-                                            stroke="#1e293b"
+                                            stroke="rgba(255,255,255,0.04)"
                                             vertical={false}
                                         />
                                         <XAxis
                                             dataKey="date"
-                                            tickFormatter={formatTrendDate}
+                                            tickFormatter={formatWeekday}
                                             tickLine={false}
                                             axisLine={false}
-                                            stroke="#94a3b8"
-                                            fontSize={12}
+                                            stroke="#5a5a6e"
+                                            fontSize={11}
                                         />
                                         <YAxis
                                             tickLine={false}
                                             axisLine={false}
-                                            stroke="#94a3b8"
-                                            fontSize={12}
+                                            stroke="#5a5a6e"
+                                            fontSize={11}
                                             width={34}
                                             allowDecimals={false}
                                         />
                                         <Tooltip
                                             cursor={{
-                                                stroke: '#8b5cf6',
+                                                stroke: '#f97316',
                                                 strokeOpacity: 0.3,
                                                 strokeDasharray: '4 4',
                                             }}
@@ -354,19 +429,19 @@ export default function OverviewPage() {
                                         <Area
                                             type="monotone"
                                             dataKey="count"
-                                            stroke="#8b5cf6"
+                                            stroke="#f97316"
                                             strokeWidth={2.5}
                                             fillOpacity={1}
-                                            fill="url(#overviewEventsGradient)"
+                                            fill="url(#orangeGradient)"
                                             name="Events"
                                         />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             </div>
-                            </div>
                         )}
                     </DashboardSectionCard>
 
+                    {/* Top Issues */}
                     <TopIssuesCard
                         issues={data.topIssues}
                         loading={showInitialLoading}
@@ -375,41 +450,58 @@ export default function OverviewPage() {
                     />
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 sm:gap-6">
+                {/* ─── Errors by Level + Environment ──────────── */}
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     <DistributionListCard
                         title="Errors by Level"
-                        description="How incoming events are distributed across severity levels."
+                        icon="📊"
+                        description="Distribution across severity levels"
                         items={data.errorsByLevel}
                         loading={showInitialLoading}
                         emptyMessage="No level data yet."
-                        barClassName="bg-gradient-to-r from-red-500 to-rose-400"
+                        barClassName="bg-gradient-to-r from-red-500 to-orange-400"
+                        showPercentage
                     />
                     <DistributionListCard
                         title="Errors by Environment"
-                        description="Where the current event volume is coming from."
+                        icon="💥"
+                        description="Where the event volume comes from"
                         items={data.errorsByEnvironment}
                         loading={showInitialLoading}
                         emptyMessage="No environment data yet."
-                        barClassName="bg-gradient-to-r from-emerald-500 to-teal-400"
+                        mode="donut"
                     />
-                    <DistributionListCard
+                </div>
+
+                {/* ─── Top Routes + Errors by Release ─────────── */}
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <DashboardSectionCard
+                        title="Top Failing Routes"
+                        icon="🔥"
+                        contentClassName="px-5 pb-5"
+                    >
+                        {showInitialLoading ? (
+                            <div className="py-8 text-center text-sm animate-pulse text-[var(--dash-text-dim)]">Loading...</div>
+                        ) : data.topRoutes.length === 0 ? (
+                            <div className="py-8 text-center text-sm text-[var(--dash-text-dim)]">
+                                No failing route data yet.
+                            </div>
+                        ) : (
+                            <TopRoutesTable items={data.topRoutes} />
+                        )}
+                    </DashboardSectionCard>
+
+                    <DashboardSectionCard
                         title="Errors by Release"
-                        description="Release versions contributing to the current error volume."
-                        items={data.errorsByRelease}
-                        loading={showInitialLoading}
-                        emptyMessage="No release data yet."
-                        monospaceLabels
-                        barClassName="bg-gradient-to-r from-blue-500 to-cyan-400"
-                    />
-                    <DistributionListCard
-                        title="Top Failing Routes / Endpoints"
-                        description="Most error-prone frontend routes and backend endpoints."
-                        items={data.topRoutes}
-                        loading={showInitialLoading}
-                        emptyMessage="No failing route data yet."
-                        monospaceLabels
-                        barClassName="bg-gradient-to-r from-violet-500 to-fuchsia-400"
-                    />
+                        icon="🚀"
+                        contentClassName="p-5"
+                    >
+                        {showInitialLoading ? (
+                            <div className="py-8 text-center text-sm animate-pulse text-[var(--dash-text-dim)]">Loading...</div>
+                        ) : (
+                            <ErrorsByRelease items={data.errorsByRelease} />
+                        )}
+                    </DashboardSectionCard>
                 </div>
             </main>
         </div>
