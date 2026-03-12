@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
     BarChart,
     Bar,
@@ -48,6 +48,12 @@ const statusColor: Record<string, string> = {
 interface TimelinePoint {
     date: string;
     count: number;
+}
+
+type IssueDetailView = 'investigation' | 'guidance';
+
+function getIssueDetailView(value: string | null): IssueDetailView {
+    return value === 'guidance' ? 'guidance' : 'investigation';
 }
 
 function getAnalyzeErrorMessage(errorCode: string | undefined): string {
@@ -105,6 +111,7 @@ function buildTimeline(events: GroupDetailEvent[]): TimelinePoint[] {
 export default function IssueDetailPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
 
     const [group, setGroup] = useState<GroupDetail | null>(null);
     const [events, setEvents] = useState<GroupDetailEvent[]>([]);
@@ -139,6 +146,7 @@ export default function IssueDetailPage() {
         if (!selectedEventId) return events[0];
         return events.find((event) => event.id === selectedEventId) ?? events[0];
     }, [events, selectedEventId]);
+    const activeView = getIssueDetailView(searchParams.get('view'));
 
     const timeline = useMemo(() => buildTimeline(events), [events]);
     const selectedSourceMapResult = selectedEvent
@@ -148,6 +156,18 @@ export default function IssueDetailPage() {
     const sourceMapResolving = selectedEvent
         ? sourceMapResolvingEventId === selectedEvent.id
         : false;
+
+    const handleViewChange = useCallback((nextView: IssueDetailView) => {
+        const nextParams = new URLSearchParams(searchParams);
+
+        if (nextView === 'guidance') {
+            nextParams.set('view', 'guidance');
+        } else {
+            nextParams.delete('view');
+        }
+
+        setSearchParams(nextParams, { replace: true });
+    }, [searchParams, setSearchParams]);
 
     useEffect(() => {
         setStackCopied(false);
@@ -559,8 +579,8 @@ export default function IssueDetailPage() {
 
     return (
         <div className="min-h-screen bg-slate-900 text-slate-100">
-            <header className="border-b border-slate-800 px-6 py-4">
-                <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <header className="border-b border-slate-800 px-5 py-4 md:px-6">
+                <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-4">
                     <div className="flex items-center gap-4 min-w-0">
                         <button
                             onClick={() => navigate('/issues')}
@@ -619,164 +639,47 @@ export default function IssueDetailPage() {
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-6 py-6">
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                    <div className="lg:col-span-2 space-y-6">
-                        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
-                            <div className="px-5 py-3 border-b border-slate-700/50">
-                                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                                    Overview
-                                </h2>
-                            </div>
-                            <div className="divide-y divide-slate-700/30">
-                                <Row label="Status">
-                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium border capitalize ${statusColor[group.status] || statusColor.open}`}>
-                                        {group.status}
-                                    </span>
-                                </Row>
-                                <Row label="Regression">
-                                    {group.isRegression ? (
-                                        <IssueRegressionBadge
-                                            isRegression={group.isRegression}
-                                            regressionCount={group.regressionCount}
-                                        />
-                                    ) : (
-                                        <span className="text-slate-400">No</span>
-                                    )}
-                                </Row>
-                                {group.isRegression && (
-                                    <Row label="Regression count">{group.regressionCount}</Row>
-                                )}
-                                {group.isRegression && group.lastRegressedAt && (
-                                    <Row label="Last regressed">
-                                        {formatDate(group.lastRegressedAt)}
-                                    </Row>
-                                )}
-                                <Row label="Total events">
-                                    <span className="text-lg font-bold">{group.eventCount}</span>
-                                </Row>
-                                <Row label="First seen">{formatDate(group.firstSeenAt)}</Row>
-                                <Row label="Last seen">{formatDate(group.lastSeenAt)}</Row>
-                                <div className="px-5 py-3">
-                                    <div className="text-xs text-slate-500 mb-1.5">Fingerprint</div>
-                                    <div className="flex items-center gap-2">
-                                        <code className="text-xs font-mono bg-slate-700/50 px-2 py-1 rounded break-all flex-1 text-slate-400">
-                                            {group.fingerprint}
-                                        </code>
-                                        <button
-                                            type="button"
-                                            onClick={() => void copyFingerprint()}
-                                            className="shrink-0 p-1.5 rounded-md hover:bg-slate-700 transition-colors text-xs text-slate-300"
-                                        >
-                                            {copiedFingerprint ? 'Copied' : 'Copy'}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+            <main className="mx-auto max-w-[1480px] px-5 py-6 md:px-6 xl:px-8 xl:py-7">
+                <IssueDetailTopTabs
+                    activeView={activeView}
+                    onChange={handleViewChange}
+                />
 
-                        {group.resolutionNote && (
-                            <ResolutionNoteCard
-                                note={group.resolutionNote}
-                                isResolved={group.status === 'resolved'}
-                            />
-                        )}
-
-                        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
-                            <div className="px-5 py-3 border-b border-slate-700/50">
-                                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                                    Event Frequency - Last 7 Days
-                                </h2>
-                            </div>
-                            <div className="px-3 py-4 h-36">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={timeline}>
-                                        <XAxis
-                                            dataKey="date"
-                                            stroke="#475569"
-                                            fontSize={10}
-                                            tickLine={false}
-                                            axisLine={false}
-                                        />
-                                        <YAxis
-                                            stroke="#475569"
-                                            fontSize={10}
-                                            allowDecimals={false}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            width={20}
-                                        />
-                                        <Tooltip
-                                            contentStyle={{
-                                                backgroundColor: '#1e293b',
-                                                border: '1px solid #334155',
-                                                borderRadius: '8px',
-                                                fontSize: '12px',
-                                            }}
-                                        />
-                                        <Bar
-                                            dataKey="count"
-                                            fill="#8b5cf6"
-                                            radius={[4, 4, 0, 0]}
-                                            name="Events"
-                                        />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-
-                        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
-                            <div className="px-5 py-3 border-b border-slate-700/50">
-                                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                                    Latest Events ({events.length})
-                                </h2>
-                            </div>
-                            <EventList
-                                events={events}
-                                selectedEventId={selectedEvent?.id ?? null}
-                                onSelectEvent={(event) => setSelectedEventId(event.id)}
-                                formatDate={formatDate}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="lg:col-span-3 space-y-6">
-                        <EventDetailPanel
-                            event={selectedEvent}
-                            activeTab={activeTab}
-                            onTabChange={setActiveTab}
-                            formatDate={formatDate}
-                            onCopyStack={() => void copyStackTrace()}
-                            onCopyRaw={() => void copyRawPayload()}
-                            onResolveSourceMap={() => void handleResolveSourceMap()}
-                            stackCopied={stackCopied}
-                            rawCopied={rawCopied}
-                            sourceMapResult={selectedSourceMapResult}
-                            resolvingSourceMap={sourceMapResolving}
-                        />
-
-                        <PreventionInsightsPanel
-                            insights={preventionInsights}
-                            loading={preventionInsightsLoading}
-                            error={preventionInsightsError}
-                        />
-
-                        <SimilarPastIssuesPanel
-                            items={similarIssues}
-                            loading={similarIssuesLoading}
-                            error={similarIssuesError}
-                            formatDate={formatDate}
-                        />
-
-                        <AiAnalysisPanel
-                            analysis={selectedEvent?.aiAnalysis ?? null}
-                            selectedEvent={selectedEvent}
-                            analyzing={aiAnalyzing}
-                            error={analysisError}
-                            onAnalyze={() => void handleAnalyze()}
-                        />
-                    </div>
-                </div>
+                {activeView === 'investigation' ? (
+                    <InvestigationTabContent
+                        group={group}
+                        timeline={timeline}
+                        events={events}
+                        selectedEvent={selectedEvent}
+                        activeTab={activeTab}
+                        copiedFingerprint={copiedFingerprint}
+                        stackCopied={stackCopied}
+                        rawCopied={rawCopied}
+                        sourceMapResult={selectedSourceMapResult}
+                        sourceMapResolving={sourceMapResolving}
+                        onCopyFingerprint={() => void copyFingerprint()}
+                        onSelectEvent={(event) => setSelectedEventId(event.id)}
+                        onTabChange={setActiveTab}
+                        onCopyStack={() => void copyStackTrace()}
+                        onCopyRaw={() => void copyRawPayload()}
+                        onResolveSourceMap={() => void handleResolveSourceMap()}
+                        formatDate={formatDate}
+                    />
+                ) : (
+                    <GuidanceTabContent
+                        preventionInsights={preventionInsights}
+                        preventionInsightsLoading={preventionInsightsLoading}
+                        preventionInsightsError={preventionInsightsError}
+                        similarIssues={similarIssues}
+                        similarIssuesLoading={similarIssuesLoading}
+                        similarIssuesError={similarIssuesError}
+                        selectedEvent={selectedEvent}
+                        aiAnalyzing={aiAnalyzing}
+                        analysisError={analysisError}
+                        onAnalyze={() => void handleAnalyze()}
+                        formatDate={formatDate}
+                    />
+                )}
             </main>
 
             {resolveDialogOpen && (
@@ -793,9 +696,334 @@ export default function IssueDetailPage() {
     );
 }
 
+function IssueDetailTopTabs({
+    activeView,
+    onChange,
+}: {
+    activeView: IssueDetailView;
+    onChange: (view: IssueDetailView) => void;
+}) {
+    const tabs: Array<{
+        value: IssueDetailView;
+        label: string;
+        description: string;
+    }> = [
+        {
+            value: 'investigation',
+            label: 'Investigation',
+            description: 'Overview, event flow, stack inspection, and source maps.',
+        },
+        {
+            value: 'guidance',
+            label: 'Guidance',
+            description: 'AI analysis, prevention signals, and related issue history.',
+        },
+    ];
+    const activeMeta = tabs.find((tab) => tab.value === activeView) ?? tabs[0];
+
+    return (
+        <div className="mb-6 border-b border-slate-800/80 pb-4">
+            <div
+                role="tablist"
+                aria-label="Issue detail sections"
+                className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-slate-800/45 p-1 ring-1 ring-white/5"
+            >
+                {tabs.map((tab) => {
+                    const isActive = tab.value === activeView;
+
+                    return (
+                        <button
+                            key={tab.value}
+                            type="button"
+                            role="tab"
+                            aria-selected={isActive}
+                            onClick={() => onChange(tab.value)}
+                            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                                isActive
+                                    ? 'bg-slate-100/[0.08] text-slate-100 ring-1 ring-white/10'
+                                    : 'text-slate-300 hover:bg-slate-700/55 hover:text-slate-100'
+                            }`}
+                        >
+                            {tab.label}
+                        </button>
+                    );
+                })}
+            </div>
+            <p className="mt-2 text-sm text-slate-500">
+                <span className="font-medium text-slate-300">{activeMeta.label}:</span>{' '}
+                {activeMeta.description}
+            </p>
+        </div>
+    );
+}
+
+function InvestigationTabContent({
+    group,
+    timeline,
+    events,
+    selectedEvent,
+    activeTab,
+    copiedFingerprint,
+    stackCopied,
+    rawCopied,
+    sourceMapResult,
+    sourceMapResolving,
+    onCopyFingerprint,
+    onSelectEvent,
+    onTabChange,
+    onCopyStack,
+    onCopyRaw,
+    onResolveSourceMap,
+    formatDate,
+}: {
+    group: GroupDetail;
+    timeline: TimelinePoint[];
+    events: GroupDetailEvent[];
+    selectedEvent: GroupDetailEvent | null;
+    activeTab: EventTab;
+    copiedFingerprint: boolean;
+    stackCopied: boolean;
+    rawCopied: boolean;
+    sourceMapResult: EventSourceMapResult | null;
+    sourceMapResolving: boolean;
+    onCopyFingerprint: () => void;
+    onSelectEvent: (event: GroupDetailEvent) => void;
+    onTabChange: (tab: EventTab) => void;
+    onCopyStack: () => void;
+    onCopyRaw: () => void;
+    onResolveSourceMap: () => void;
+    formatDate: (value: string) => string;
+}) {
+    return (
+        <div className="grid grid-cols-1 gap-7 xl:grid-cols-[320px_minmax(0,1fr)] xl:gap-8">
+            <div className="space-y-5">
+                <div className="overflow-hidden rounded-2xl bg-slate-800/35 ring-1 ring-white/5">
+                    <div className="px-5 pb-3 pt-5">
+                        <h2 className="text-sm font-semibold text-slate-100">
+                            Overview
+                        </h2>
+                    </div>
+                    <div className="divide-y divide-slate-800/70">
+                        <Row label="Status">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium border capitalize ${statusColor[group.status] || statusColor.open}`}>
+                                {group.status}
+                            </span>
+                        </Row>
+                        <Row label="Regression">
+                            {group.isRegression ? (
+                                <IssueRegressionBadge
+                                    isRegression={group.isRegression}
+                                    regressionCount={group.regressionCount}
+                                />
+                            ) : (
+                                <span className="text-slate-400">No</span>
+                            )}
+                        </Row>
+                        {group.isRegression && (
+                            <Row label="Regression count">{group.regressionCount}</Row>
+                        )}
+                        {group.isRegression && group.lastRegressedAt && (
+                            <Row label="Last regressed">
+                                {formatDate(group.lastRegressedAt)}
+                            </Row>
+                        )}
+                        <Row label="Total events">
+                            <span className="text-lg font-bold">{group.eventCount}</span>
+                        </Row>
+                        <Row label="First seen">{formatDate(group.firstSeenAt)}</Row>
+                        <Row label="Last seen">{formatDate(group.lastSeenAt)}</Row>
+                        <div className="px-5 py-3">
+                            <div className="text-xs text-slate-500 mb-1.5">Fingerprint</div>
+                            <div className="flex items-center gap-2">
+                                <code className="text-xs font-mono bg-slate-700/50 px-2 py-1 rounded break-all flex-1 text-slate-400">
+                                    {group.fingerprint}
+                                </code>
+                                <button
+                                    type="button"
+                                    onClick={onCopyFingerprint}
+                                    className="shrink-0 p-1.5 rounded-md hover:bg-slate-700 transition-colors text-xs text-slate-300"
+                                >
+                                    {copiedFingerprint ? 'Copied' : 'Copy'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {group.resolutionNote && (
+                    <ResolutionNoteCard
+                        note={group.resolutionNote}
+                        isResolved={group.status === 'resolved'}
+                    />
+                )}
+
+                <div className="overflow-hidden rounded-2xl bg-slate-800/35 ring-1 ring-white/5">
+                    <div className="px-5 pb-3 pt-5">
+                        <h2 className="text-sm font-semibold text-slate-100">
+                            Event Frequency - Last 7 Days
+                        </h2>
+                    </div>
+                    <div className="px-3 py-4 h-36">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={timeline}>
+                                <XAxis
+                                    dataKey="date"
+                                    stroke="#475569"
+                                    fontSize={10}
+                                    tickLine={false}
+                                    axisLine={false}
+                                />
+                                <YAxis
+                                    stroke="#475569"
+                                    fontSize={10}
+                                    allowDecimals={false}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    width={20}
+                                />
+                                <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: '#1e293b',
+                                        border: '1px solid #334155',
+                                        borderRadius: '8px',
+                                        fontSize: '12px',
+                                    }}
+                                />
+                                <Bar
+                                    dataKey="count"
+                                    fill="#8b5cf6"
+                                    radius={[4, 4, 0, 0]}
+                                    name="Events"
+                                />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            </div>
+
+            <div className="min-w-0">
+                <div className="overflow-hidden rounded-[28px] bg-slate-800/25 ring-1 ring-white/5">
+                    <div className="flex flex-col gap-2 border-b border-slate-800/80 px-5 py-4 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <h2 className="text-base font-semibold text-slate-100">
+                                Investigation Workspace
+                            </h2>
+                            <p className="text-sm text-slate-500">
+                                Inspect recent events and drill into the selected event without leaving this issue.
+                            </p>
+                        </div>
+                        {selectedEvent && (
+                            <div className="text-xs text-slate-500">
+                                Selected event <span className="font-mono text-slate-300">{selectedEvent.id}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="grid min-h-[620px] gap-0 xl:grid-cols-[340px_minmax(0,1fr)] xl:divide-x xl:divide-slate-800/80">
+                        <div className="min-w-0 bg-slate-900/28">
+                            <div className="border-b border-slate-800/80 px-5 py-4">
+                                <h2 className="text-sm font-semibold text-slate-100">
+                                    Latest Events ({events.length})
+                                </h2>
+                                <p className="mt-1 text-sm text-slate-500">
+                                    Recent occurrences for this issue, ordered by time.
+                                </p>
+                            </div>
+                            <EventList
+                                events={events}
+                                selectedEventId={selectedEvent?.id ?? null}
+                                onSelectEvent={onSelectEvent}
+                                formatDate={formatDate}
+                            />
+                        </div>
+
+                        <div className="min-w-0 bg-slate-950/10">
+                            <EventDetailPanel
+                                event={selectedEvent}
+                                activeTab={activeTab}
+                                onTabChange={onTabChange}
+                                formatDate={formatDate}
+                                onCopyStack={onCopyStack}
+                                onCopyRaw={onCopyRaw}
+                                onResolveSourceMap={onResolveSourceMap}
+                                stackCopied={stackCopied}
+                                rawCopied={rawCopied}
+                                sourceMapResult={sourceMapResult}
+                                resolvingSourceMap={sourceMapResolving}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function GuidanceTabContent({
+    preventionInsights,
+    preventionInsightsLoading,
+    preventionInsightsError,
+    similarIssues,
+    similarIssuesLoading,
+    similarIssuesError,
+    selectedEvent,
+    aiAnalyzing,
+    analysisError,
+    onAnalyze,
+    formatDate,
+}: {
+    preventionInsights: PreventionInsights | null;
+    preventionInsightsLoading: boolean;
+    preventionInsightsError: string | null;
+    similarIssues: SimilarIssue[];
+    similarIssuesLoading: boolean;
+    similarIssuesError: string | null;
+    selectedEvent: GroupDetailEvent | null;
+    aiAnalyzing: boolean;
+    analysisError: string | null;
+    onAnalyze: () => void;
+    formatDate: (value: string) => string;
+}) {
+    return (
+        <div className="space-y-6">
+            <div>
+                <h2 className="text-base font-semibold text-slate-100">
+                    Guidance Workspace
+                </h2>
+                <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
+                    Use event-level analysis, prevention signals, and related issue history to decide how to fix the problem and reduce repeat failures.
+                </p>
+            </div>
+
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_360px] xl:items-start">
+                <AiAnalysisPanel
+                    analysis={selectedEvent?.aiAnalysis ?? null}
+                    selectedEvent={selectedEvent}
+                    analyzing={aiAnalyzing}
+                    error={analysisError}
+                    onAnalyze={onAnalyze}
+                />
+
+                <PreventionInsightsPanel
+                    insights={preventionInsights}
+                    loading={preventionInsightsLoading}
+                    error={preventionInsightsError}
+                />
+            </div>
+
+            <SimilarPastIssuesPanel
+                items={similarIssues}
+                loading={similarIssuesLoading}
+                error={similarIssuesError}
+                formatDate={formatDate}
+            />
+        </div>
+    );
+}
+
 function Row({ label, children }: { label: string; children: ReactNode }) {
     return (
-        <div className="px-5 py-3 flex justify-between items-center gap-3">
+        <div className="flex items-center justify-between gap-3 px-5 py-3.5">
             <span className="text-sm text-slate-500">{label}</span>
             <span className="text-sm text-slate-200 text-right">{children}</span>
         </div>
@@ -831,21 +1059,21 @@ function ResolutionNoteCard({
     isResolved: boolean;
 }) {
     return (
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-slate-700/50 flex items-center justify-between gap-3">
+        <div className="overflow-hidden rounded-2xl bg-slate-800/35 ring-1 ring-white/5">
+            <div className="flex items-center justify-between gap-3 px-5 pb-3 pt-5">
                 <div>
-                    <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    <h2 className="text-sm font-semibold text-slate-100">
                         Resolution Note
                     </h2>
-                    <p className="mt-1 text-[11px] text-slate-500">
+                    <p className="mt-1 text-sm text-slate-500">
                         {isResolved ? 'Saved with the current resolution.' : 'Retained from the last resolution.'}
                     </p>
                 </div>
-                <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">
+                <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-200">
                     Saved
                 </span>
             </div>
-            <div className="px-5 py-4">
+            <div className="px-5 pb-5">
                 <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-200">
                     {note}
                 </p>
@@ -977,8 +1205,8 @@ function AnalysisSectionCard({
     accentClassName: string;
 }) {
     return (
-        <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-4">
-            <div className={`mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] ${accentClassName}`}>
+        <div className="rounded-xl bg-slate-950/45 p-4 ring-1 ring-white/5">
+            <div className={`mb-2 text-[11px] font-semibold ${accentClassName}`}>
                 {label}
             </div>
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-300">
@@ -1048,11 +1276,11 @@ function AiAnalysisPanel({
     const showEmptyState = !selectedEvent || (!showLoadingState && !hasRenderableAnalysis);
 
     return (
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-violet-500/10 to-transparent">
+        <div className="overflow-hidden rounded-2xl bg-slate-800/35 ring-1 ring-white/5">
+            <div className="flex flex-col justify-between gap-3 border-b border-slate-800/80 px-5 pb-4 pt-5 sm:flex-row sm:items-center">
                 <div>
-                    <h2 className="text-sm font-bold text-slate-200">AI Debug Guidance</h2>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">
+                    <h2 className="text-base font-semibold text-slate-100">AI Debug Guidance</h2>
+                    <p className="mt-1 text-sm text-slate-500">
                         Event-based analysis for the selected event
                     </p>
                 </div>
@@ -1060,7 +1288,7 @@ function AiAnalysisPanel({
                     type="button"
                     onClick={onAnalyze}
                     disabled={analyzing || !selectedEvent}
-                    className="px-4 py-2 text-sm font-semibold bg-gradient-to-r from-violet-600 to-blue-600 text-white rounded-lg hover:from-violet-500 hover:to-blue-500 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-blue-600 px-3.5 py-2 text-sm font-semibold text-white transition-colors hover:from-violet-500 hover:to-blue-500 disabled:opacity-50"
                 >
                     {analyzing ? <Spinner /> : null}
                     {analyzing ? 'Analyzing...' : 'Analyze Selected Event'}
@@ -1068,7 +1296,7 @@ function AiAnalysisPanel({
             </div>
             <div className="p-5">
                 {error && (
-                    <div className="mb-4 text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+                    <div className="mb-4 rounded-lg bg-red-500/10 px-3 py-2.5 text-sm text-red-300 ring-1 ring-red-500/25">
                         {error}
                         {hasRenderableAnalysis ? ' Previous guidance is still shown below.' : ''}
                     </div>
@@ -1098,12 +1326,12 @@ function AiAnalysisPanel({
                 ) : (
                     <div className="space-y-4">
                         {analyzing && (
-                            <div className="rounded-xl border border-violet-500/20 bg-violet-500/10 px-4 py-3 text-sm text-violet-100">
+                            <div className="rounded-xl bg-violet-500/10 px-4 py-3 text-sm text-violet-100 ring-1 ring-violet-500/20">
                                 Refreshing guidance for the selected event.
                             </div>
                         )}
 
-                        <div className="flex flex-col gap-3 border border-slate-700/60 rounded-xl bg-slate-900/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-col gap-3 rounded-xl bg-slate-950/40 px-4 py-3 ring-1 ring-white/5 sm:flex-row sm:items-center sm:justify-between">
                             <div className="text-xs text-slate-400">
                                 Selected event{' '}
                                 <span className="font-mono text-slate-200">{selectedEvent.id}</span>
@@ -1127,8 +1355,8 @@ function AiAnalysisPanel({
                         </div>
 
                         {analysis?.summary && (
-                            <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-4">
-                                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                            <div className="rounded-xl bg-slate-950/45 p-4 ring-1 ring-white/5">
+                                <div className="mb-2 text-[11px] font-semibold text-slate-400">
                                     Summary
                                 </div>
                                 <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-300">
@@ -1151,7 +1379,7 @@ function AiAnalysisPanel({
                         )}
 
                         {!analysis?.summary && sections.length === 0 && (
-                            <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-4 text-sm text-slate-400">
+                            <div className="rounded-xl bg-slate-950/45 p-4 text-sm text-slate-400 ring-1 ring-white/5">
                                 Analysis returned limited structured data for this event.
                             </div>
                         )}

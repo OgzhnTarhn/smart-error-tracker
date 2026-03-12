@@ -38,7 +38,7 @@ export default function EventList({
     }
 
     return (
-        <ul className="max-h-[360px] overflow-y-auto divide-y divide-slate-700/30">
+        <ul className="max-h-[620px] overflow-y-auto divide-y divide-slate-800/80">
             {events.map((event) => {
                 const isSelected = selectedEventId === event.id;
                 return (
@@ -49,12 +49,12 @@ export default function EventList({
                             }}
                             type="button"
                             onClick={() => onSelectEvent(event)}
-                            className={`w-full px-4 py-3 text-left transition-all border-l-2 ${isSelected
-                                ? 'bg-violet-500/15 border-l-violet-400 ring-1 ring-violet-500/40'
-                                : 'border-l-transparent hover:bg-slate-700/30'
+                            className={`w-full border-l-[3px] px-5 py-3.5 text-left transition-colors ${isSelected
+                                ? 'border-l-violet-400 bg-violet-500/[0.08]'
+                                : 'border-l-transparent hover:bg-slate-800/35'
                                 }`}
                         >
-                            <div className="flex items-center justify-between gap-2 mb-1">
+                            <div className="mb-1.5 flex items-center justify-between gap-2">
                                 <span className="text-xs text-slate-500">
                                     {formatDate(event.timestamp || event.createdAt)}
                                 </span>

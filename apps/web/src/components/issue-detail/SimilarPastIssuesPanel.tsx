@@ -89,12 +89,12 @@ export default function SimilarPastIssuesPanel({
     formatDate,
 }: SimilarPastIssuesPanelProps) {
     return (
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-700/50 flex flex-col gap-1 bg-gradient-to-r from-emerald-500/10 via-transparent to-transparent">
-                <h2 className="text-sm font-bold text-slate-200">
+        <div className="overflow-hidden rounded-2xl bg-slate-800/35 ring-1 ring-white/5">
+            <div className="flex flex-col gap-1 border-b border-slate-800/80 px-5 pb-4 pt-5">
+                <h2 className="text-base font-semibold text-slate-100">
                     Similar Past Issues
                 </h2>
-                <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                <p className="text-sm text-slate-500">
                     Lightweight heuristic matches from this project
                 </p>
             </div>
@@ -107,12 +107,12 @@ export default function SimilarPastIssuesPanel({
                 ) : items.length === 0 ? (
                     <EmptyState />
                 ) : (
-                    <ul className="space-y-3">
+                    <ul className="space-y-2.5">
                         {items.map((item) => (
                             <li key={item.id}>
                                 <Link
                                     to={`/issues/${item.id}`}
-                                    className="group block rounded-xl border border-slate-700/70 bg-slate-900/45 p-4 transition-colors hover:border-violet-500/40 hover:bg-slate-900/80"
+                                    className="group block rounded-xl bg-slate-900/40 p-4 ring-1 ring-white/5 transition-colors hover:bg-slate-900/70 hover:ring-violet-500/25"
                                 >
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                         <div className="min-w-0">
@@ -139,7 +139,7 @@ export default function SimilarPastIssuesPanel({
                                         </div>
 
                                         <div className="shrink-0 text-left sm:text-right">
-                                            <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                                            <div className="text-[11px] font-medium text-slate-500">
                                                 Last Seen
                                             </div>
                                             <div className="mt-1 text-sm text-slate-200">
@@ -149,8 +149,8 @@ export default function SimilarPastIssuesPanel({
                                     </div>
 
                                     {item.resolutionNote && (
-                                        <div className="mt-4 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.08] px-3 py-3">
-                                            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300/80">
+                                        <div className="mt-4 rounded-lg bg-emerald-500/[0.07] px-3 py-3 ring-1 ring-emerald-500/15">
+                                            <div className="text-[10px] font-semibold text-emerald-300/80">
                                                 Resolution Note
                                             </div>
                                             <p className="mt-1 text-sm leading-5 text-emerald-100/90">

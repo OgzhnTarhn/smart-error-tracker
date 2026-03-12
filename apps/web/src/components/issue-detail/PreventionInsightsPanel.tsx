@@ -98,8 +98,8 @@ function SignalList({
     accentClassName: string;
 }) {
     return (
-        <div className="rounded-xl border border-slate-700/70 bg-slate-900/45 p-4">
-            <div className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${accentClassName}`}>
+        <div className="border-t border-slate-800/80 pt-4">
+            <div className={`text-[11px] font-semibold ${accentClassName}`}>
                 {title}
             </div>
             <ul className="mt-3 space-y-2">
@@ -131,12 +131,12 @@ export default function PreventionInsightsPanel({
     );
 
     return (
-        <div className="overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-800/50">
-            <div className="flex flex-col gap-1 border-b border-slate-700/50 bg-gradient-to-r from-amber-500/10 via-rose-500/5 to-transparent px-5 py-4">
-                <h2 className="text-sm font-bold text-slate-200">
+        <div className="overflow-hidden rounded-2xl bg-slate-800/35 ring-1 ring-white/5">
+            <div className="flex flex-col gap-1 border-b border-slate-800/80 px-5 pb-4 pt-5">
+                <h2 className="text-base font-semibold text-slate-100">
                     Prevention Insights
                 </h2>
-                <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                <p className="text-sm text-slate-500">
                     Repeat-risk guidance from current analysis and project history
                 </p>
             </div>
@@ -150,9 +150,9 @@ export default function PreventionInsightsPanel({
                     <EmptyState />
                 ) : (
                     <div className="space-y-4">
-                        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px]">
-                            <div className="rounded-xl border border-slate-700/70 bg-slate-900/45 p-4">
-                                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-300">
+                        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_190px]">
+                            <div className="rounded-xl bg-slate-950/45 p-4 ring-1 ring-white/5">
+                                <div className="text-[11px] font-semibold text-rose-300">
                                     Prevention Tip
                                 </div>
                                 <p className="mt-3 text-sm leading-6 text-slate-100">
@@ -160,8 +160,8 @@ export default function PreventionInsightsPanel({
                                 </p>
                             </div>
 
-                            <div className="rounded-xl border border-slate-700/70 bg-slate-900/45 p-4">
-                                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            <div className="rounded-xl bg-slate-950/45 p-4 ring-1 ring-white/5">
+                                <div className="text-[11px] font-semibold text-slate-500">
                                     Repeat Risk
                                 </div>
                                 <div className="mt-3">
@@ -171,22 +171,22 @@ export default function PreventionInsightsPanel({
                                 </div>
                                 <div className="mt-4 flex flex-wrap gap-2 text-[11px] text-slate-400">
                                     {insights.derivedFrom.currentAnalysis && (
-                                        <span className="rounded-full border border-slate-700 bg-slate-950/80 px-2.5 py-1">
+                                        <span className="rounded-full bg-slate-900/65 px-2.5 py-1 ring-1 ring-white/5">
                                             AI analysis
                                         </span>
                                     )}
                                     {insights.derivedFrom.similarIssuesCount > 0 && (
-                                        <span className="rounded-full border border-slate-700 bg-slate-950/80 px-2.5 py-1">
+                                        <span className="rounded-full bg-slate-900/65 px-2.5 py-1 ring-1 ring-white/5">
                                             {insights.derivedFrom.similarIssuesCount} similar
                                         </span>
                                     )}
                                     {insights.derivedFrom.regressionHistory && (
-                                        <span className="rounded-full border border-slate-700 bg-slate-950/80 px-2.5 py-1">
+                                        <span className="rounded-full bg-slate-900/65 px-2.5 py-1 ring-1 ring-white/5">
                                             Regression history
                                         </span>
                                     )}
                                     {insights.derivedFrom.resolutionNotesUsed > 0 && (
-                                        <span className="rounded-full border border-slate-700 bg-slate-950/80 px-2.5 py-1">
+                                        <span className="rounded-full bg-slate-900/65 px-2.5 py-1 ring-1 ring-white/5">
                                             {insights.derivedFrom.resolutionNotesUsed} note reused
                                         </span>
                                     )}

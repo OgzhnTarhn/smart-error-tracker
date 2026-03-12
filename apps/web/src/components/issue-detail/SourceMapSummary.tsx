@@ -52,25 +52,25 @@ export default function SourceMapSummary({ sourceMap, hint = null }: SourceMapSu
     );
 
     return (
-        <div className="mb-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-3">
+        <div className="mb-4 rounded-xl bg-emerald-500/[0.08] px-4 py-3 ring-1 ring-emerald-500/20">
             <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-[11px] uppercase tracking-wider font-semibold text-emerald-300">
+                <div className="text-[11px] font-semibold text-emerald-300">
                     Source map result
                 </div>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold border bg-emerald-500/15 text-emerald-200 border-emerald-500/30">
+                <span className="inline-flex items-center rounded-md bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-200 ring-1 ring-emerald-500/20">
                     Source mapped
                 </span>
             </div>
 
             <div className="mt-2 grid gap-2 text-xs">
                 {hint && (
-                    <div className="rounded-md border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-2 text-emerald-100/90">
+                    <div className="rounded-md bg-emerald-500/[0.05] px-2.5 py-2 text-emerald-100/90 ring-1 ring-emerald-500/15">
                         {hint}
                     </div>
                 )}
 
-                <div className="rounded-md border border-slate-700/60 bg-slate-900/40 px-2.5 py-2">
-                    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
+                <div className="rounded-md bg-slate-950/35 px-2.5 py-2 ring-1 ring-white/5">
+                    <div className="text-[10px] font-semibold text-slate-500">
                         Original source
                     </div>
                     <div className="mt-1 font-mono text-slate-100 break-all">
@@ -83,8 +83,8 @@ export default function SourceMapSummary({ sourceMap, hint = null }: SourceMapSu
                     )}
                 </div>
 
-                <div className="rounded-md border border-slate-700/60 bg-slate-900/40 px-2.5 py-2">
-                    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
+                <div className="rounded-md bg-slate-950/35 px-2.5 py-2 ring-1 ring-white/5">
+                    <div className="text-[10px] font-semibold text-slate-500">
                         Minified frame
                     </div>
                     <div className="mt-1 font-mono text-slate-300 break-all">
