@@ -166,9 +166,9 @@ export default function EventDetailPanel({
 
     return (
         <div className="h-full overflow-hidden rounded-[24px] bg-transparent">
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-800/80 px-5 pb-4 pt-5">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-700/70 px-6 pb-4 pt-5">
                 <div>
-                    <h2 className="text-sm font-semibold text-slate-100">
+                    <h2 className="text-[18px] font-semibold text-slate-100">
                         Event Detail
                     </h2>
                     <div className="mt-1 text-sm text-slate-200 font-medium font-mono break-all">
@@ -199,7 +199,7 @@ export default function EventDetailPanel({
                 </div>
             </div>
 
-            <div className="px-5 pt-4">
+            <div className="px-6 pt-5">
                 <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
                     <MetaItem label="Timestamp" value={metaValues.timestamp} />
                     <MetaItem label="Source" value={metaValues.source} />
@@ -214,15 +214,15 @@ export default function EventDetailPanel({
                 </div>
             </div>
 
-            <div className="flex gap-1 px-5 pb-3 pt-4">
+            <div className="flex gap-6 border-b border-slate-700/60 px-6 pb-0 pt-6">
                 {EVENT_TABS.map((tab) => (
                     <button
                         key={tab}
                         type="button"
                         onClick={() => onTabChange(tab)}
-                        className={`rounded-lg px-3 py-1.5 text-sm font-medium capitalize transition-colors ${activeTab === tab
-                            ? 'bg-violet-500/10 text-violet-200 ring-1 ring-violet-500/25'
-                            : 'text-slate-400 hover:bg-slate-800/70 hover:text-slate-200'
+                        className={`border-b-2 px-0 pb-3 text-base font-medium capitalize transition-colors ${activeTab === tab
+                            ? 'border-blue-500 text-blue-400'
+                            : 'border-transparent text-slate-400 hover:text-slate-200'
                             }`}
                     >
                         {tab}
@@ -230,8 +230,8 @@ export default function EventDetailPanel({
                 ))}
             </div>
 
-            <div className="px-5 pb-5">
-                <div className="overflow-hidden rounded-2xl bg-slate-950/50 ring-1 ring-white/5">
+            <div className="px-6 pb-6 pt-5">
+                <div className="overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-950/55">
                     {activeTab === 'stack' && (
                         event.stack ? (
                             <div className="p-4">
@@ -241,16 +241,16 @@ export default function EventDetailPanel({
                                         hint={sourceMapResult?.hint ?? null}
                                     />
                                 ) : (
-                                    <div className="mb-4 rounded-xl bg-slate-900/45 px-4 py-3 ring-1 ring-white/5">
+                                    <div className="mb-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.06] px-4 py-4">
                                         <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <div className="text-[11px] font-semibold text-slate-400">
+                                            <div className="text-sm font-semibold text-slate-100">
                                                 Source map
                                             </div>
                                             <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize ring-1 ${sourceMapStatusBadgeClass}`}>
                                                 {sourceMapStatusLabel}
                                             </span>
                                         </div>
-                                        <div className="mt-1 text-xs text-slate-300">
+                                        <div className="mt-2 text-sm text-slate-300">
                                             {resolvingSourceMap
                                                 ? 'Checking the top frame against its matching .map artifact...'
                                                 : sourceMapResult?.message ?? 'Resolve source map to view original source locations.'}
@@ -269,14 +269,14 @@ export default function EventDetailPanel({
                                             type="button"
                                             onClick={onResolveSourceMap}
                                             disabled={resolvingSourceMap}
-                                            className="mt-3 rounded-md bg-blue-500/15 px-2.5 py-1.5 text-xs font-medium text-blue-200 ring-1 ring-blue-500/25 transition-colors hover:bg-blue-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+                                            className="mt-4 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
                                         >
                                             {resolvingSourceMap ? 'Resolving...' : sourceMapButtonLabel}
                                         </button>
                                     </div>
                                 )}
 
-                                <pre className="max-h-[520px] overflow-auto rounded-xl bg-slate-950/35 p-4 text-sm font-mono whitespace-pre-wrap break-words leading-relaxed text-slate-300 ring-1 ring-white/5">
+                                <pre className="max-h-[540px] overflow-auto rounded-xl border border-slate-700/60 bg-slate-950/85 p-6 text-sm font-mono whitespace-pre-wrap break-words leading-9 text-slate-300">
                                     {event.stack}
                                 </pre>
                             </div>
@@ -295,9 +295,9 @@ export default function EventDetailPanel({
                                         {contextSummary.map((item) => (
                                             <div
                                                 key={item.label}
-                                                className="rounded-lg bg-slate-900/45 px-3 py-2.5 ring-1 ring-white/5"
+                                                className="rounded-lg border border-slate-700/60 bg-slate-950/70 px-3 py-2.5"
                                             >
-                                                <div className="text-[10px] font-semibold text-slate-500">
+                                                <div className="text-[10px] font-semibold uppercase tracking-[0.04em] text-slate-500">
                                                     {item.label}
                                                 </div>
                                                 <div className="mt-1 text-xs text-slate-200 break-all">
@@ -312,9 +312,9 @@ export default function EventDetailPanel({
                                     {contextEntries.map(([key, value]) => (
                                         <div
                                             key={key}
-                                            className="rounded-lg bg-slate-900/45 px-3 py-2.5 ring-1 ring-white/5"
+                                            className="rounded-lg border border-slate-700/60 bg-slate-950/70 px-3 py-2.5"
                                         >
-                                            <div className="mb-0.5 text-[10px] font-semibold text-slate-500">
+                                            <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-slate-500">
                                                 {key}
                                             </div>
                                             <div className="text-sm font-mono text-slate-300 break-all whitespace-pre-wrap">
@@ -357,11 +357,11 @@ interface MetaItemProps {
 
 function MetaItem({ label, value, badge }: MetaItemProps) {
     return (
-        <div className="rounded-lg bg-slate-900/45 px-3 py-2.5 ring-1 ring-white/5">
-            <div className="text-[10px] font-semibold text-slate-500">
+        <div className="rounded-lg border border-slate-700/60 bg-slate-950/80 px-4 py-4">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.04em] text-slate-500">
                 {label}
             </div>
-            <div className="mt-1 text-xs text-slate-200 break-all">
+            <div className="mt-2 text-sm text-slate-100 break-all">
                 {badge ?? value}
             </div>
         </div>

@@ -38,7 +38,7 @@ export default function EventList({
     }
 
     return (
-        <ul className="max-h-[620px] overflow-y-auto divide-y divide-slate-800/80">
+        <ul className="divide-y divide-slate-800/80">
             {events.map((event) => {
                 const isSelected = selectedEventId === event.id;
                 return (
@@ -49,8 +49,8 @@ export default function EventList({
                             }}
                             type="button"
                             onClick={() => onSelectEvent(event)}
-                            className={`w-full border-l-[3px] px-5 py-3.5 text-left transition-colors ${isSelected
-                                ? 'border-l-violet-400 bg-violet-500/[0.08]'
+                            className={`w-full border-l-[3px] px-5 py-5 text-left transition-colors ${isSelected
+                                ? 'border-l-blue-500 bg-blue-500/[0.12]'
                                 : 'border-l-transparent hover:bg-slate-800/35'
                                 }`}
                         >
@@ -66,7 +66,7 @@ export default function EventList({
                                         </span>
                                     )}
                                     {event.releaseVersion && (
-                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-blue-500/10 text-blue-300 border border-blue-500/30">
+                                        <span className="rounded px-1.5 py-0.5 text-[10px] font-mono bg-blue-500/10 text-blue-300 border border-blue-500/30">
                                             {event.releaseVersion}
                                         </span>
                                     )}

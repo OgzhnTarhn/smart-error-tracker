@@ -39,12 +39,6 @@ const DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
     minute: '2-digit',
 });
 
-const statusColor: Record<string, string> = {
-    open: 'text-red-400 bg-red-500/10 border-red-500/30',
-    resolved: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
-    ignored: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
-};
-
 interface TimelinePoint {
     date: string;
     count: number;
@@ -54,6 +48,11 @@ type IssueDetailView = 'investigation' | 'guidance';
 
 function getIssueDetailView(value: string | null): IssueDetailView {
     return value === 'guidance' ? 'guidance' : 'investigation';
+}
+
+function getTimelineChartMax(points: TimelinePoint[]) {
+    const maxCount = points.reduce((highest, point) => Math.max(highest, point.count), 0);
+    return Math.max(maxCount, 4);
 }
 
 function getAnalyzeErrorMessage(errorCode: string | undefined): string {
@@ -722,11 +721,11 @@ function IssueDetailTopTabs({
     const activeMeta = tabs.find((tab) => tab.value === activeView) ?? tabs[0];
 
     return (
-        <div className="mb-6 border-b border-slate-800/80 pb-4">
+        <div className="mb-7 border-b border-slate-800/80">
             <div
                 role="tablist"
                 aria-label="Issue detail sections"
-                className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-slate-800/45 p-1 ring-1 ring-white/5"
+                className="flex items-end gap-7"
             >
                 {tabs.map((tab) => {
                     const isActive = tab.value === activeView;
@@ -738,10 +737,10 @@ function IssueDetailTopTabs({
                             role="tab"
                             aria-selected={isActive}
                             onClick={() => onChange(tab.value)}
-                            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                            className={`border-b-2 px-0 pb-3 pt-1 text-base transition-colors ${
                                 isActive
-                                    ? 'bg-slate-100/[0.08] text-slate-100 ring-1 ring-white/10'
-                                    : 'text-slate-300 hover:bg-slate-700/55 hover:text-slate-100'
+                                    ? 'border-blue-500 text-blue-400'
+                                    : 'border-transparent text-slate-400 hover:text-slate-200'
                             }`}
                         >
                             {tab.label}
@@ -749,10 +748,7 @@ function IssueDetailTopTabs({
                     );
                 })}
             </div>
-            <p className="mt-2 text-sm text-slate-500">
-                <span className="font-medium text-slate-300">{activeMeta.label}:</span>{' '}
-                {activeMeta.description}
-            </p>
+            <p className="pb-3 pt-2 text-sm text-slate-500">{activeMeta.description}</p>
         </div>
     );
 }
@@ -794,18 +790,20 @@ function InvestigationTabContent({
     onResolveSourceMap: () => void;
     formatDate: (value: string) => string;
 }) {
+    const timelineChartMax = getTimelineChartMax(timeline);
+
     return (
-        <div className="grid grid-cols-1 gap-7 xl:grid-cols-[320px_minmax(0,1fr)] xl:gap-8">
+        <div className="grid grid-cols-1 gap-7 xl:grid-cols-[360px_minmax(0,1fr)] xl:gap-7">
             <div className="space-y-5">
-                <div className="overflow-hidden rounded-2xl bg-slate-800/35 ring-1 ring-white/5">
-                    <div className="px-5 pb-3 pt-5">
-                        <h2 className="text-sm font-semibold text-slate-100">
+                <div className="overflow-hidden rounded-2xl border border-slate-700/70 bg-slate-800/45">
+                    <div className="px-6 pb-3 pt-6">
+                        <h2 className="text-[14px] font-semibold uppercase tracking-[0.08em] text-slate-300">
                             Overview
                         </h2>
                     </div>
                     <div className="divide-y divide-slate-800/70">
                         <Row label="Status">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium border capitalize ${statusColor[group.status] || statusColor.open}`}>
+                            <span className="text-[15px] font-medium capitalize text-orange-400">
                                 {group.status}
                             </span>
                         </Row>
@@ -832,19 +830,56 @@ function InvestigationTabContent({
                         </Row>
                         <Row label="First seen">{formatDate(group.firstSeenAt)}</Row>
                         <Row label="Last seen">{formatDate(group.lastSeenAt)}</Row>
-                        <div className="px-5 py-3">
-                            <div className="text-xs text-slate-500 mb-1.5">Fingerprint</div>
+                        <div className="px-6 py-5">
+                            <div className="mb-2 text-sm font-semibold uppercase tracking-[0.05em] text-slate-400">
+                                Fingerprint
+                            </div>
                             <div className="flex items-center gap-2">
-                                <code className="text-xs font-mono bg-slate-700/50 px-2 py-1 rounded break-all flex-1 text-slate-400">
+                                <code className="flex-1 rounded-lg border border-slate-700/70 bg-slate-950/70 px-4 py-4 text-sm font-mono leading-8 break-all text-slate-400">
                                     {group.fingerprint}
                                 </code>
-                                <button
-                                    type="button"
-                                    onClick={onCopyFingerprint}
-                                    className="shrink-0 p-1.5 rounded-md hover:bg-slate-700 transition-colors text-xs text-slate-300"
-                                >
-                                    {copiedFingerprint ? 'Copied' : 'Copy'}
-                                </button>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={onCopyFingerprint}
+                                className="mt-3 text-xs font-medium text-slate-400 transition-colors hover:text-slate-200"
+                            >
+                                {copiedFingerprint ? 'Copied fingerprint' : 'Copy fingerprint'}
+                            </button>
+                        </div>
+                        <div className="px-6 py-5">
+                            <div className="mb-3 text-sm font-semibold uppercase tracking-[0.05em] text-slate-400">
+                                Event Frequency - Last 7 Days
+                            </div>
+                            <div className="h-28">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={timeline}>
+                                        <XAxis
+                                            dataKey="date"
+                                            stroke="#64748b"
+                                            fontSize={11}
+                                            tickLine={false}
+                                            axisLine={false}
+                                        />
+                                        <YAxis hide domain={[0, timelineChartMax]} />
+                                        <Tooltip
+                                            contentStyle={{
+                                                backgroundColor: '#0f172a',
+                                                border: '1px solid #334155',
+                                                borderRadius: '10px',
+                                                fontSize: '12px',
+                                            }}
+                                        />
+                                        <Bar
+                                            dataKey="count"
+                                            fill="#3b82f6"
+                                            radius={[4, 4, 0, 0]}
+                                            name="Events"
+                                            barSize={28}
+                                            minPointSize={timelineChartMax <= 4 ? 4 : 2}
+                                        />
+                                    </BarChart>
+                                </ResponsiveContainer>
                             </div>
                         </div>
                     </div>
@@ -856,78 +891,33 @@ function InvestigationTabContent({
                         isResolved={group.status === 'resolved'}
                     />
                 )}
-
-                <div className="overflow-hidden rounded-2xl bg-slate-800/35 ring-1 ring-white/5">
-                    <div className="px-5 pb-3 pt-5">
-                        <h2 className="text-sm font-semibold text-slate-100">
-                            Event Frequency - Last 7 Days
-                        </h2>
-                    </div>
-                    <div className="px-3 py-4 h-36">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={timeline}>
-                                <XAxis
-                                    dataKey="date"
-                                    stroke="#475569"
-                                    fontSize={10}
-                                    tickLine={false}
-                                    axisLine={false}
-                                />
-                                <YAxis
-                                    stroke="#475569"
-                                    fontSize={10}
-                                    allowDecimals={false}
-                                    tickLine={false}
-                                    axisLine={false}
-                                    width={20}
-                                />
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: '#1e293b',
-                                        border: '1px solid #334155',
-                                        borderRadius: '8px',
-                                        fontSize: '12px',
-                                    }}
-                                />
-                                <Bar
-                                    dataKey="count"
-                                    fill="#8b5cf6"
-                                    radius={[4, 4, 0, 0]}
-                                    name="Events"
-                                />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
             </div>
 
             <div className="min-w-0">
-                <div className="overflow-hidden rounded-[28px] bg-slate-800/25 ring-1 ring-white/5">
-                    <div className="flex flex-col gap-2 border-b border-slate-800/80 px-5 py-4 sm:flex-row sm:items-end sm:justify-between">
+                <div className="overflow-hidden rounded-[22px] border border-slate-700/70 bg-slate-800/40">
+                    <div className="flex flex-col gap-2 border-b border-slate-700/70 px-6 py-6 sm:flex-row sm:items-end sm:justify-between">
                         <div>
-                            <h2 className="text-base font-semibold text-slate-100">
+                            <h2 className="text-[18px] font-semibold text-slate-100">
                                 Investigation Workspace
                             </h2>
-                            <p className="text-sm text-slate-500">
+                            <p className="mt-1 text-sm text-slate-400">
                                 Inspect recent events and drill into the selected event without leaving this issue.
                             </p>
                         </div>
                         {selectedEvent && (
-                            <div className="text-xs text-slate-500">
-                                Selected event <span className="font-mono text-slate-300">{selectedEvent.id}</span>
+                            <div className="text-sm text-slate-400">
+                                Selected event{' '}
+                                <span className="font-mono text-slate-200">{selectedEvent.id}</span>
                             </div>
                         )}
                     </div>
 
-                    <div className="grid min-h-[620px] gap-0 xl:grid-cols-[340px_minmax(0,1fr)] xl:divide-x xl:divide-slate-800/80">
-                        <div className="min-w-0 bg-slate-900/28">
-                            <div className="border-b border-slate-800/80 px-5 py-4">
-                                <h2 className="text-sm font-semibold text-slate-100">
+                    <div className="grid min-h-[760px] gap-0 xl:grid-cols-[380px_minmax(0,1fr)] xl:divide-x xl:divide-slate-700/70">
+                        <div className="min-w-0 bg-slate-900/25">
+                            <div className="border-b border-slate-700/70 px-5 py-4">
+                                <h2 className="text-sm font-semibold uppercase tracking-[0.04em] text-slate-300">
                                     Latest Events ({events.length})
                                 </h2>
-                                <p className="mt-1 text-sm text-slate-500">
-                                    Recent occurrences for this issue, ordered by time.
-                                </p>
                             </div>
                             <EventList
                                 events={events}
@@ -937,7 +927,7 @@ function InvestigationTabContent({
                             />
                         </div>
 
-                        <div className="min-w-0 bg-slate-950/10">
+                        <div className="min-w-0 bg-slate-900/18">
                             <EventDetailPanel
                                 event={selectedEvent}
                                 activeTab={activeTab}
@@ -1023,9 +1013,9 @@ function GuidanceTabContent({
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
     return (
-        <div className="flex items-center justify-between gap-3 px-5 py-3.5">
-            <span className="text-sm text-slate-500">{label}</span>
-            <span className="text-sm text-slate-200 text-right">{children}</span>
+        <div className="flex items-center justify-between gap-4 px-6 py-4">
+            <span className="text-[15px] text-slate-400">{label}</span>
+            <span className="text-right text-[15px] text-slate-100">{children}</span>
         </div>
     );
 }
