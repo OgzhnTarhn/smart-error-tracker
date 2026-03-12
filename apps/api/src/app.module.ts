@@ -8,6 +8,7 @@ import { IngestRateLimitGuard } from './common/guards/ingest-rate-limit.guard';
 import { SourceMapService } from './source-maps/source-map.service';
 import { DashboardStatsService } from './dashboard/dashboard-stats.service';
 import { SimilarIssuesService } from './events/similar-issues.service';
+import { PreventionInsightsService } from './events/prevention-insights.service';
 
 @Module({
   imports: [PrismaModule],
@@ -18,6 +19,7 @@ import { SimilarIssuesService } from './events/similar-issues.service';
     SourceMapService,
     DashboardStatsService,
     SimilarIssuesService,
+    PreventionInsightsService,
   ],
 })
 export class AppModule {}

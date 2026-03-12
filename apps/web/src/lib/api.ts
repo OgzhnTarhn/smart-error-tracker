@@ -163,6 +163,30 @@ export interface SimilarIssuesResponse {
 export const getSimilarIssues = (id: string) =>
     apiFetch<SimilarIssuesResponse>(`/groups/${id}/similar`);
 
+export type PreventionRepeatRisk = 'low' | 'medium' | 'high';
+
+export interface PreventionInsights {
+    preventionTip: string | null;
+    repeatRisk: PreventionRepeatRisk;
+    repeatSignals: string[];
+    recommendedActions: string[];
+    derivedFrom: {
+        currentAnalysis: boolean;
+        similarIssuesCount: number;
+        regressionHistory: boolean;
+        resolutionNotesUsed: number;
+    };
+}
+
+export interface PreventionInsightsResponse {
+    ok: boolean;
+    insights?: PreventionInsights;
+    error?: string;
+}
+
+export const getPreventionInsights = (id: string) =>
+    apiFetch<PreventionInsightsResponse>(`/groups/${id}/prevention-insights`);
+
 export type StatusAction = 'resolve' | 'open' | 'ignore';
 export interface SetGroupStatusRequest {
     note?: string;

@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import EventDetailPanel from '../components/issue-detail/EventDetailPanel';
 import EventList from '../components/issue-detail/EventList';
+import PreventionInsightsPanel from '../components/issue-detail/PreventionInsightsPanel';
 import SimilarPastIssuesPanel from '../components/issue-detail/SimilarPastIssuesPanel';
 import type { EventTab } from '../components/issue-detail/types';
 import IssueRegressionBadge from '../components/issues/IssueRegressionBadge';
@@ -19,11 +20,13 @@ import {
     type EventAiAnalysis,
     type EventSourceMapResult,
     getGroupDetail,
+    getPreventionInsights,
     getSimilarIssues,
     resolveEventSourceMap,
     setGroupStatus,
     type GroupDetail,
     type GroupDetailEvent,
+    type PreventionInsights,
     type SimilarIssue,
     type StatusAction,
 } from '../lib/api';
@@ -120,6 +123,9 @@ export default function IssueDetailPage() {
     const [similarIssues, setSimilarIssues] = useState<SimilarIssue[]>([]);
     const [similarIssuesLoading, setSimilarIssuesLoading] = useState(false);
     const [similarIssuesError, setSimilarIssuesError] = useState<string | null>(null);
+    const [preventionInsights, setPreventionInsights] = useState<PreventionInsights | null>(null);
+    const [preventionInsightsLoading, setPreventionInsightsLoading] = useState(false);
+    const [preventionInsightsError, setPreventionInsightsError] = useState<string | null>(null);
 
     const [copiedFingerprint, setCopiedFingerprint] = useState(false);
     const [stackCopied, setStackCopied] = useState(false);
@@ -233,6 +239,53 @@ export default function IssueDetailPage() {
             .finally(() => {
                 if (cancelled) return;
                 setSimilarIssuesLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [id]);
+
+    useEffect(() => {
+        if (!id) {
+            setPreventionInsights(null);
+            setPreventionInsightsLoading(false);
+            setPreventionInsightsError(null);
+            return;
+        }
+
+        let cancelled = false;
+
+        setPreventionInsights(null);
+        setPreventionInsightsLoading(true);
+        setPreventionInsightsError(null);
+
+        void getPreventionInsights(id)
+            .then((data) => {
+                if (cancelled) return;
+
+                if (!data.ok) {
+                    setPreventionInsightsError(
+                        data.error || 'Failed to load prevention insights',
+                    );
+                    setPreventionInsights(null);
+                    return;
+                }
+
+                setPreventionInsights(data.insights ?? null);
+            })
+            .catch((err: unknown) => {
+                if (cancelled) return;
+                setPreventionInsightsError(
+                    err instanceof Error
+                        ? err.message
+                        : 'Failed to load prevention insights',
+                );
+                setPreventionInsights(null);
+            })
+            .finally(() => {
+                if (cancelled) return;
+                setPreventionInsightsLoading(false);
             });
 
         return () => {
@@ -700,6 +753,12 @@ export default function IssueDetailPage() {
                             rawCopied={rawCopied}
                             sourceMapResult={selectedSourceMapResult}
                             resolvingSourceMap={sourceMapResolving}
+                        />
+
+                        <PreventionInsightsPanel
+                            insights={preventionInsights}
+                            loading={preventionInsightsLoading}
+                            error={preventionInsightsError}
                         />
 
                         <SimilarPastIssuesPanel

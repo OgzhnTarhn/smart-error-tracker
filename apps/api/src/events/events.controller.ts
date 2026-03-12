@@ -22,6 +22,7 @@ import {
 } from '../source-maps/source-map.service';
 import { DashboardStatsService } from '../dashboard/dashboard-stats.service';
 import { SimilarIssuesService } from './similar-issues.service';
+import { PreventionInsightsService } from './prevention-insights.service';
 import {
   createEmptyStructuredAiAnalysis,
   normalizeStoredAiAnalysis,
@@ -359,6 +360,7 @@ export class EventsController {
     private readonly sourceMaps: SourceMapService,
     private readonly dashboardStats: DashboardStatsService,
     private readonly similarIssues: SimilarIssuesService,
+    private readonly preventionInsights: PreventionInsightsService,
   ) {}
 
   private async findGroupDetailEvents(
@@ -954,6 +956,27 @@ export class EventsController {
     return {
       ok: true,
       items,
+    };
+  }
+
+  @Get('groups/:id/prevention-insights')
+  async getPreventionInsights(
+    @Headers('x-api-key') apiKey: string | undefined,
+    @Param('id') id: string,
+  ) {
+    const projectId = await this.resolveProjectIdFromApiKey(apiKey);
+    if (!projectId) return { ok: false, error: 'unauthorized' };
+    if (!id) return { ok: false, error: 'invalid' };
+
+    const insights = await this.preventionInsights.getPreventionInsights(
+      projectId,
+      id,
+    );
+    if (!insights) return { ok: false, error: 'not_found' };
+
+    return {
+      ok: true,
+      insights,
     };
   }
 

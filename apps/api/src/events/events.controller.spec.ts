@@ -120,6 +120,9 @@ describe('EventsController', () => {
   const similarIssues = {
     findSimilarIssues: jest.fn(),
   } as any;
+  const preventionInsights = {
+    getPreventionInsights: jest.fn(),
+  } as any;
 
   let controller: EventsController;
 
@@ -133,6 +136,7 @@ describe('EventsController', () => {
       sourceMaps,
       dashboardStats,
       similarIssues,
+      preventionInsights,
     );
   });
 
@@ -635,6 +639,74 @@ describe('EventsController', () => {
     similarIssues.findSimilarIssues.mockResolvedValue(null);
 
     const result = await controller.listSimilarGroups(
+      'set_valid_key',
+      'group_missing',
+    );
+
+    expect(result).toEqual({ ok: false, error: 'not_found' });
+  });
+
+  it('returns prevention insights for a group', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    preventionInsights.getPreventionInsights.mockResolvedValue({
+      preventionTip: 'Add null guards before rendering async checkout data.',
+      repeatRisk: 'medium',
+      repeatSignals: [
+        'This issue has similarities with 2 past issues in the same frontend route.',
+      ],
+      recommendedActions: [
+        'Check for nullable values before property access.',
+      ],
+      derivedFrom: {
+        currentAnalysis: true,
+        similarIssuesCount: 2,
+        regressionHistory: false,
+        resolutionNotesUsed: 1,
+      },
+    });
+
+    const result = await controller.getPreventionInsights(
+      'set_valid_key',
+      'group_1',
+    );
+
+    expect(preventionInsights.getPreventionInsights).toHaveBeenCalledWith(
+      'proj_1',
+      'group_1',
+    );
+    expect(result).toEqual({
+      ok: true,
+      insights: {
+        preventionTip:
+          'Add null guards before rendering async checkout data.',
+        repeatRisk: 'medium',
+        repeatSignals: [
+          'This issue has similarities with 2 past issues in the same frontend route.',
+        ],
+        recommendedActions: [
+          'Check for nullable values before property access.',
+        ],
+        derivedFrom: {
+          currentAnalysis: true,
+          similarIssuesCount: 2,
+          regressionHistory: false,
+          resolutionNotesUsed: 1,
+        },
+      },
+    });
+  });
+
+  it('returns not_found for prevention insights when the group does not exist', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    preventionInsights.getPreventionInsights.mockResolvedValue(null);
+
+    const result = await controller.getPreventionInsights(
       'set_valid_key',
       'group_missing',
     );
