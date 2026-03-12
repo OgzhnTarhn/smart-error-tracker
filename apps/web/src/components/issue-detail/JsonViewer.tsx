@@ -26,7 +26,7 @@ export default function JsonViewer({
     }
 
     return (
-        <pre className={`overflow-auto ${maxHeightClassName} p-4 text-sm font-mono whitespace-pre-wrap break-words text-slate-300 leading-relaxed`}>
+        <pre className={`scrollbar-hidden overflow-y-auto overflow-x-hidden ${maxHeightClassName} p-4 text-sm font-mono whitespace-pre-wrap break-words text-slate-300 leading-relaxed`}>
             {toPrettyJson(data)}
         </pre>
     );

@@ -63,3 +63,12 @@ body {
     inset 0 0 0 1px rgba(255, 255, 255, 0.04),
     0 16px 48px rgba(0, 0, 0, 0.32);
 }
+
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}

@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
 import type { GroupDetailEvent } from '../../lib/api';
-import IssueLevelBadge from '../issues/IssueLevelBadge';
 
 interface EventListProps {
     events: GroupDetailEvent[];
@@ -38,9 +37,10 @@ export default function EventList({
     }
 
     return (
-        <ul className="divide-y divide-slate-800/80">
+        <ul className="divide-y divide-[#2a2a2a]">
             {events.map((event) => {
                 const isSelected = selectedEventId === event.id;
+                const levelLabel = event.level?.toUpperCase() ?? 'EVENT';
                 return (
                     <li key={event.id}>
                         <button
@@ -49,30 +49,30 @@ export default function EventList({
                             }}
                             type="button"
                             onClick={() => onSelectEvent(event)}
-                            className={`w-full border-l-[3px] px-5 py-5 text-left transition-colors ${isSelected
-                                ? 'border-l-blue-500 bg-blue-500/[0.12]'
-                                : 'border-l-transparent hover:bg-slate-800/35'
+                            className={`w-full border-l-2 px-5 py-5 text-left transition-colors ${isSelected
+                                ? 'border-l-blue-500 bg-blue-500/[0.07]'
+                                : 'border-l-transparent hover:bg-[#181818]'
                                 }`}
                         >
-                            <div className="mb-1.5 flex items-center justify-between gap-2">
-                                <span className="text-xs text-slate-500">
+                            <div className="mb-2 flex flex-wrap items-center gap-2">
+                                <span className="font-mono text-[11px] text-slate-500">
                                     {formatDate(event.timestamp || event.createdAt)}
                                 </span>
-                                <div className="flex flex-wrap items-center gap-1">
-                                    <IssueLevelBadge level={event.level} />
-                                    {event.environment && (
-                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-500/10 text-violet-300 border border-violet-500/30">
-                                            {event.environment}
-                                        </span>
-                                    )}
-                                    {event.releaseVersion && (
-                                        <span className="rounded px-1.5 py-0.5 text-[10px] font-mono bg-blue-500/10 text-blue-300 border border-blue-500/30">
-                                            {event.releaseVersion}
-                                        </span>
-                                    )}
-                                </div>
+                                <span className="rounded bg-red-500/18 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-red-300">
+                                    {levelLabel}
+                                </span>
+                                {event.environment && (
+                                    <span className="rounded border border-violet-500/20 bg-violet-500/12 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-violet-300">
+                                        {event.environment}
+                                    </span>
+                                )}
+                                {event.releaseVersion && (
+                                    <span className="rounded border border-[#2c2c2c] bg-[#181818] px-1.5 py-0.5 text-[9px] font-medium text-slate-500">
+                                        {event.releaseVersion}
+                                    </span>
+                                )}
                             </div>
-                            <p className="text-sm text-slate-300 leading-5">
+                            <p className={`text-sm leading-7 ${isSelected ? 'font-semibold text-white' : 'text-slate-400'}`}>
                                 {formatMessage(event.message)}
                             </p>
                         </button>

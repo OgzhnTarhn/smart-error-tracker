@@ -1,6 +1,4 @@
-import type { ReactNode } from 'react';
 import type { EventSourceMapResult, GroupDetailEvent } from '../../lib/api';
-import IssueLevelBadge from '../issues/IssueLevelBadge';
 import JsonViewer from './JsonViewer';
 import SourceMapSummary from './SourceMapSummary';
 import { EVENT_TABS, type EventTab } from './types';
@@ -70,6 +68,66 @@ function formatContextValue(value: unknown): string {
     }
 }
 
+function formatStackLocation(value: string) {
+    return value.replace(/^\((.*)\)$/, '$1');
+}
+
+function getLocationClassName(location: string) {
+    return /https?:\/\//.test(location) || location.includes('/src/')
+        ? 'text-blue-400'
+        : 'text-slate-600';
+}
+
+function StackTraceView({ stack }: { stack: string }) {
+    const lines = stack.split('\n').map((line) => line.trimEnd()).filter(Boolean);
+
+    return (
+        <div className="scrollbar-hidden max-h-[420px] overflow-y-auto overflow-x-hidden rounded-[18px] border border-[#2c2c2e] bg-[#090909] p-5 font-mono text-xs leading-8">
+            {lines.map((line, index) => {
+                const trimmed = line.trim();
+                if (index === 0) {
+                    return (
+                        <div key={`${index}-${trimmed}`} className="mb-4 font-semibold text-red-400">
+                            {trimmed}
+                        </div>
+                    );
+                }
+
+                const withLocation = trimmed.match(/^at\s+(.+?)\s+\((.+)\)$/);
+                if (withLocation) {
+                    const [, fnName, location] = withLocation;
+                    const normalizedLocation = formatStackLocation(location);
+                    return (
+                        <div key={`${index}-${trimmed}`} className="mb-4 pl-4">
+                            <div className="text-slate-500">
+                                at {fnName}
+                            </div>
+                            <div className={`break-all ${getLocationClassName(normalizedLocation)}`}>
+                                ({normalizedLocation})
+                            </div>
+                        </div>
+                    );
+                }
+
+                const bareAt = trimmed.match(/^at\s+(.+)$/);
+                if (bareAt) {
+                    return (
+                        <div key={`${index}-${trimmed}`} className="mb-4 pl-4 text-slate-500">
+                            {trimmed}
+                        </div>
+                    );
+                }
+
+                return (
+                    <div key={`${index}-${trimmed}`} className="mb-4 text-slate-400">
+                        {trimmed}
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
 export default function EventDetailPanel({
     event,
     activeTab,
@@ -85,9 +143,9 @@ export default function EventDetailPanel({
 }: EventDetailPanelProps) {
     if (!event) {
         return (
-            <div className="h-full overflow-hidden rounded-[24px] bg-transparent">
-                <div className="border-b border-slate-800/80 px-5 pb-3 pt-5">
-                    <h2 className="text-sm font-semibold text-slate-100">
+            <div className="guidance-panel h-full overflow-hidden rounded-[24px] border border-[#2c2c2e] ring-1 ring-white/5">
+                <div className="border-b border-[#2c2c2e] px-5 pb-4 pt-5">
+                    <h2 className="text-sm font-semibold text-white">
                         Event Detail
                     </h2>
                 </div>
@@ -105,9 +163,9 @@ export default function EventDetailPanel({
         source: event.source || '-',
         environment: event.environment || '-',
         release: event.releaseVersion || '-',
-        level: event.level || '-',
+        level: event.level?.toUpperCase() || '-',
         sdk: event.sdk
-            ? [event.sdk.name, event.sdk.version].filter(Boolean).join(' ')
+            ? [event.sdk.name, event.sdk.version].filter(Boolean).join('@')
             : '-',
     };
     const contextSummary = [
@@ -153,29 +211,19 @@ export default function EventDetailPanel({
     const sourceMap = sourceMapResult?.sourceMap ?? null;
     const sourceMapStatus = sourceMapResult?.status ?? null;
     const sourceMapButtonLabel = sourceMapResult ? 'Resolve again' : 'Resolve source map';
-    const sourceMapStatusBadgeClass = sourceMapStatus === 'resolved'
-        ? 'bg-emerald-500/15 text-emerald-200 ring-emerald-500/25'
-        : sourceMapStatus === 'not_needed'
-            ? 'bg-sky-500/15 text-sky-200 ring-sky-500/25'
-            : sourceMapStatus
-                ? 'bg-amber-500/15 text-amber-200 ring-amber-500/25'
-                : 'bg-slate-800/50 text-slate-400 ring-slate-700/60';
     const sourceMapStatusLabel = sourceMapStatus
         ? sourceMapStatus.replace(/_/g, ' ')
         : 'Not checked';
 
     return (
-        <div className="h-full overflow-hidden rounded-[24px] bg-transparent">
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-700/70 px-6 pb-4 pt-5">
-                <div>
-                    <h2 className="text-[18px] font-semibold text-slate-100">
+        <div className="guidance-panel h-full overflow-hidden rounded-[24px] border border-[#2c2c2e] ring-1 ring-white/5">
+            <div className="flex flex-wrap items-start justify-between gap-3 px-5 pb-5 pt-5">
+                <div className="min-w-0">
+                    <h2 className="text-[1.1rem] font-semibold text-white">
                         Event Detail
                     </h2>
-                    <div className="mt-1 text-sm text-slate-200 font-medium font-mono break-all">
+                    <div className="mt-1 break-all font-mono text-[13px] text-slate-400">
                         Event ID: {event.id}
-                    </div>
-                    <div className="mt-1 text-xs text-slate-500">
-                        {metaValues.timestamp} | {event.level ?? 'unknown'} | {event.environment ?? 'unknown'} | {event.releaseVersion ?? 'unknown'}
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -183,7 +231,7 @@ export default function EventDetailPanel({
                         type="button"
                         onClick={onCopyRaw}
                         disabled={!hasRawPayload}
-                        className="rounded-md bg-slate-800/70 px-2.5 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-700 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded-lg border border-[#2c2c2e] bg-[#171717] px-3 py-1.5 text-[11px] font-medium text-slate-300 transition-colors hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
                     >
                         {rawCopied ? 'Copied Raw' : 'Copy Raw'}
                     </button>
@@ -191,7 +239,7 @@ export default function EventDetailPanel({
                         <button
                             type="button"
                             onClick={onCopyStack}
-                            className="rounded-md bg-slate-800/70 px-2.5 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-700 hover:text-slate-100"
+                            className="rounded-lg border border-[#2c2c2e] bg-[#171717] px-3 py-1.5 text-[11px] font-medium text-slate-300 transition-colors hover:border-slate-500 hover:text-white"
                         >
                             {stackCopied ? 'Copied Stack' : 'Copy Stack'}
                         </button>
@@ -199,30 +247,26 @@ export default function EventDetailPanel({
                 </div>
             </div>
 
-            <div className="px-6 pt-5">
-                <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
+            <div className="px-5">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     <MetaItem label="Timestamp" value={metaValues.timestamp} />
                     <MetaItem label="Source" value={metaValues.source} />
-                    <MetaItem
-                        label="Level"
-                        value={metaValues.level}
-                        badge={event.level ? <IssueLevelBadge level={event.level} /> : undefined}
-                    />
+                    <MetaItem label="Level" value={metaValues.level} valueClassName="text-red-400 font-bold" />
                     <MetaItem label="Environment" value={metaValues.environment} />
                     <MetaItem label="Release" value={metaValues.release} />
-                    <MetaItem label="SDK" value={metaValues.sdk} />
+                    <MetaItem label="SDK" value={metaValues.sdk} truncate />
                 </div>
             </div>
 
-            <div className="flex gap-6 border-b border-slate-700/60 px-6 pb-0 pt-6">
+            <div className="mt-6 flex gap-6 border-b border-[#2c2c2e] px-5">
                 {EVENT_TABS.map((tab) => (
                     <button
                         key={tab}
                         type="button"
                         onClick={() => onTabChange(tab)}
-                        className={`border-b-2 px-0 pb-3 text-base font-medium capitalize transition-colors ${activeTab === tab
-                            ? 'border-blue-500 text-blue-400'
-                            : 'border-transparent text-slate-400 hover:text-slate-200'
+                        className={`border-b-2 px-0 pb-3 text-sm font-semibold capitalize transition-colors ${activeTab === tab
+                            ? 'border-orange-500 text-orange-400'
+                            : 'border-transparent text-slate-500 hover:text-slate-300'
                             }`}
                     >
                         {tab}
@@ -230,27 +274,27 @@ export default function EventDetailPanel({
                 ))}
             </div>
 
-            <div className="px-6 pb-6 pt-5">
-                <div className="overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-950/55">
-                    {activeTab === 'stack' && (
-                        event.stack ? (
-                            <div className="p-4">
-                                {sourceMap ? (
-                                    <SourceMapSummary
-                                        sourceMap={sourceMap}
-                                        hint={sourceMapResult?.hint ?? null}
-                                    />
-                                ) : (
-                                    <div className="mb-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.06] px-4 py-4">
-                                        <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <div className="text-sm font-semibold text-slate-100">
+            <div className="px-5 pb-5 pt-5">
+                {activeTab === 'stack' && (
+                    event.stack ? (
+                        <div>
+                            {sourceMap ? (
+                                <SourceMapSummary
+                                    sourceMap={sourceMap}
+                                    hint={sourceMapResult?.hint ?? null}
+                                />
+                            ) : (
+                                <div className="mb-4 flex flex-col gap-4 rounded-[18px] border border-blue-500/20 bg-blue-500/[0.06] p-4 lg:flex-row lg:items-center lg:justify-between">
+                                    <div>
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <div className="text-sm font-semibold text-white">
                                                 Source map
                                             </div>
-                                            <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize ring-1 ${sourceMapStatusBadgeClass}`}>
+                                            <span className="rounded bg-[#1a1a1a] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                                                 {sourceMapStatusLabel}
                                             </span>
                                         </div>
-                                        <div className="mt-2 text-sm text-slate-300">
+                                        <div className="mt-2 text-sm leading-6 text-slate-400">
                                             {resolvingSourceMap
                                                 ? 'Checking the top frame against its matching .map artifact...'
                                                 : sourceMapResult?.message ?? 'Resolve source map to view original source locations.'}
@@ -260,90 +304,86 @@ export default function EventDetailPanel({
                                                 {sourceMapResult.hint}
                                             </div>
                                         )}
-                                        {sourceMapResult?.diagnostics.mapUrl && !resolvingSourceMap && (
-                                            <div className="mt-2 text-[11px] text-slate-500 break-all">
-                                                Checked map URL: <span className="font-mono">{sourceMapResult.diagnostics.mapUrl}</span>
-                                            </div>
-                                        )}
-                                        <button
-                                            type="button"
-                                            onClick={onResolveSourceMap}
-                                            disabled={resolvingSourceMap}
-                                            className="mt-4 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
-                                        >
-                                            {resolvingSourceMap ? 'Resolving...' : sourceMapButtonLabel}
-                                        </button>
                                     </div>
-                                )}
+                                    <button
+                                        type="button"
+                                        onClick={onResolveSourceMap}
+                                        disabled={resolvingSourceMap}
+                                        className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {resolvingSourceMap ? 'Resolving...' : sourceMapButtonLabel}
+                                    </button>
+                                </div>
+                            )}
 
-                                <pre className="max-h-[540px] overflow-auto rounded-xl border border-slate-700/60 bg-slate-950/85 p-6 text-sm font-mono whitespace-pre-wrap break-words leading-9 text-slate-300">
-                                    {event.stack}
-                                </pre>
-                            </div>
-                        ) : (
-                            <div className="p-5 text-sm text-slate-500">
-                                No stack trace for this event
-                            </div>
-                        )
-                    )}
+                            <StackTraceView stack={event.stack} />
+                        </div>
+                    ) : (
+                        <div className="rounded-[18px] border border-[#2c2c2e] bg-[#0d0d0d] p-5 text-sm text-slate-500">
+                            No stack trace for this event
+                        </div>
+                    )
+                )}
 
-                    {activeTab === 'context' && (
-                        contextEntries.length > 0 ? (
-                            <div className="p-4 space-y-4">
-                                {contextSummary.length > 0 && (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        {contextSummary.map((item) => (
-                                            <div
-                                                key={item.label}
-                                                className="rounded-lg border border-slate-700/60 bg-slate-950/70 px-3 py-2.5"
-                                            >
-                                                <div className="text-[10px] font-semibold uppercase tracking-[0.04em] text-slate-500">
-                                                    {item.label}
-                                                </div>
-                                                <div className="mt-1 text-xs text-slate-200 break-all">
-                                                    {item.value}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {contextEntries.map(([key, value]) => (
+                {activeTab === 'context' && (
+                    contextEntries.length > 0 ? (
+                        <div className="space-y-4 rounded-[18px] border border-[#2c2c2e] bg-[#0d0d0d] p-4">
+                            {contextSummary.length > 0 && (
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    {contextSummary.map((item) => (
                                         <div
-                                            key={key}
-                                            className="rounded-lg border border-slate-700/60 bg-slate-950/70 px-3 py-2.5"
+                                            key={item.label}
+                                            className="rounded-lg border border-[#2c2c2e] bg-black/35 px-3 py-2.5"
                                         >
-                                            <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-slate-500">
-                                                {key}
+                                            <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                                {item.label}
                                             </div>
-                                            <div className="text-sm font-mono text-slate-300 break-all whitespace-pre-wrap">
-                                                {formatContextValue(value)}
+                                            <div className="mt-1 break-all text-xs text-slate-200">
+                                                {item.value}
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                            </div>
-                        ) : (
-                            <div className="p-5 text-sm text-slate-500">
-                                No context data for this event
-                            </div>
-                        )
-                    )}
+                            )}
 
-                    {activeTab === 'raw' && (
-                        hasRawPayload ? (
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                {contextEntries.map(([key, value]) => (
+                                    <div
+                                        key={key}
+                                        className="rounded-lg border border-[#2c2c2e] bg-black/35 px-3 py-2.5"
+                                    >
+                                        <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                            {key}
+                                        </div>
+                                        <div className="break-all whitespace-pre-wrap font-mono text-sm text-slate-300">
+                                            {formatContextValue(value)}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="rounded-[18px] border border-[#2c2c2e] bg-[#0d0d0d] p-5 text-sm text-slate-500">
+                            No context data for this event
+                        </div>
+                    )
+                )}
+
+                {activeTab === 'raw' && (
+                    hasRawPayload ? (
+                        <div className="overflow-hidden rounded-[18px] border border-[#2c2c2e] bg-[#0d0d0d]">
                             <JsonViewer
                                 data={rawPayload}
                                 emptyMessage="No raw payload available"
+                                maxHeightClassName="max-h-[520px]"
                             />
-                        ) : (
-                            <div className="p-5 text-sm text-slate-500">
-                                No raw payload available
-                            </div>
-                        )
-                    )}
-                </div>
+                        </div>
+                    ) : (
+                        <div className="rounded-[18px] border border-[#2c2c2e] bg-[#0d0d0d] p-5 text-sm text-slate-500">
+                            No raw payload available
+                        </div>
+                    )
+                )}
             </div>
         </div>
     );
@@ -352,17 +392,23 @@ export default function EventDetailPanel({
 interface MetaItemProps {
     label: string;
     value: string;
-    badge?: ReactNode;
+    valueClassName?: string;
+    truncate?: boolean;
 }
 
-function MetaItem({ label, value, badge }: MetaItemProps) {
+function MetaItem({
+    label,
+    value,
+    valueClassName = 'text-white',
+    truncate = false,
+}: MetaItemProps) {
     return (
-        <div className="rounded-lg border border-slate-700/60 bg-slate-950/80 px-4 py-4">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.04em] text-slate-500">
+        <div className="rounded-xl border border-[#2c2c2e] bg-black/35 px-4 py-4">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
                 {label}
             </div>
-            <div className="mt-2 text-sm text-slate-100 break-all">
-                {badge ?? value}
+            <div className={`mt-2 text-sm ${valueClassName} ${truncate ? 'truncate' : 'break-all'}`}>
+                {value}
             </div>
         </div>
     );

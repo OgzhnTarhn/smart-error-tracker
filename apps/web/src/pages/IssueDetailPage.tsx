@@ -1,13 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import {
-    BarChart,
-    Bar,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
-} from 'recharts';
 import EventDetailPanel from '../components/issue-detail/EventDetailPanel';
 import EventList from '../components/issue-detail/EventList';
 import PreventionInsightsPanel from '../components/issue-detail/PreventionInsightsPanel';
@@ -47,11 +39,6 @@ type IssueDetailView = 'investigation' | 'guidance';
 
 function getIssueDetailView(value: string | null): IssueDetailView {
     return value === 'guidance' ? 'guidance' : 'investigation';
-}
-
-function getTimelineChartMax(points: TimelinePoint[]) {
-    const maxCount = points.reduce((highest, point) => Math.max(highest, point.count), 0);
-    return Math.max(maxCount, 4);
 }
 
 function getAnalyzeErrorMessage(errorCode: string | undefined): string {
@@ -112,6 +99,12 @@ function formatRelativeTime(value: string) {
 function truncateIdentifier(value: string, leading = 10, trailing = 4) {
     if (value.length <= leading + trailing + 3) return value;
     return `${value.slice(0, leading)}...${value.slice(-trailing)}`;
+}
+
+function formatTimelineLabel(value: string) {
+    const [day, month] = value.split(' ');
+    if (day && month) return `${month} ${day}`;
+    return value;
 }
 
 function getSeveritySummary(severity: EventAiAnalysis['severity']) {
@@ -685,7 +678,9 @@ export default function IssueDetailPage() {
                             <div className="flex flex-wrap items-center gap-3">
                                 <IssueHeaderStatusBadge status={group.status} />
                                 <span className="text-xs text-slate-500">
-                                    {formatRelativeTime(group.lastSeenAt)}
+                                    {activeView === 'investigation'
+                                        ? `${events.length} ${events.length === 1 ? 'event' : 'events'} in last 7 days`
+                                        : formatRelativeTime(group.lastSeenAt)}
                                 </span>
                                 {group.isRegression && (
                                     <IssueRegressionBadge
@@ -693,9 +688,11 @@ export default function IssueDetailPage() {
                                         regressionCount={group.regressionCount}
                                     />
                                 )}
-                                <span className="text-xs text-slate-600">
-                                    {group.eventCount} events
-                                </span>
+                                {activeView !== 'investigation' && (
+                                    <span className="text-xs text-slate-600">
+                                        {group.eventCount} events
+                                    </span>
+                                )}
                             </div>
                             <h1 className="mt-4 max-w-5xl text-3xl font-semibold tracking-tight text-white md:text-[2.35rem]">
                                 {group.title}
@@ -1012,20 +1009,18 @@ function InvestigationTabContent({
     onResolveSourceMap: () => void;
     formatDate: (value: string) => string;
 }) {
-    const timelineChartMax = getTimelineChartMax(timeline);
-
     return (
-        <div className="grid grid-cols-1 gap-7 xl:grid-cols-[360px_minmax(0,1fr)] xl:gap-7">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_minmax(0,1fr)_minmax(0,1.2fr)]">
             <div className="space-y-5">
-                <div className="overflow-hidden rounded-2xl border border-slate-700/70 bg-slate-800/45">
-                    <div className="px-6 pb-3 pt-6">
-                        <h2 className="text-[14px] font-semibold uppercase tracking-[0.08em] text-slate-300">
+                <div className="guidance-panel overflow-hidden rounded-[24px] border border-[#2c2c2e] p-5 ring-1 ring-white/5">
+                    <div className="pb-4">
+                        <h2 className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">
                             Overview
                         </h2>
                     </div>
-                    <div className="divide-y divide-slate-800/70">
+                    <div className="space-y-1 text-sm">
                         <Row label="Status">
-                            <span className="text-[15px] font-medium capitalize text-orange-400">
+                            <span className="text-lg font-bold capitalize text-orange-400">
                                 {group.status}
                             </span>
                         </Row>
@@ -1036,7 +1031,7 @@ function InvestigationTabContent({
                                     regressionCount={group.regressionCount}
                                 />
                             ) : (
-                                <span className="text-slate-400">No</span>
+                                <span className="text-slate-200">No</span>
                             )}
                         </Row>
                         {group.isRegression && (
@@ -1048,61 +1043,35 @@ function InvestigationTabContent({
                             </Row>
                         )}
                         <Row label="Total events">
-                            <span className="text-lg font-bold">{group.eventCount}</span>
+                            <span className="text-xl font-bold text-white">{group.eventCount}</span>
                         </Row>
-                        <Row label="First seen">{formatDate(group.firstSeenAt)}</Row>
-                        <Row label="Last seen">{formatDate(group.lastSeenAt)}</Row>
-                        <div className="px-6 py-5">
-                            <div className="mb-2 text-sm font-semibold uppercase tracking-[0.05em] text-slate-400">
+
+                        <div className="mt-4 border-t border-[#2c2c2e] pt-4">
+                            <Row label="First seen">{formatDate(group.firstSeenAt)}</Row>
+                            <Row label="Last seen">{formatDate(group.lastSeenAt)}</Row>
+                        </div>
+
+                        <div className="mt-8">
+                            <div className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-slate-500">
                                 Fingerprint
                             </div>
-                            <div className="flex items-center gap-2">
-                                <code className="flex-1 rounded-lg border border-slate-700/70 bg-slate-950/70 px-4 py-4 text-sm font-mono leading-8 break-all text-slate-400">
-                                    {group.fingerprint}
-                                </code>
-                            </div>
+                            <code className="block rounded-xl border border-[#2c2c2e] bg-[#090909] px-4 py-4 font-mono text-[13px] leading-8 break-all text-blue-400">
+                                {group.fingerprint}
+                            </code>
                             <button
                                 type="button"
                                 onClick={onCopyFingerprint}
-                                className="mt-3 text-xs font-medium text-slate-400 transition-colors hover:text-slate-200"
+                                className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-orange-400 transition-colors hover:text-orange-300"
                             >
                                 {copiedFingerprint ? 'Copied fingerprint' : 'Copy fingerprint'}
                             </button>
                         </div>
-                        <div className="px-6 py-5">
-                            <div className="mb-3 text-sm font-semibold uppercase tracking-[0.05em] text-slate-400">
+
+                        <div className="mt-8">
+                            <div className="mb-4 text-xs font-bold uppercase tracking-[0.22em] text-slate-500">
                                 Event Frequency - Last 7 Days
                             </div>
-                            <div className="h-28">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={timeline}>
-                                        <XAxis
-                                            dataKey="date"
-                                            stroke="#64748b"
-                                            fontSize={11}
-                                            tickLine={false}
-                                            axisLine={false}
-                                        />
-                                        <YAxis hide domain={[0, timelineChartMax]} />
-                                        <Tooltip
-                                            contentStyle={{
-                                                backgroundColor: '#0f172a',
-                                                border: '1px solid #334155',
-                                                borderRadius: '10px',
-                                                fontSize: '12px',
-                                            }}
-                                        />
-                                        <Bar
-                                            dataKey="count"
-                                            fill="#3b82f6"
-                                            radius={[4, 4, 0, 0]}
-                                            name="Events"
-                                            barSize={28}
-                                            minPointSize={timelineChartMax <= 4 ? 4 : 2}
-                                        />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
+                            <InvestigationFrequencyChart timeline={timeline} />
                         </div>
                     </div>
                 </div>
@@ -1115,57 +1084,36 @@ function InvestigationTabContent({
                 )}
             </div>
 
-            <div className="min-w-0">
-                <div className="overflow-hidden rounded-[22px] border border-slate-700/70 bg-slate-800/40">
-                    <div className="flex flex-col gap-2 border-b border-slate-700/70 px-6 py-6 sm:flex-row sm:items-end sm:justify-between">
-                        <div>
-                            <h2 className="text-[18px] font-semibold text-slate-100">
-                                Investigation Workspace
-                            </h2>
-                            <p className="mt-1 text-sm text-slate-400">
-                                Inspect recent events and drill into the selected event without leaving this issue.
-                            </p>
-                        </div>
-                        {selectedEvent && (
-                            <div className="text-sm text-slate-400">
-                                Selected event{' '}
-                                <span className="font-mono text-slate-200">{selectedEvent.id}</span>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="grid min-h-[760px] gap-0 xl:grid-cols-[380px_minmax(0,1fr)] xl:divide-x xl:divide-slate-700/70">
-                        <div className="min-w-0 bg-slate-900/25">
-                            <div className="border-b border-slate-700/70 px-5 py-4">
-                                <h2 className="text-sm font-semibold uppercase tracking-[0.04em] text-slate-300">
-                                    Latest Events ({events.length})
-                                </h2>
-                            </div>
-                            <EventList
-                                events={events}
-                                selectedEventId={selectedEvent?.id ?? null}
-                                onSelectEvent={onSelectEvent}
-                                formatDate={formatDate}
-                            />
-                        </div>
-
-                        <div className="min-w-0 bg-slate-900/18">
-                            <EventDetailPanel
-                                event={selectedEvent}
-                                activeTab={activeTab}
-                                onTabChange={onTabChange}
-                                formatDate={formatDate}
-                                onCopyStack={onCopyStack}
-                                onCopyRaw={onCopyRaw}
-                                onResolveSourceMap={onResolveSourceMap}
-                                stackCopied={stackCopied}
-                                rawCopied={rawCopied}
-                                sourceMapResult={sourceMapResult}
-                                resolvingSourceMap={sourceMapResolving}
-                            />
-                        </div>
-                    </div>
+            <div className="guidance-panel min-w-0 overflow-hidden rounded-[24px] border border-[#2c2c2e] ring-1 ring-white/5">
+                <div className="border-b border-[#2c2c2e] px-5 py-5">
+                    <h2 className="text-[1.05rem] font-semibold text-white">
+                        Latest Events ({events.length})
+                    </h2>
                 </div>
+                <div className="max-h-[760px] overflow-y-auto">
+                    <EventList
+                        events={events}
+                        selectedEventId={selectedEvent?.id ?? null}
+                        onSelectEvent={onSelectEvent}
+                        formatDate={formatDate}
+                    />
+                </div>
+            </div>
+
+            <div className="min-w-0">
+                <EventDetailPanel
+                    event={selectedEvent}
+                    activeTab={activeTab}
+                    onTabChange={onTabChange}
+                    formatDate={formatDate}
+                    onCopyStack={onCopyStack}
+                    onCopyRaw={onCopyRaw}
+                    onResolveSourceMap={onResolveSourceMap}
+                    stackCopied={stackCopied}
+                    rawCopied={rawCopied}
+                    sourceMapResult={sourceMapResult}
+                    resolvingSourceMap={sourceMapResolving}
+                />
             </div>
         </div>
     );
@@ -1265,9 +1213,85 @@ function GuidanceTabContent({
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
     return (
-        <div className="flex items-center justify-between gap-4 px-6 py-4">
+        <div className="flex items-center justify-between gap-4 py-2.5">
             <span className="text-[15px] text-slate-400">{label}</span>
             <span className="text-right text-[15px] text-slate-100">{children}</span>
+        </div>
+    );
+}
+
+function InvestigationFrequencyChart({
+    timeline,
+}: {
+    timeline: TimelinePoint[];
+}) {
+    const peakCount = timeline.reduce((highest, point) => Math.max(highest, point.count), 0);
+    const maxCount = Math.max(peakCount, 1);
+    const totalCount = timeline.reduce((sum, point) => sum + point.count, 0);
+    const peakPoint = timeline.reduce<TimelinePoint | null>((best, point) => {
+        if (!best || point.count > best.count) return point;
+        return best;
+    }, null);
+
+    return (
+        <div className="rounded-[16px] border border-[#17253a] bg-[#07101a] px-3 py-3 ring-1 ring-blue-500/8">
+            <div className="flex items-center justify-between gap-3 text-[10px] font-medium">
+                <div className="text-slate-500">
+                    <span className="uppercase tracking-[0.18em]">Total</span>
+                    <span className="ml-2 text-slate-200">{totalCount}</span>
+                </div>
+                <div className="text-right text-slate-500">
+                    <span className="uppercase tracking-[0.18em]">Peak</span>
+                    <span className="ml-2 text-blue-300">
+                        {peakPoint ? `${peakPoint.count} on ${formatTimelineLabel(peakPoint.date)}` : 'No events'}
+                    </span>
+                </div>
+            </div>
+
+            <div className="mt-3 rounded-[12px] bg-[#050b12] px-2.5 pb-2.5 pt-3">
+                <div className="flex h-[58px] items-end gap-1.5">
+                    {timeline.map((point, index) => {
+                        const heightPx = point.count > 0
+                            ? Math.max((point.count / maxCount) * 50, 8)
+                            : 2;
+                        const isPeak = point.count === peakCount && point.count > 0;
+                        const isLast = index === timeline.length - 1;
+
+                        return (
+                            <div
+                                key={`${point.date}-${index}`}
+                                className="flex flex-1 items-end justify-center"
+                                title={`${formatTimelineLabel(point.date)}: ${point.count} ${point.count === 1 ? 'event' : 'events'}`}
+                            >
+                                <div
+                                    className={`w-full rounded-[3px] ${isPeak
+                                        ? 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.18)]'
+                                        : isLast && point.count > 0
+                                            ? 'bg-sky-400'
+                                            : point.count > 0
+                                                ? 'bg-blue-500/32'
+                                                : 'bg-blue-500/[0.08]'
+                                        }`}
+                                    style={{
+                                        height: `${heightPx}px`,
+                                        maxWidth: '24px',
+                                    }}
+                                />
+                            </div>
+                        );
+                    })}
+                </div>
+
+                <div className="mt-2 flex items-center justify-between text-[10px] font-medium text-slate-500">
+                    {timeline.map((point, index) => (
+                        <div key={`label-${point.date}-${index}`} className="flex-1 text-center">
+                            {index % 2 === 0 || index === timeline.length - 1
+                                ? formatTimelineLabel(point.date)
+                                : ''}
+                        </div>
+                    ))}
+                </div>
+            </div>
         </div>
     );
 }
@@ -1301,7 +1325,7 @@ function ResolutionNoteCard({
     isResolved: boolean;
 }) {
     return (
-        <div className="overflow-hidden rounded-2xl bg-slate-800/35 ring-1 ring-white/5">
+        <div className="guidance-panel overflow-hidden rounded-[24px] border border-[#2c2c2e] ring-1 ring-white/5">
             <div className="flex items-center justify-between gap-3 px-5 pb-3 pt-5">
                 <div>
                     <h2 className="text-sm font-semibold text-slate-100">
@@ -1316,7 +1340,7 @@ function ResolutionNoteCard({
                 </span>
             </div>
             <div className="px-5 pb-5">
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-200">
+                <p className="whitespace-pre-wrap text-sm leading-7 text-slate-200">
                     {note}
                 </p>
             </div>
