@@ -137,13 +137,15 @@ export default function SimilarPastIssuesPanel({
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                        Historical Comparison
+                        {compact ? 'Historical Support' : 'Historical Comparison'}
                     </div>
-                    <h2 className={`mt-2 font-semibold tracking-tight text-white ${compact ? 'text-[1.45rem]' : 'text-[2rem]'}`}>
+                    <h2 className={`mt-2 font-semibold tracking-tight text-white ${compact ? 'text-[1.25rem]' : 'text-[2rem]'}`}>
                         Similar Past Issues
                     </h2>
                     <p className={`mt-2 ${compact ? 'text-[13px] leading-6' : 'text-sm leading-6'} text-slate-400`}>
-                        Fast comparisons showing why a past issue matched and how it was resolved.
+                        {compact
+                            ? 'Historical references that support the prevention readout and expose prior resolutions.'
+                            : 'Fast comparisons showing why a past issue matched and how it was resolved.'}
                     </p>
                 </div>
                 <Link

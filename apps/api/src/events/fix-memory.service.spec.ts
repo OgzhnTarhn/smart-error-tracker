@@ -171,7 +171,7 @@ describe('FixMemoryService', () => {
       false,
     );
     expect(result?.derivedFrom).toEqual({
-      resolvedSimilarIssues: 3,
+      resolvedSimilarIssues: 2,
       resolutionNotesUsed: 2,
       preventionInsightUsed: true,
       currentAnalysisUsed: true,
@@ -270,7 +270,7 @@ describe('FixMemoryService', () => {
           id: 'group_2',
           title: 'Similar issue group_2',
           status: 'resolved',
-          resolutionNote: '   ',
+          resolutionNote: null,
           lastSeenAt: new Date('2026-03-11T10:00:00.000Z'),
           reason:
             'Resolved similar issue with matching route or error pattern, but without a saved fix note in the same frontend route.',

@@ -325,10 +325,10 @@ export function PreventionRecommendedActionsPanel({
         <section className={compact ? 'space-y-3' : 'space-y-4'}>
             <div>
                 <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                    Recommended Actions
+                    Recommended Prevention Actions
                 </div>
                 <p className={`mt-2 ${compact ? 'text-[13px] leading-6' : 'text-sm leading-6'} text-slate-400`}>
-                    Start with the top action, then move downward if more follow-up is needed.
+                    Start with the top recurrence-reduction action, then move downward if more follow-up is needed.
                 </p>
             </div>
             <div className="space-y-3">

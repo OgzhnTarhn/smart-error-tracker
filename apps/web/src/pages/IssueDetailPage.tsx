@@ -40,6 +40,29 @@ interface TimelinePoint {
 }
 
 type IssueDetailView = 'investigation' | 'guidance';
+type GuidanceWorkspaceSection = 'analysis' | 'prevention' | 'fix-memory';
+
+const GUIDANCE_WORKSPACE_SECTIONS: Array<{
+    value: GuidanceWorkspaceSection;
+    label: string;
+    description: string;
+}> = [
+    {
+        value: 'analysis',
+        label: 'AI Debug Analysis',
+        description: 'Current event diagnosis, likely failure path, and the fastest next inspection step.',
+    },
+    {
+        value: 'prevention',
+        label: 'Prevention Summary',
+        description: 'Repeat risk, prevention actions, and historical issue context that support recurrence planning.',
+    },
+    {
+        value: 'fix-memory',
+        label: 'Fix Memory',
+        description: 'Reusable fix patterns and resolved references worth reviewing before applying a new fix.',
+    },
+];
 
 function getIssueDetailView(value: string | null): IssueDetailView {
     return value === 'guidance' ? 'guidance' : 'investigation';
@@ -227,6 +250,7 @@ export default function IssueDetailPage() {
     const [fixMemory, setFixMemory] = useState<FixMemory | null>(null);
     const [fixMemoryLoading, setFixMemoryLoading] = useState(false);
     const [fixMemoryError, setFixMemoryError] = useState<string | null>(null);
+    const [activeGuidanceSection, setActiveGuidanceSection] = useState<GuidanceWorkspaceSection>('analysis');
 
     const [copiedFingerprint, setCopiedFingerprint] = useState(false);
     const [stackCopied, setStackCopied] = useState(false);
@@ -267,6 +291,10 @@ export default function IssueDetailPage() {
         setStackCopied(false);
         setRawCopied(false);
     }, [selectedEvent?.id]);
+
+    useEffect(() => {
+        setActiveGuidanceSection('analysis');
+    }, [id]);
 
     useEffect(() => {
         setAnalysisError(null);
@@ -806,6 +834,7 @@ export default function IssueDetailPage() {
                     <GuidanceTabContent
                         events={events}
                         selectedEventId={selectedEvent?.id ?? null}
+                        activeSection={activeGuidanceSection}
                         preventionInsights={preventionInsights}
                         preventionInsightsLoading={preventionInsightsLoading}
                         preventionInsightsError={preventionInsightsError}
@@ -819,6 +848,7 @@ export default function IssueDetailPage() {
                         aiAnalyzing={aiAnalyzing}
                         analysisError={analysisError}
                         onAnalyze={() => void handleAnalyze()}
+                        onSectionChange={setActiveGuidanceSection}
                         onSelectEvent={(event) => setSelectedEventId(event.id)}
                         formatDate={formatDate}
                     />
@@ -901,12 +931,6 @@ function IssueDetailTopTabs({
                         </button>
                     );
                 })}
-                <div className="flex items-center gap-2 border-b-2 border-transparent pb-4 pt-1 text-base text-slate-500">
-                    <span>Fix Memory</span>
-                    <span className="rounded bg-orange-500/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-300">
-                        Beta
-                    </span>
-                </div>
             </div>
         </div>
     );
@@ -1062,6 +1086,7 @@ function InvestigationTabContent({
 function GuidanceTabContent({
     events,
     selectedEventId,
+    activeSection,
     preventionInsights,
     preventionInsightsLoading,
     preventionInsightsError,
@@ -1075,11 +1100,13 @@ function GuidanceTabContent({
     aiAnalyzing,
     analysisError,
     onAnalyze,
+    onSectionChange,
     onSelectEvent,
     formatDate,
 }: {
     events: GroupDetailEvent[];
     selectedEventId: string | null;
+    activeSection: GuidanceWorkspaceSection;
     preventionInsights: PreventionInsights | null;
     preventionInsightsLoading: boolean;
     preventionInsightsError: string | null;
@@ -1093,6 +1120,7 @@ function GuidanceTabContent({
     aiAnalyzing: boolean;
     analysisError: string | null;
     onAnalyze: () => void;
+    onSectionChange: (section: GuidanceWorkspaceSection) => void;
     onSelectEvent: (event: GroupDetailEvent) => void;
     formatDate: (value: string) => string;
 }) {
@@ -1106,22 +1134,23 @@ function GuidanceTabContent({
     const nextEvent = activeIndex < events.length - 1 ? events[activeIndex + 1] : null;
     const repeatRiskTone = getGuidanceRepeatRiskTone(preventionInsights?.repeatRisk ?? null);
     const selectedAnalysis = selectedEvent?.aiAnalysis ?? null;
+    const activeSectionMeta = GUIDANCE_WORKSPACE_SECTIONS.find((section) => section.value === activeSection)
+        ?? GUIDANCE_WORKSPACE_SECTIONS[0];
 
     return (
-        <div className="space-y-6">
-            <div className="guidance-panel overflow-hidden rounded-[28px] border border-[#2b241f] ring-1 ring-white/5">
-                <div className="border-b border-[#252525] px-6 pb-6 pt-6">
+        <div className="space-y-5">
+            <section className="guidance-panel overflow-hidden rounded-[28px] border border-[#2b241f] ring-1 ring-white/5">
+                <div className="border-b border-[#252525] px-5 pb-5 pt-5">
                     <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
                         <div className="max-w-3xl">
                             <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                                 Guidance Workspace
                             </div>
-                            <h2 className="mt-3 text-[2rem] font-semibold tracking-tight text-white">
-                                Decision-first debugging guidance
+                            <h2 className="mt-2 text-[1.55rem] font-semibold tracking-tight text-white">
+                                Focused debugging guidance for the selected issue
                             </h2>
-                            <p className="mt-2 text-sm leading-6 text-slate-300">
-                                Use the selected event to generate a concise root-cause readout,
-                                immediate next step, and prevention context without leaving this view.
+                            <p className="mt-2 text-sm leading-6 text-slate-400">
+                                Move between event diagnosis, recurrence planning, and reusable fixes without leaving the current issue detail page.
                             </p>
                             <div className="mt-4 flex flex-wrap gap-2">
                                 <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-slate-300">
@@ -1145,8 +1174,8 @@ function GuidanceTabContent({
                             </div>
                         </div>
 
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                            <div className="flex items-center gap-2">
+                        <div className="flex flex-col gap-3 xl:min-w-[360px] xl:items-end">
+                            <div className="flex items-center gap-2 self-start xl:self-end">
                                 <GuidanceEventNavButton
                                     label="Previous event"
                                     onClick={() => previousEvent && onSelectEvent(previousEvent)}
@@ -1175,111 +1204,233 @@ function GuidanceTabContent({
                                         />
                                     </svg>
                                 </GuidanceEventNavButton>
-                            </div>
-
-                            <div className="min-w-[280px] sm:min-w-[320px]">
-                                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                                    Active event
+                                <div className="rounded-xl border border-[#252525] bg-black/30 px-3 py-2 text-right ring-1 ring-white/5">
+                                    <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                        Active event
+                                    </div>
+                                    <div className="mt-1 text-sm font-semibold text-slate-100">
+                                        {events.length === 0 ? 'None' : `${activeIndex + 1} of ${events.length}`}
+                                    </div>
                                 </div>
-                                <select
-                                    value={selectedEvent?.id ?? ''}
-                                    onChange={(event) => {
-                                        const nextSelectedEvent = events.find((item) => item.id === event.target.value);
-                                        if (nextSelectedEvent) onSelectEvent(nextSelectedEvent);
-                                    }}
-                                    disabled={events.length === 0}
-                                    style={{ colorScheme: 'dark' }}
-                                    className="w-full rounded-2xl border border-[#2c2c2e] bg-[#111] px-4 py-3 text-sm text-slate-100 outline-none transition-colors focus:border-orange-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                    {events.map((event) => (
-                                        <option key={event.id} value={event.id}>
-                                            {`${truncateIdentifier(event.id, 10, 4)} | ${formatDate(event.timestamp || event.createdAt)}`}
-                                        </option>
-                                    ))}
-                                </select>
                             </div>
 
-                            <ActionButton
-                                loading={aiAnalyzing}
-                                onClick={onAnalyze}
-                                className="border-orange-500 bg-orange-500 text-white hover:bg-orange-400 hover:border-orange-400"
-                                label="Analyze Selected Event"
-                            />
+                            <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end">
+                                <div className="min-w-0 flex-1">
+                                    <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                                        Selected event
+                                    </div>
+                                    <select
+                                        value={selectedEvent?.id ?? ''}
+                                        onChange={(event) => {
+                                            const nextSelectedEvent = events.find((item) => item.id === event.target.value);
+                                            if (nextSelectedEvent) onSelectEvent(nextSelectedEvent);
+                                        }}
+                                        disabled={events.length === 0}
+                                        style={{ colorScheme: 'dark' }}
+                                        className="w-full rounded-xl border border-[#2c2c2e] bg-[#111] px-4 py-3 text-sm text-slate-100 outline-none transition-colors focus:border-orange-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {events.map((event) => (
+                                            <option key={event.id} value={event.id}>
+                                                {`${truncateIdentifier(event.id, 10, 4)} | ${formatDate(event.timestamp || event.createdAt)}`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <ActionButton
+                                    loading={aiAnalyzing}
+                                    onClick={onAnalyze}
+                                    className="border-orange-500 bg-orange-500 text-white hover:bg-orange-400 hover:border-orange-400"
+                                    label="Analyze Selected Event"
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {selectedEvent ? (
-                    <div className="grid gap-3 px-6 py-5 md:grid-cols-2 xl:grid-cols-4">
-                        <GuidanceEventMetaCard
-                            label="Event ID"
-                            value={truncateIdentifier(selectedEvent.id, 12, 4)}
-                            detail={selectedEvent.message}
-                            mono
+                <GuidanceWorkspaceSectionTabs
+                    activeSection={activeSection}
+                    onChange={onSectionChange}
+                    description={activeSectionMeta.description}
+                />
+            </section>
+
+            <div
+                role="tabpanel"
+                id={`guidance-panel-${activeSection}`}
+                aria-labelledby={`guidance-tab-${activeSection}`}
+            >
+                {activeSection === 'analysis' ? (
+                    <div className="space-y-6">
+                        <GuidanceActiveEventSummary
+                            activeIndex={activeIndex}
+                            eventCount={events.length}
+                            selectedEvent={selectedEvent}
+                            formatDate={formatDate}
                         />
-                        <GuidanceEventMetaCard
-                            label="Timestamp"
-                            value={formatRelativeTime(selectedEvent.timestamp || selectedEvent.createdAt)}
-                            detail={formatDate(selectedEvent.timestamp || selectedEvent.createdAt)}
-                        />
-                        <GuidanceEventMetaCard
-                            label="Source"
-                            value={selectedEvent.source}
-                            detail={selectedEvent.level ? selectedEvent.level.toUpperCase() : 'Level unknown'}
-                        />
-                        <GuidanceEventMetaCard
-                            label="Environment"
-                            value={getEventEnvironmentLabel(selectedEvent)}
-                            detail={selectedEvent.releaseVersion ?? 'No release tagged'}
+
+                        <AiAnalysisPanel
+                            analysis={selectedAnalysis}
+                            selectedEvent={selectedEvent}
+                            analyzing={aiAnalyzing}
+                            error={analysisError}
                         />
                     </div>
-                ) : null}
-            </div>
+                ) : activeSection === 'prevention' ? (
+                    <div className="space-y-6">
+                        <PreventionInsightsPanel
+                            insights={preventionInsights}
+                            loading={preventionInsightsLoading}
+                            error={preventionInsightsError}
+                            showRecommendedActions={false}
+                        />
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.72fr)_minmax(320px,0.68fr)] xl:items-start">
-                <AiAnalysisPanel
-                    analysis={selectedAnalysis}
-                    selectedEvent={selectedEvent}
-                    analyzing={aiAnalyzing}
-                    error={analysisError}
-                />
+                        <div className="grid gap-6 xl:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)] xl:items-start">
+                            <div className="min-w-0">
+                                <PreventionRecommendedActionsPanel
+                                    insights={preventionInsights}
+                                    loading={preventionInsightsLoading}
+                                    error={preventionInsightsError}
+                                    compact
+                                />
+                            </div>
 
-                <div className="min-w-0">
-                    <PreventionInsightsPanel
-                        insights={preventionInsights}
-                        loading={preventionInsightsLoading}
-                        error={preventionInsightsError}
-                        showRecommendedActions={false}
+                            <div className="min-w-0">
+                                <SimilarPastIssuesPanel
+                                    items={similarIssues}
+                                    loading={similarIssuesLoading}
+                                    error={similarIssuesError}
+                                    formatDate={formatDate}
+                                    compact
+                                />
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <FixMemoryPanel
+                        memory={fixMemory}
+                        loading={fixMemoryLoading}
+                        error={fixMemoryError}
+                        formatDate={formatDate}
                     />
-                </div>
+                )}
             </div>
-
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.28fr)_minmax(300px,0.72fr)] xl:items-start">
-                <SimilarPastIssuesPanel
-                    items={similarIssues}
-                    loading={similarIssuesLoading}
-                    error={similarIssuesError}
-                    formatDate={formatDate}
-                    compact
-                />
-
-                <div className="min-w-0">
-                    <PreventionRecommendedActionsPanel
-                        insights={preventionInsights}
-                        loading={preventionInsightsLoading}
-                        error={preventionInsightsError}
-                        compact
-                    />
-                </div>
-            </div>
-
-            <FixMemoryPanel
-                memory={fixMemory}
-                loading={fixMemoryLoading}
-                error={fixMemoryError}
-                formatDate={formatDate}
-            />
         </div>
+    );
+}
+
+function GuidanceWorkspaceSectionTabs({
+    activeSection,
+    onChange,
+    description,
+}: {
+    activeSection: GuidanceWorkspaceSection;
+    onChange: (section: GuidanceWorkspaceSection) => void;
+    description: string;
+}) {
+    return (
+        <div className="px-5 pb-4 pt-4">
+            <div
+                role="tablist"
+                aria-label="Guidance workspace sections"
+                className="inline-flex max-w-full flex-wrap gap-2 rounded-2xl border border-[#252525] bg-[#0b0b0b]/80 p-1.5"
+            >
+                {GUIDANCE_WORKSPACE_SECTIONS.map((section) => {
+                    const isActive = section.value === activeSection;
+
+                    return (
+                        <button
+                            key={section.value}
+                            id={`guidance-tab-${section.value}`}
+                            type="button"
+                            role="tab"
+                            aria-selected={isActive}
+                            aria-controls={`guidance-panel-${section.value}`}
+                            onClick={() => onChange(section.value)}
+                            className={`rounded-[14px] px-4 py-2.5 text-sm font-medium transition-colors ${
+                                isActive
+                                    ? 'bg-orange-500 text-white shadow-[0_0_0_1px_rgba(249,115,22,0.22)]'
+                                    : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-100'
+                            }`}
+                        >
+                            {section.label}
+                        </button>
+                    );
+                })}
+            </div>
+            <p className="mt-3 max-w-3xl text-xs leading-6 text-slate-500">
+                {description}
+            </p>
+        </div>
+    );
+}
+
+function GuidanceActiveEventSummary({
+    activeIndex,
+    eventCount,
+    selectedEvent,
+    formatDate,
+}: {
+    activeIndex: number;
+    eventCount: number;
+    selectedEvent: GroupDetailEvent | null;
+    formatDate: (value: string) => string;
+}) {
+    if (!selectedEvent) return null;
+
+    const timestamp = selectedEvent.timestamp || selectedEvent.createdAt;
+
+    return (
+        <section className="guidance-panel-soft rounded-[24px] border border-[#262626] px-5 py-5 ring-1 ring-white/5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="max-w-4xl">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        Active Event Summary
+                    </div>
+                    <p className="mt-3 text-sm leading-7 text-slate-200">
+                        {selectedEvent.message || 'No event message was attached to this occurrence.'}
+                    </p>
+                </div>
+
+                <div className="rounded-[18px] border border-[#252525] bg-black/30 px-4 py-3 text-left ring-1 ring-white/5 lg:min-w-[180px] lg:text-right">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                        Focused occurrence
+                    </div>
+                    <div className="mt-2 text-sm font-semibold text-slate-100">
+                        {eventCount === 0 ? 'No events' : `${activeIndex + 1} of ${eventCount}`}
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                        {formatDate(timestamp)}
+                    </p>
+                </div>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <GuidanceEventMetaCard
+                    label="Event ID"
+                    value={truncateIdentifier(selectedEvent.id, 12, 4)}
+                    detail={selectedEvent.level ? selectedEvent.level.toUpperCase() : 'Level unknown'}
+                    mono
+                />
+                <GuidanceEventMetaCard
+                    label="Last Seen"
+                    value={formatRelativeTime(timestamp)}
+                    detail={formatDate(timestamp)}
+                />
+                <GuidanceEventMetaCard
+                    label="Source"
+                    value={selectedEvent.source}
+                    detail={selectedEvent.releaseVersion ?? 'No release tagged'}
+                />
+                <GuidanceEventMetaCard
+                    label="Environment"
+                    value={getEventEnvironmentLabel(selectedEvent)}
+                    detail={selectedEvent.message
+                        ? 'Selected event message is summarized above.'
+                        : 'No message attached'}
+                />
+            </div>
+        </section>
     );
 }
 

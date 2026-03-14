@@ -24,23 +24,6 @@ type FixPatternId =
   | 'regression_testing'
   | 'input_validation';
 
-type FixMemoryGroupRow = {
-  id: string;
-  title: string;
-  fingerprint: string;
-  isRegression: boolean;
-  regressionCount: number;
-  lastRegressedAt: Date | null;
-  aiAnalysis: Prisma.JsonValue | null;
-  sample: Prisma.JsonValue | null;
-  events: {
-    source: string;
-    message: string;
-    context: Prisma.JsonValue | null;
-    timestamp: Date;
-  }[];
-};
-
 type FixPatternDescriptor = {
   id: FixPatternId;
   label: string;
@@ -428,8 +411,9 @@ function buildRelatedFixReason(input: {
   sourceFamily: SourceFamily;
 }) {
   const parts: string[] = [];
+  const normalizedNote = toSentence(input.item.resolutionNote);
 
-  if (input.item.resolutionNote) {
+  if (normalizedNote) {
     if (input.matchingPatterns.length > 0) {
       parts.push(
         `Resolved issue with matching ${formatPatternList(
@@ -690,6 +674,14 @@ export class FixMemoryService {
       );
     }
 
+    if (regressionRelevant) {
+      pushUnique(
+        recommendedActions,
+        actionKeys,
+        'Add a regression test for the affected route or handler',
+      );
+    }
+
     if (route && sourceFamily === 'frontend' && routeAlignedResolvedCount > 0) {
       pushUnique(
         recommendedActions,
@@ -698,12 +690,15 @@ export class FixMemoryService {
       );
     }
 
-    if (regressionRelevant) {
-      pushUnique(
-        recommendedActions,
-        actionKeys,
-        'Add a regression test for the affected route or handler',
-      );
+    if (recommendedActions.length === 0) {
+      const fallbackPatterns = [
+        ...analysisPatterns,
+        ...preventionPatterns,
+      ];
+
+      for (const pattern of fallbackPatterns) {
+        pushUnique(recommendedActions, actionKeys, pattern.action);
+      }
     }
 
     if (recommendedActions.length === 0) {
@@ -746,7 +741,7 @@ export class FixMemoryService {
         id: item.id,
         title: item.title,
         status: item.status,
-        resolutionNote: item.resolutionNote,
+        resolutionNote: toSentence(item.resolutionNote),
         lastSeenAt: item.lastSeenAt,
         reason: buildRelatedFixReason({
           item,
