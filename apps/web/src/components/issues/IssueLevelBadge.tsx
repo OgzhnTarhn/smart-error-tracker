@@ -15,18 +15,31 @@ function normalizeLevel(level: string): IssueLevel | null {
 
 interface IssueLevelBadgeProps {
     level: string | null;
+    variant?: 'default' | 'enterprise';
 }
 
-export default function IssueLevelBadge({ level }: IssueLevelBadgeProps) {
+export default function IssueLevelBadge({
+    level,
+    variant = 'default',
+}: IssueLevelBadgeProps) {
     if (!level) return null;
 
     const normalizedLevel = normalizeLevel(level);
     if (!normalizedLevel) return null;
 
+    const className =
+        variant === 'enterprise'
+            ? `inline-flex items-center rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
+                normalizedLevel === 'error'
+                    ? 'bg-red-500/18 text-red-300'
+                    : normalizedLevel === 'warn'
+                        ? 'bg-amber-500/18 text-amber-300'
+                        : 'bg-blue-500/18 text-blue-300'
+            }`
+            : `inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border uppercase tracking-wide ${LEVEL_STYLES[normalizedLevel]}`;
+
     return (
-        <span
-            className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border uppercase tracking-wide ${LEVEL_STYLES[normalizedLevel]}`}
-        >
+        <span className={className}>
             {normalizedLevel}
         </span>
     );

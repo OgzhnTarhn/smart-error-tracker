@@ -20,15 +20,27 @@ function normalizeStatus(status: string): IssueStatus {
 
 interface IssueStatusBadgeProps {
     status: string;
+    variant?: 'default' | 'enterprise';
 }
 
-export default function IssueStatusBadge({ status }: IssueStatusBadgeProps) {
+export default function IssueStatusBadge({
+    status,
+    variant = 'default',
+}: IssueStatusBadgeProps) {
     const normalizedStatus = normalizeStatus(status);
+    const className =
+        variant === 'enterprise'
+            ? `rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
+                normalizedStatus === 'resolved'
+                    ? 'bg-emerald-500/18 text-emerald-300'
+                    : normalizedStatus === 'ignored'
+                        ? 'bg-amber-500/18 text-amber-300'
+                        : 'bg-red-500/18 text-red-300'
+            }`
+            : `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${STATUS_STYLES[normalizedStatus]}`;
 
     return (
-        <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${STATUS_STYLES[normalizedStatus]}`}
-        >
+        <span className={className}>
             {STATUS_LABELS[normalizedStatus]}
         </span>
     );
