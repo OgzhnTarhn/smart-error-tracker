@@ -214,9 +214,10 @@ function FilterSelect({
             value={value}
             onChange={(event) => onChange(event.target.value)}
             disabled={disabled}
+            style={isEnterprise ? { colorScheme: 'dark' } : undefined}
             className={`min-w-[150px] px-3 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
                 isEnterprise
-                    ? 'enterprise-panel-soft rounded-xl border border-[var(--enterprise-border)] text-white focus:border-orange-500/40 focus:outline-none'
+                    ? 'enterprise-select enterprise-panel-soft rounded-xl border border-[var(--enterprise-border)] pr-8 font-medium text-white focus:border-orange-500/40 focus:outline-none'
                     : 'rounded-lg border border-slate-700 bg-slate-900/70 text-slate-100 focus:border-blue-500/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20'
             }`}
         >
