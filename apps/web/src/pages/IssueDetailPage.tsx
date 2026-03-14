@@ -755,6 +755,8 @@ export default function IssueDetailPage() {
                     />
                 ) : (
                     <GuidanceTabContent
+                        events={events}
+                        selectedEventId={selectedEvent?.id ?? null}
                         preventionInsights={preventionInsights}
                         preventionInsightsLoading={preventionInsightsLoading}
                         preventionInsightsError={preventionInsightsError}
@@ -765,6 +767,7 @@ export default function IssueDetailPage() {
                         aiAnalyzing={aiAnalyzing}
                         analysisError={analysisError}
                         onAnalyze={() => void handleAnalyze()}
+                        onSelectEvent={(event) => setSelectedEventId(event.id)}
                         formatDate={formatDate}
                     />
                 )}
@@ -1005,6 +1008,8 @@ function InvestigationTabContent({
 }
 
 function GuidanceTabContent({
+    events,
+    selectedEventId,
     preventionInsights,
     preventionInsightsLoading,
     preventionInsightsError,
@@ -1015,8 +1020,11 @@ function GuidanceTabContent({
     aiAnalyzing,
     analysisError,
     onAnalyze,
+    onSelectEvent,
     formatDate,
 }: {
+    events: GroupDetailEvent[];
+    selectedEventId: string | null;
     preventionInsights: PreventionInsights | null;
     preventionInsightsLoading: boolean;
     preventionInsightsError: string | null;
@@ -1027,62 +1035,156 @@ function GuidanceTabContent({
     aiAnalyzing: boolean;
     analysisError: string | null;
     onAnalyze: () => void;
+    onSelectEvent: (event: GroupDetailEvent) => void;
     formatDate: (value: string) => string;
 }) {
+    const selectedEventIndex = selectedEventId
+        ? events.findIndex((event) => event.id === selectedEventId)
+        : events.length > 0
+            ? 0
+            : -1;
+    const activeIndex = selectedEventIndex >= 0 ? selectedEventIndex : 0;
+    const previousEvent = activeIndex > 0 ? events[activeIndex - 1] : null;
+    const nextEvent = activeIndex < events.length - 1 ? events[activeIndex + 1] : null;
+    const repeatRiskTone = getGuidanceRepeatRiskTone(preventionInsights?.repeatRisk ?? null);
+    const selectedAnalysis = selectedEvent?.aiAnalysis ?? null;
+
     return (
-        <div className="space-y-8">
-            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-                <div>
-                    <h2 className="text-[2rem] font-semibold tracking-tight text-white">
-                        Guidance &amp; Prevention
-                    </h2>
-                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-                        Intelligent analysis and historical context to help you resolve this issue permanently.
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <GuidanceChromeButton label="Previous guidance">
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="1.8"
-                                d="M15 19l-7-7 7-7"
+        <div className="space-y-6">
+            <div className="guidance-panel overflow-hidden rounded-[28px] border border-[#2b241f] ring-1 ring-white/5">
+                <div className="border-b border-[#252525] px-6 pb-6 pt-6">
+                    <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+                        <div className="max-w-3xl">
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                                Guidance Workspace
+                            </div>
+                            <h2 className="mt-3 text-[2rem] font-semibold tracking-tight text-white">
+                                Decision-first debugging guidance
+                            </h2>
+                            <p className="mt-2 text-sm leading-6 text-slate-300">
+                                Use the selected event to generate a concise root-cause readout,
+                                immediate next step, and prevention context without leaving this view.
+                            </p>
+                            <div className="mt-4 flex flex-wrap gap-2">
+                                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-slate-300">
+                                    {events.length} {events.length === 1 ? 'event' : 'events'} loaded
+                                </span>
+                                {selectedAnalysis?.severity ? (
+                                    <span className="rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1 text-[11px] font-medium text-orange-200">
+                                        {getSeveritySummary(selectedAnalysis.severity)}
+                                    </span>
+                                ) : null}
+                                {selectedAnalysis?.confidence ? (
+                                    <span className="rounded-full border border-slate-600/60 bg-black/35 px-3 py-1 text-[11px] font-medium text-slate-200">
+                                        {getConfidenceSummary(selectedAnalysis.confidence)}
+                                    </span>
+                                ) : null}
+                                {repeatRiskTone ? (
+                                    <span className={`rounded-full border px-3 py-1 text-[11px] font-medium ${repeatRiskTone.className}`}>
+                                        Repeat risk: {repeatRiskTone.label}
+                                    </span>
+                                ) : null}
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <div className="flex items-center gap-2">
+                                <GuidanceEventNavButton
+                                    label="Previous event"
+                                    onClick={() => previousEvent && onSelectEvent(previousEvent)}
+                                    disabled={!previousEvent}
+                                >
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="1.8"
+                                            d="M15 19l-7-7 7-7"
+                                        />
+                                    </svg>
+                                </GuidanceEventNavButton>
+                                <GuidanceEventNavButton
+                                    label="Next event"
+                                    onClick={() => nextEvent && onSelectEvent(nextEvent)}
+                                    disabled={!nextEvent}
+                                >
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="1.8"
+                                            d="M9 5l7 7-7 7"
+                                        />
+                                    </svg>
+                                </GuidanceEventNavButton>
+                            </div>
+
+                            <div className="min-w-[280px] sm:min-w-[320px]">
+                                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                                    Active event
+                                </div>
+                                <select
+                                    value={selectedEvent?.id ?? ''}
+                                    onChange={(event) => {
+                                        const nextSelectedEvent = events.find((item) => item.id === event.target.value);
+                                        if (nextSelectedEvent) onSelectEvent(nextSelectedEvent);
+                                    }}
+                                    disabled={events.length === 0}
+                                    style={{ colorScheme: 'dark' }}
+                                    className="w-full rounded-2xl border border-[#2c2c2e] bg-[#111] px-4 py-3 text-sm text-slate-100 outline-none transition-colors focus:border-orange-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {events.map((event) => (
+                                        <option key={event.id} value={event.id}>
+                                            {`${truncateIdentifier(event.id, 10, 4)} | ${formatDate(event.timestamp || event.createdAt)}`}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <ActionButton
+                                loading={aiAnalyzing}
+                                onClick={onAnalyze}
+                                className="border-orange-500 bg-orange-500 text-white hover:bg-orange-400 hover:border-orange-400"
+                                label="Analyze Selected Event"
                             />
-                        </svg>
-                    </GuidanceChromeButton>
-                    <GuidanceChromeButton label="Next guidance">
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="1.8"
-                                d="M9 5l7 7-7 7"
-                            />
-                        </svg>
-                    </GuidanceChromeButton>
+                        </div>
+                    </div>
                 </div>
+
+                {selectedEvent ? (
+                    <div className="grid gap-3 px-6 py-5 md:grid-cols-2 xl:grid-cols-4">
+                        <GuidanceEventMetaCard
+                            label="Event ID"
+                            value={truncateIdentifier(selectedEvent.id, 12, 4)}
+                            detail={selectedEvent.message}
+                            mono
+                        />
+                        <GuidanceEventMetaCard
+                            label="Timestamp"
+                            value={formatRelativeTime(selectedEvent.timestamp || selectedEvent.createdAt)}
+                            detail={formatDate(selectedEvent.timestamp || selectedEvent.createdAt)}
+                        />
+                        <GuidanceEventMetaCard
+                            label="Source"
+                            value={selectedEvent.source}
+                            detail={selectedEvent.level ? selectedEvent.level.toUpperCase() : 'Level unknown'}
+                        />
+                        <GuidanceEventMetaCard
+                            label="Environment"
+                            value={getEventEnvironmentLabel(selectedEvent)}
+                            detail={selectedEvent.releaseVersion ?? 'No release tagged'}
+                        />
+                    </div>
+                ) : null}
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_330px] xl:items-start">
-                <div className="space-y-8">
-                    <AiAnalysisPanel
-                        analysis={selectedEvent?.aiAnalysis ?? null}
-                        selectedEvent={selectedEvent}
-                        analyzing={aiAnalyzing}
-                        error={analysisError}
-                        onAnalyze={onAnalyze}
-                    />
-
-                    <FixMemoryPreviewCard />
-
-                    <SimilarPastIssuesPanel
-                        items={similarIssues}
-                        loading={similarIssuesLoading}
-                        error={similarIssuesError}
-                        formatDate={formatDate}
-                    />
-                </div>
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.9fr)] xl:items-start">
+                <AiAnalysisPanel
+                    analysis={selectedAnalysis}
+                    selectedEvent={selectedEvent}
+                    analyzing={aiAnalyzing}
+                    error={analysisError}
+                />
 
                 <div className="min-w-0">
                     <PreventionInsightsPanel
@@ -1092,6 +1194,89 @@ function GuidanceTabContent({
                     />
                 </div>
             </div>
+
+            <SimilarPastIssuesPanel
+                items={similarIssues}
+                loading={similarIssuesLoading}
+                error={similarIssuesError}
+                formatDate={formatDate}
+            />
+
+            <FixMemoryPreviewCard />
+        </div>
+    );
+}
+
+function getGuidanceRepeatRiskTone(risk: PreventionInsights['repeatRisk'] | null) {
+    switch (risk) {
+        case 'high':
+            return {
+                label: 'Critical',
+                className: 'border-red-500/25 bg-red-500/10 text-red-200',
+            };
+        case 'medium':
+            return {
+                label: 'Elevated',
+                className: 'border-orange-500/25 bg-orange-500/10 text-orange-200',
+            };
+        case 'low':
+            return {
+                label: 'Guarded',
+                className: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-200',
+            };
+        default:
+            return null;
+    }
+}
+
+function GuidanceEventNavButton({
+    label,
+    onClick,
+    disabled,
+    children,
+}: {
+    label: string;
+    onClick: () => void;
+    disabled: boolean;
+    children: ReactNode;
+}) {
+    return (
+        <button
+            type="button"
+            aria-label={label}
+            onClick={onClick}
+            disabled={disabled}
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#2c2c2e] bg-[#111] text-slate-300 transition-colors hover:border-orange-500/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-45"
+        >
+            {children}
+        </button>
+    );
+}
+
+function GuidanceEventMetaCard({
+    label,
+    value,
+    detail,
+    mono = false,
+}: {
+    label: string;
+    value: string;
+    detail?: string | null;
+    mono?: boolean;
+}) {
+    return (
+        <div className="guidance-panel-soft rounded-[20px] border border-[#262626] px-4 py-4 ring-1 ring-white/5">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                {label}
+            </div>
+            <div className={`mt-2 text-[1rem] font-semibold text-slate-100 ${mono ? 'font-mono' : ''}`}>
+                {value}
+            </div>
+            {detail ? (
+                <div className={`mt-2 text-xs leading-6 text-slate-400 ${mono ? 'font-mono' : ''}`}>
+                    {detail}
+                </div>
+            ) : null}
         </div>
     );
 }
@@ -1302,35 +1487,13 @@ function ResolveIssueDialog({
     );
 }
 
-function GuidanceChromeButton({
-    label,
-    children,
-}: {
-    label: string;
-    children: ReactNode;
-}) {
-    return (
-        <button
-            type="button"
-            aria-label={label}
-            disabled
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#232323] bg-[#111] text-slate-500 transition-colors disabled:cursor-default disabled:opacity-100"
-        >
-            {children}
-        </button>
-    );
-}
-
 function FixMemoryPreviewCard() {
     return (
-        <div className="guidance-dashed-panel relative overflow-hidden rounded-[28px] border border-dashed border-[#313131] px-6 py-7 ring-1 ring-white/5">
-            <div className="pointer-events-none absolute right-6 top-1/2 hidden -translate-y-1/2 text-[5.5rem] font-black italic tracking-[-0.08em] text-white/[0.05] md:block">
-                MEMORY
-            </div>
-            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+        <div className="guidance-dashed-panel overflow-hidden rounded-[24px] border border-dashed border-[#313131] px-5 py-5 ring-1 ring-white/5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex items-start gap-4">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[#2e2e2e] bg-[#111] text-slate-400">
-                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#2e2e2e] bg-[#111] text-slate-400">
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
@@ -1341,22 +1504,25 @@ function FixMemoryPreviewCard() {
                     </div>
                     <div className="max-w-2xl">
                         <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-[1.75rem] font-semibold tracking-tight text-slate-100">
-                                Fix Memory
-                            </h3>
-                            <span className="rounded bg-orange-500/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-300">
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                                Memory teaser
+                            </div>
+                            <span className="rounded bg-orange-500/12 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-300">
                                 Coming Soon
                             </span>
                         </div>
+                        <h3 className="mt-2 text-lg font-semibold tracking-tight text-slate-100">
+                            Fix Memory
+                        </h3>
                         <p className="mt-2 text-sm leading-7 text-slate-400">
-                            Connect your resolution notes directly to the codebase. Automate documentation and prevent future regressions from repeating past mistakes.
+                            Save the resolution pattern behind this issue and turn future guidance into a reusable debugging memory.
                         </p>
                     </div>
                 </div>
                 <button
                     type="button"
                     disabled
-                    className="self-start rounded-full bg-white px-6 py-2.5 text-xs font-bold uppercase tracking-[0.22em] text-black disabled:cursor-default disabled:opacity-100"
+                    className="self-start rounded-full border border-white/10 bg-white/95 px-5 py-2 text-[11px] font-bold uppercase tracking-[0.22em] text-black disabled:cursor-default disabled:opacity-100"
                 >
                     Notify Me
                 </button>
@@ -1376,12 +1542,42 @@ function GuidanceMetricCard({
 }) {
     return (
         <div className="guidance-panel-soft rounded-[18px] border border-[#262626] px-4 py-4 ring-1 ring-white/5">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
                 {label}
             </div>
-            <div className={`mt-2 text-[1.05rem] font-semibold ${valueClassName}`}>
+            <div className={`mt-2 text-[1.1rem] font-semibold ${valueClassName}`}>
                 {value}
             </div>
+        </div>
+    );
+}
+
+function GuidanceDecisionCard({
+    label,
+    value,
+    icon,
+    iconClassName,
+    toneClassName,
+}: {
+    label: string;
+    value: string;
+    icon: ReactNode;
+    iconClassName: string;
+    toneClassName: string;
+}) {
+    return (
+        <div className={`rounded-[22px] border px-5 py-5 ring-1 ring-white/5 ${toneClassName}`}>
+            <div className="flex items-center gap-3">
+                <span className={`flex h-10 w-10 items-center justify-center rounded-xl border ${iconClassName}`}>
+                    {icon}
+                </span>
+                <div className="text-[12px] font-semibold uppercase tracking-[0.22em] text-slate-300">
+                    {label}
+                </div>
+            </div>
+            <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-100">
+                {value}
+            </p>
         </div>
     );
 }
@@ -1407,7 +1603,7 @@ function AnalysisSectionCard({
                 <span className={`flex h-8 w-8 items-center justify-center rounded-lg border ${iconClassName}`}>
                     {icon}
                 </span>
-                <div className={`text-[11px] font-semibold uppercase tracking-[0.26em] ${labelClassName}`}>
+                <div className={`text-[12px] font-semibold uppercase tracking-[0.22em] ${labelClassName}`}>
                     {label}
                 </div>
             </div>
@@ -1430,7 +1626,6 @@ interface AiAnalysisPanelProps {
     selectedEvent: GroupDetailEvent | null;
     analyzing: boolean;
     error: string | null;
-    onAnalyze: () => void;
 }
 
 function AiAnalysisPanel({
@@ -1438,30 +1633,12 @@ function AiAnalysisPanel({
     selectedEvent,
     analyzing,
     error,
-    onAnalyze,
 }: AiAnalysisPanelProps) {
-    const sections = [
-        {
-            label: 'Root Cause',
-            value: analysis?.rootCause,
-            labelClassName: 'text-slate-500',
-            iconClassName: 'border-orange-500/20 bg-orange-500/10 text-orange-300',
-            codeValue: false,
-            icon: (
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="1.8"
-                        d="M13 10V3L4 14h7v7l9-11h-7z"
-                    />
-                </svg>
-            ),
-        },
+    const detailSections = [
         {
             label: 'Suggested Fix',
             value: analysis?.suggestedFix,
-            labelClassName: 'text-slate-500',
+            labelClassName: 'text-slate-400',
             iconClassName: 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300',
             codeValue: false,
             icon: (
@@ -1478,7 +1655,7 @@ function AiAnalysisPanel({
         {
             label: 'Likely Area',
             value: analysis?.likelyArea,
-            labelClassName: 'text-slate-500',
+            labelClassName: 'text-slate-400',
             iconClassName: 'border-slate-700 bg-[#171717] text-slate-300',
             codeValue: true,
             icon: (
@@ -1488,23 +1665,6 @@ function AiAnalysisPanel({
                         strokeLinejoin="round"
                         strokeWidth="1.8"
                         d="M7 4h7l5 5v11a1 1 0 01-1 1H7a2 2 0 01-2-2V6a2 2 0 012-2z"
-                    />
-                </svg>
-            ),
-        },
-        {
-            label: 'Immediate Next Step',
-            value: analysis?.nextStep,
-            labelClassName: 'text-slate-500',
-            iconClassName: 'border-amber-500/20 bg-amber-500/10 text-amber-200',
-            codeValue: false,
-            icon: (
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="1.8"
-                        d="M13 3L4 14h6l-1 7 9-11h-6l1-7z"
                     />
                 </svg>
             ),
@@ -1520,7 +1680,9 @@ function AiAnalysisPanel({
         analysis
         && (
             analysis.summary
-            || sections.length > 0
+            || detailSections.length > 0
+            || analysis.rootCause
+            || analysis.nextStep
             || analysis.severity
             || analysis.confidence
             || analysis.preventionTip
@@ -1531,9 +1693,9 @@ function AiAnalysisPanel({
 
     return (
         <div className="guidance-panel relative overflow-hidden rounded-[28px] border border-[#2b241f] ring-1 ring-white/5">
-            <div className="flex flex-col justify-between gap-4 border-b border-[#252525] px-6 pb-5 pt-6 lg:flex-row lg:items-center">
+            <div className="border-b border-[#252525] px-6 pb-5 pt-6">
                 <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-500/12 text-orange-300">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-500/12 text-orange-300">
                         <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path
                                 strokeLinecap="round"
@@ -1544,25 +1706,19 @@ function AiAnalysisPanel({
                         </svg>
                     </div>
                     <div>
-                        <h2 className="text-[1.7rem] font-semibold tracking-tight text-white">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            AI Decision Summary
+                        </div>
+                        <h2 className="mt-2 text-[1.85rem] font-semibold tracking-tight text-white">
                             AI Debug Guidance
                         </h2>
                         <p className="mt-1 text-sm leading-6 text-slate-400">
                             {selectedEvent
-                                ? <>Deep analysis for event: <span className="font-mono text-orange-300">{truncateIdentifier(selectedEvent.id, 12, 4)}</span></>
+                                ? <>Decision support for event <span className="font-mono text-orange-300">{truncateIdentifier(selectedEvent.id, 12, 4)}</span>.</>
                                 : 'Choose an event from the list to generate structured debugging guidance.'}
                         </p>
                     </div>
                 </div>
-                <button
-                    type="button"
-                    onClick={onAnalyze}
-                    disabled={analyzing || !selectedEvent}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-[0_0_24px_rgba(249,115,22,0.3)] transition-colors hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                    {analyzing ? <Spinner /> : null}
-                    {analyzing ? 'Analyzing...' : 'Analyze Selected Event'}
-                </button>
             </div>
 
             <div className="p-6">
@@ -1612,45 +1768,117 @@ function AiAnalysisPanel({
                             </div>
                         )}
 
-                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                            <GuidanceMetricCard
-                                label="Severity"
-                                value={getSeveritySummary(analysis?.severity ?? null)}
-                                valueClassName={getSeverityValueClass(analysis?.severity ?? null)}
-                            />
-                            <GuidanceMetricCard
-                                label="Confidence"
-                                value={getConfidenceSummary(analysis?.confidence ?? null)}
-                                valueClassName={getConfidenceValueClass(analysis?.confidence ?? null)}
-                            />
-                            <GuidanceMetricCard
-                                label="Last Print"
-                                value={selectedEvent
-                                    ? formatRelativeTime(selectedEvent.timestamp || selectedEvent.createdAt)
-                                    : '-'}
-                                valueClassName="text-slate-100"
-                            />
-                            <GuidanceMetricCard
-                                label="Environment"
-                                value={getEventEnvironmentLabel(selectedEvent)}
-                                valueClassName="text-slate-100"
-                            />
+                        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.85fr)]">
+                            <div className="space-y-4">
+                                {analysis?.summary ? (
+                                    <div className="rounded-[24px] border border-[#2b2b2b] bg-black/35 px-5 py-5 ring-1 ring-white/5">
+                                        <div className="text-[12px] font-semibold uppercase tracking-[0.22em] text-slate-300">
+                                            Analysis Summary
+                                        </div>
+                                        <p className="mt-3 whitespace-pre-wrap text-base leading-8 text-slate-100">
+                                            {analysis.summary}
+                                        </p>
+                                    </div>
+                                ) : null}
+
+                                {(analysis?.rootCause || analysis?.nextStep) ? (
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        {analysis?.rootCause ? (
+                                            <GuidanceDecisionCard
+                                                label="Root Cause"
+                                                value={analysis.rootCause}
+                                                iconClassName="border-orange-500/20 bg-orange-500/10 text-orange-300"
+                                                toneClassName="border-orange-500/15 bg-orange-500/[0.08]"
+                                                icon={(
+                                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth="1.8"
+                                                            d="M13 10V3L4 14h7v7l9-11h-7z"
+                                                        />
+                                                    </svg>
+                                                )}
+                                            />
+                                        ) : null}
+                                        {analysis?.nextStep ? (
+                                            <GuidanceDecisionCard
+                                                label="Immediate Next Step"
+                                                value={analysis.nextStep}
+                                                iconClassName="border-amber-500/20 bg-amber-500/10 text-amber-200"
+                                                toneClassName="border-amber-500/15 bg-amber-500/[0.07]"
+                                                icon={(
+                                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth="1.8"
+                                                            d="M13 3L4 14h6l-1 7 9-11h-6l1-7z"
+                                                        />
+                                                    </svg>
+                                                )}
+                                            />
+                                        ) : null}
+                                    </div>
+                                ) : null}
+                            </div>
+
+                            <div className="space-y-3">
+                                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                                    <GuidanceMetricCard
+                                        label="Severity"
+                                        value={getSeveritySummary(analysis?.severity ?? null)}
+                                        valueClassName={getSeverityValueClass(analysis?.severity ?? null)}
+                                    />
+                                    <GuidanceMetricCard
+                                        label="Confidence"
+                                        value={getConfidenceSummary(analysis?.confidence ?? null)}
+                                        valueClassName={getConfidenceValueClass(analysis?.confidence ?? null)}
+                                    />
+                                    <GuidanceMetricCard
+                                        label="Last Print"
+                                        value={selectedEvent
+                                            ? formatRelativeTime(selectedEvent.timestamp || selectedEvent.createdAt)
+                                            : '-'}
+                                        valueClassName="text-slate-100"
+                                    />
+                                    <GuidanceMetricCard
+                                        label="Environment"
+                                        value={getEventEnvironmentLabel(selectedEvent)}
+                                        valueClassName="text-slate-100"
+                                    />
+                                </div>
+
+                                {analysis?.preventionTip ? (
+                                    <div className="rounded-[20px] border border-orange-500/20 bg-orange-500/[0.08] px-5 py-4 text-sm ring-1 ring-orange-500/10">
+                                        <div className="flex items-center gap-3 text-orange-100">
+                                            <span className="flex h-8 w-8 items-center justify-center rounded-full border border-orange-400/20 bg-orange-400/10 text-orange-200">
+                                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth="1.8"
+                                                        d="M12 3a6 6 0 00-3.6 10.8V17a1 1 0 001 1h5.2a1 1 0 001-1v-3.2A6 6 0 0012 3zm-2 17h4m-3 0v1m2-1v1"
+                                                    />
+                                                </svg>
+                                            </span>
+                                            <div>
+                                                <div className="text-[12px] font-semibold uppercase tracking-[0.22em] text-orange-300">
+                                                    Pro-tip
+                                                </div>
+                                                <p className="mt-1 leading-6 text-orange-50/90">
+                                                    {analysis.preventionTip}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : null}
+                            </div>
                         </div>
 
-                        {analysis?.summary && (
-                            <div className="rounded-[20px] border border-[#2a2a2a] bg-black/35 px-5 py-5 ring-1 ring-white/5">
-                                <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-slate-500">
-                                    Analysis Summary
-                                </div>
-                                <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-200">
-                                    {analysis.summary}
-                                </p>
-                            </div>
-                        )}
-
-                        {sections.length > 0 && (
+                        {detailSections.length > 0 && (
                             <div className="grid gap-4 xl:grid-cols-2">
-                                {sections.map((section) => (
+                                {detailSections.map((section) => (
                                     <AnalysisSectionCard
                                         key={section.label}
                                         label={section.label}
@@ -1664,32 +1892,11 @@ function AiAnalysisPanel({
                             </div>
                         )}
 
-                        {analysis?.preventionTip && (
-                            <div className="rounded-[20px] border border-orange-500/20 bg-orange-500/[0.08] px-5 py-4 text-sm ring-1 ring-orange-500/10">
-                                <div className="flex items-center gap-3 text-orange-100">
-                                    <span className="flex h-8 w-8 items-center justify-center rounded-full border border-orange-400/20 bg-orange-400/10 text-orange-200">
-                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth="1.8"
-                                                d="M12 3a6 6 0 00-3.6 10.8V17a1 1 0 001 1h5.2a1 1 0 001-1v-3.2A6 6 0 0012 3zm-2 17h4m-3 0v1m2-1v1"
-                                            />
-                                        </svg>
-                                    </span>
-                                    <div>
-                                        <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-orange-300">
-                                            Pro-tip
-                                        </div>
-                                        <p className="mt-1 leading-6 text-orange-50/90">
-                                            {analysis.preventionTip}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {!analysis?.summary && sections.length === 0 && !analysis?.preventionTip && (
+                        {!analysis?.summary
+                            && !analysis?.rootCause
+                            && !analysis?.nextStep
+                            && detailSections.length === 0
+                            && !analysis?.preventionTip && (
                             <div className="rounded-[22px] border border-slate-800/80 bg-slate-950/55 px-5 py-4 text-sm text-slate-400 ring-1 ring-white/5">
                                 Analysis returned limited structured data for this event.
                             </div>

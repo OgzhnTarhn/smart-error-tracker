@@ -16,7 +16,7 @@ function truncateText(value: string, maxLength: number) {
 
 function formatMatchScore(score: number) {
     const percentage = score <= 1 ? Math.round(score * 100) : Math.round(score);
-    return `${percentage}% match`;
+    return `${percentage}%`;
 }
 
 function HistoryBadge({
@@ -27,7 +27,7 @@ function HistoryBadge({
     className: string;
 }) {
     return (
-        <span className={`rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${className}`}>
+        <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${className}`}>
             {label}
         </span>
     );
@@ -50,7 +50,7 @@ function EmptyState() {
                 No similar past issues found
             </h3>
             <p className="mt-2 text-sm leading-6 text-slate-400">
-                This issue does not have a strong historical match yet.
+                This issue does not yet have a strong historical match in the repository.
             </p>
         </div>
     );
@@ -64,19 +64,21 @@ function LoadingState() {
                     key={placeholder}
                     className="guidance-panel-soft animate-pulse rounded-[24px] border border-[#2a2a2a] p-6 ring-1 ring-white/5"
                 >
-                    <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0 flex-1">
+                    <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                        <div className="min-w-0 flex-1 space-y-4">
                             <div className="flex gap-2">
-                                <div className="h-5 w-[4.5rem] rounded bg-[#202020]" />
-                                <div className="h-5 w-[5rem] rounded bg-[#202020]" />
-                                <div className="h-5 w-[4.5rem] rounded bg-[#202020]" />
+                                <div className="h-6 w-20 rounded-full bg-[#202020]" />
+                                <div className="h-6 w-24 rounded-full bg-[#202020]" />
+                                <div className="h-6 w-24 rounded-full bg-[#202020]" />
                             </div>
-                            <div className="mt-5 h-7 w-3/4 rounded bg-[#1a1a1a]" />
-                            <div className="mt-3 h-4 w-2/3 rounded bg-[#181818]" />
+                            <div className="h-8 w-3/4 rounded bg-[#1a1a1a]" />
+                            <div className="grid gap-3 md:grid-cols-2">
+                                <div className="h-28 rounded-[20px] border border-[#222] bg-black/40" />
+                                <div className="h-28 rounded-[20px] border border-[#222] bg-black/40" />
+                            </div>
                         </div>
-                        <div className="h-4 w-[7rem] rounded bg-[#181818]" />
+                        <div className="h-24 w-40 rounded-[20px] border border-[#222] bg-black/40" />
                     </div>
-                    <div className="mt-6 h-16 rounded-2xl border border-[#222] bg-black/40" />
                 </div>
             ))}
         </div>
@@ -92,8 +94,31 @@ function ErrorState({ error }: { error: string }) {
             <p className="mt-2 text-sm leading-6 text-red-100/80">
                 {error}
             </p>
-            <p className="mt-3 text-xs uppercase tracking-[0.24em] text-slate-500">
-                Reload the page to retry this panel.
+            <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-red-200/60">
+                Reload to retry this comparison panel.
+            </p>
+        </div>
+    );
+}
+
+function SimilarIssueDetailCard({
+    label,
+    value,
+    toneClassName,
+    mono = false,
+}: {
+    label: string;
+    value: string;
+    toneClassName?: string;
+    mono?: boolean;
+}) {
+    return (
+        <div className={`guidance-panel-soft rounded-[20px] border border-[#262626] px-4 py-4 ring-1 ring-white/5 ${toneClassName ?? ''}`}>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                {label}
+            </div>
+            <p className={`mt-3 text-sm leading-7 text-slate-200 ${mono ? 'font-mono text-[13px]' : ''}`}>
+                {value}
             </p>
         </div>
     );
@@ -109,16 +134,19 @@ export default function SimilarPastIssuesPanel({
         <section className="space-y-5">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
-                    <h2 className="text-[2rem] font-semibold tracking-tight text-white">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        Historical Comparison
+                    </div>
+                    <h2 className="mt-2 text-[2rem] font-semibold tracking-tight text-white">
                         Similar Past Issues
                     </h2>
-                    <p className="mt-1 text-sm leading-6 text-slate-400">
-                        Heuristic matches within this repository
+                    <p className="mt-2 text-sm leading-6 text-slate-400">
+                        Fast comparisons showing why a past issue matched and how it was resolved.
                     </p>
                 </div>
                 <Link
                     to="/issues"
-                    className="inline-flex items-center gap-2 self-start text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-300 transition-colors hover:text-orange-200"
+                    className="inline-flex items-center gap-2 self-start text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-300 transition-colors hover:text-orange-200"
                 >
                     View All Matches
                     <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -146,63 +174,78 @@ export default function SimilarPastIssuesPanel({
                                 to={`/issues/${item.id}`}
                                 className="guidance-panel group block overflow-hidden rounded-[24px] border border-[#2a2a2a] px-5 py-5 ring-1 ring-white/5 transition-colors duration-200 hover:border-orange-500/40"
                             >
-                                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                                    <div className="min-w-0">
+                                <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                                    <div className="min-w-0 flex-1">
                                         <div className="flex flex-wrap items-center gap-2">
                                             <HistoryBadge
                                                 label={item.status}
                                                 className={item.status === 'resolved'
-                                                    ? 'bg-emerald-500/18 text-emerald-300'
+                                                    ? 'border-emerald-500/20 bg-emerald-500/12 text-emerald-300'
                                                     : item.status === 'ignored'
-                                                        ? 'bg-amber-500/18 text-amber-300'
-                                                        : 'bg-red-500/18 text-red-300'}
+                                                        ? 'border-amber-500/20 bg-amber-500/12 text-amber-300'
+                                                        : 'border-red-500/20 bg-red-500/12 text-red-300'}
                                             />
-                                            <HistoryBadge
-                                                label={formatMatchScore(item.score)}
-                                                className="bg-white/[0.07] text-slate-300"
-                                            />
-                                            {item.isRegression && (
+                                            {item.isRegression ? (
                                                 <HistoryBadge
                                                     label="Regression"
-                                                    className="bg-orange-500/18 text-orange-300"
+                                                    className="border-orange-500/20 bg-orange-500/12 text-orange-300"
                                                 />
-                                            )}
-                                            {item.resolutionNote && (
+                                            ) : null}
+                                            {item.resolutionNote ? (
                                                 <HistoryBadge
-                                                    label="Has Note"
-                                                    className="bg-cyan-500/18 text-cyan-300"
+                                                    label="Has Fix Note"
+                                                    className="border-cyan-500/20 bg-cyan-500/12 text-cyan-300"
                                                 />
-                                            )}
+                                            ) : null}
                                         </div>
 
-                                        <h3 className="mt-5 text-[1.05rem] font-semibold leading-8 text-white transition-colors group-hover:text-orange-50">
+                                        <h3 className="mt-5 text-[1.1rem] font-semibold leading-8 text-white transition-colors group-hover:text-orange-50">
                                             {truncateText(item.title, 160)}
                                         </h3>
                                         <p className="mt-2 text-sm leading-7 text-slate-400">
-                                            {truncateText(item.similarityReason, 180)}
+                                            Open this issue to inspect the original stack trace, decision context, and saved resolution details.
                                         </p>
+
+                                        <div className="mt-5 grid gap-3 md:grid-cols-2">
+                                            <SimilarIssueDetailCard
+                                                label="Why It Matched"
+                                                value={truncateText(item.similarityReason, 220)}
+                                            />
+                                            <SimilarIssueDetailCard
+                                                label="What Fixed It"
+                                                value={item.resolutionNote
+                                                    ? truncateText(item.resolutionNote, 260)
+                                                    : 'No saved resolution note was attached to this issue.'}
+                                                toneClassName={item.resolutionNote
+                                                    ? 'border-emerald-500/15 bg-emerald-500/[0.05]'
+                                                    : ''}
+                                                mono={Boolean(item.resolutionNote)}
+                                            />
+                                        </div>
                                     </div>
 
-                                    <div className="shrink-0 text-left lg:text-right">
-                                        <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                                            Last Seen
-                                        </div>
-                                        <div className="mt-1 text-xs font-medium text-slate-300">
-                                            {formatDate(item.lastSeenAt)}
+                                    <div className="xl:w-[220px]">
+                                        <div className="rounded-[22px] border border-orange-500/20 bg-orange-500/[0.08] px-5 py-5 ring-1 ring-orange-500/10">
+                                            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-200">
+                                                Match Score
+                                            </div>
+                                            <div className="mt-3 text-[2rem] font-semibold leading-none text-white">
+                                                {formatMatchScore(item.score)}
+                                            </div>
+                                            <p className="mt-3 text-sm leading-6 text-orange-50/80">
+                                                Historical similarity based on error shape, metadata, and issue context.
+                                            </p>
+                                            <div className="mt-4 border-t border-orange-500/15 pt-4">
+                                                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-200">
+                                                    Last Seen
+                                                </div>
+                                                <div className="mt-2 text-sm font-medium text-slate-100">
+                                                    {formatDate(item.lastSeenAt)}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-
-                                {item.resolutionNote && (
-                                    <div className="mt-5 border-t border-[#242424] pt-4">
-                                        <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                                            Resolution Artifact
-                                        </div>
-                                        <p className="mt-3 font-mono text-[13px] leading-6 text-emerald-300">
-                                            {truncateText(item.resolutionNote, 280)}
-                                        </p>
-                                    </div>
-                                )}
                             </Link>
                         </li>
                     ))}

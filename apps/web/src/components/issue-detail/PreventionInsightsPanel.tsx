@@ -11,22 +11,28 @@ function getRiskTone(risk: PreventionRepeatRisk) {
     switch (risk) {
         case 'high':
             return {
-                badgeClassName: 'bg-red-500 text-white',
-                meterClassName: 'w-[86%] bg-gradient-to-r from-orange-400 via-orange-500 to-red-500',
                 label: 'Critical',
+                badgeClassName: 'border-red-500/30 bg-red-500/12 text-red-200',
+                surfaceClassName: 'border-red-500/20 bg-red-500/[0.08]',
+                meterClassName: 'w-[88%] bg-gradient-to-r from-orange-400 via-orange-500 to-red-500',
+                description: 'This pattern has enough historical signal to treat repeat risk as urgent.',
             };
         case 'medium':
             return {
-                badgeClassName: 'bg-orange-500/85 text-white',
-                meterClassName: 'w-[68%] bg-gradient-to-r from-amber-300 via-orange-400 to-orange-500',
                 label: 'Elevated',
+                badgeClassName: 'border-orange-500/30 bg-orange-500/12 text-orange-200',
+                surfaceClassName: 'border-orange-500/20 bg-orange-500/[0.08]',
+                meterClassName: 'w-[66%] bg-gradient-to-r from-amber-300 via-orange-400 to-orange-500',
+                description: 'There is meaningful history here, but the pattern is not yet dominant.',
             };
         case 'low':
         default:
             return {
-                badgeClassName: 'bg-emerald-500/85 text-white',
-                meterClassName: 'w-[42%] bg-gradient-to-r from-emerald-300 via-emerald-400 to-teal-400',
                 label: 'Guarded',
+                badgeClassName: 'border-emerald-500/30 bg-emerald-500/12 text-emerald-200',
+                surfaceClassName: 'border-emerald-500/20 bg-emerald-500/[0.08]',
+                meterClassName: 'w-[40%] bg-gradient-to-r from-emerald-300 via-emerald-400 to-teal-400',
+                description: 'Current prevention history suggests lower repeat risk, but not zero risk.',
             };
     }
 }
@@ -54,21 +60,21 @@ function buildReportSignals(insights: PreventionInsights) {
     return dedupeItems([
         ...insights.repeatSignals,
         insights.derivedFrom.similarIssuesCount > 0
-            ? `This issue has similarities with ${insights.derivedFrom.similarIssuesCount} past ${pluralize(insights.derivedFrom.similarIssuesCount, 'issue')} in this repository.`
+            ? `Matched ${insights.derivedFrom.similarIssuesCount} historical ${pluralize(insights.derivedFrom.similarIssuesCount, 'issue')}.`
             : null,
         insights.derivedFrom.resolutionNotesUsed > 0
-            ? `${insights.derivedFrom.resolutionNotesUsed} resolved ${pluralize(insights.derivedFrom.resolutionNotesUsed, 'issue')} includes a saved resolution note.`
+            ? `${insights.derivedFrom.resolutionNotesUsed} saved resolution ${pluralize(insights.derivedFrom.resolutionNotesUsed, 'note')} contributed to this readout.`
             : null,
         insights.derivedFrom.regressionHistory
-            ? 'Related issues in this pattern have regressed before.'
+            ? 'Related issue patterns have regressed before.'
             : null,
         insights.derivedFrom.currentAnalysis
-            ? 'Current AI analysis is contributing to this prevention insight.'
+            ? 'Current AI analysis is reinforcing the prevention signal.'
             : null,
     ]);
 }
 
-function SidebarCard({
+function PanelShell({
     children,
     className = '',
 }: {
@@ -76,8 +82,32 @@ function SidebarCard({
     className?: string;
 }) {
     return (
-        <div className={`guidance-panel overflow-hidden rounded-[24px] border border-[#2a2a2a] ring-1 ring-white/5 ${className}`}>
+        <section className={`guidance-panel overflow-hidden rounded-[24px] border border-[#2a2a2a] ring-1 ring-white/5 ${className}`}>
             {children}
+        </section>
+    );
+}
+
+function StatCard({
+    label,
+    value,
+    detail,
+}: {
+    label: string;
+    value: string;
+    detail: string;
+}) {
+    return (
+        <div className="guidance-panel-soft rounded-[20px] border border-[#262626] px-4 py-4 ring-1 ring-white/5">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                {label}
+            </div>
+            <div className="mt-2 text-[1.35rem] font-semibold text-slate-100">
+                {value}
+            </div>
+            <p className="mt-2 text-xs leading-6 text-slate-400">
+                {detail}
+            </p>
         </div>
     );
 }
@@ -85,45 +115,42 @@ function SidebarCard({
 function LoadingState() {
     return (
         <div className="space-y-5">
-            <SidebarCard>
+            <PanelShell>
                 <div className="animate-pulse p-5">
-                    <div className="flex items-center justify-between">
-                        <div className="h-4 w-[8.5rem] rounded bg-[#202020]" />
-                        <div className="h-6 w-[4.5rem] rounded bg-[#202020]" />
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-3">
+                            <div className="h-4 w-32 rounded bg-[#202020]" />
+                            <div className="h-8 w-56 rounded bg-[#171717]" />
+                            <div className="h-3 w-72 rounded bg-[#181818]" />
+                        </div>
+                        <div className="h-7 w-20 rounded-full bg-[#202020]" />
                     </div>
-                    <div className="mt-5 h-3 w-28 rounded bg-[#181818]" />
-                    <div className="mt-3 h-12 rounded bg-[#141414]" />
-                    <div className="mt-5 h-2 rounded-full bg-[#181818]" />
-                    <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                        <div className="h-16 rounded-2xl bg-[#141414]" />
-                        <div className="h-10 w-px bg-[#202020]" />
-                        <div className="h-16 rounded-2xl bg-[#141414]" />
+                    <div className="mt-5 h-2 rounded-full bg-[#1b1b1b]" />
+                    <div className="mt-6 grid gap-3 md:grid-cols-3">
+                        {[0, 1, 2].map((item) => (
+                            <div key={item} className="h-28 rounded-[20px] border border-[#252525] bg-[#111]" />
+                        ))}
                     </div>
                 </div>
-            </SidebarCard>
-            <div className="space-y-3">
-                {[0, 1, 2].map((item) => (
-                    <div
-                        key={item}
-                        className="animate-pulse rounded-[20px] border border-[#252525] bg-[#0d0d0d] p-4 ring-1 ring-white/5"
-                    >
-                        <div className="flex items-start gap-3">
-                            <div className="mt-0.5 h-6 w-6 rounded-full bg-[#1b1b1b]" />
-                            <div className="min-w-0 flex-1 space-y-3">
-                                <div className="h-3 w-11/12 rounded bg-[#1b1b1b]" />
-                                <div className="h-3 w-4/5 rounded bg-[#181818]" />
-                            </div>
-                        </div>
+            </PanelShell>
+
+            <PanelShell>
+                <div className="animate-pulse p-5">
+                    <div className="h-4 w-40 rounded bg-[#202020]" />
+                    <div className="mt-4 grid gap-3">
+                        {[0, 1, 2].map((item) => (
+                            <div key={item} className="h-20 rounded-[18px] border border-[#252525] bg-[#111]" />
+                        ))}
                     </div>
-                ))}
-            </div>
+                </div>
+            </PanelShell>
         </div>
     );
 }
 
 function ErrorState({ error }: { error: string }) {
     return (
-        <SidebarCard className="border-red-500/25 bg-red-500/10">
+        <PanelShell className="border-red-500/25 bg-red-500/10">
             <div className="p-5">
                 <h3 className="text-sm font-semibold text-red-100">
                     Prevention insight is unavailable
@@ -131,17 +158,17 @@ function ErrorState({ error }: { error: string }) {
                 <p className="mt-2 text-sm leading-6 text-red-100/80">
                     {error}
                 </p>
-                <p className="mt-3 text-xs uppercase tracking-[0.24em] text-red-200/60">
-                    The rest of the issue detail page is still usable.
+                <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-red-200/60">
+                    Guidance can still continue without this context.
                 </p>
             </div>
-        </SidebarCard>
+        </PanelShell>
     );
 }
 
 function EmptyState() {
     return (
-        <SidebarCard>
+        <PanelShell>
             <div className="px-5 py-10 text-center">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-[#2a2a2a] bg-black/40 text-slate-500">
                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -157,35 +184,37 @@ function EmptyState() {
                     Not enough prevention history yet
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-slate-400">
-                    This panel gets stronger once AI guidance, related issues, or resolution notes exist.
+                    This panel becomes more useful after similar issues, saved notes, or prior analysis accumulate.
                 </p>
             </div>
-        </SidebarCard>
+        </PanelShell>
     );
 }
 
 function RecommendedActionCard({
     item,
-    active,
+    highlight,
 }: {
     item: string;
-    active: boolean;
+    highlight: boolean;
 }) {
     return (
         <div
-            className={`rounded-[18px] border p-4 ring-1 ${active
-                ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-50 ring-emerald-500/10'
-                : 'border-[#252525] bg-[#0b0b0b] text-slate-300 ring-white/5'
-                }`}
+            className={`rounded-[20px] border px-4 py-4 ring-1 ${
+                highlight
+                    ? 'border-emerald-500/30 bg-emerald-500/[0.08] text-emerald-50 ring-emerald-500/10'
+                    : 'border-[#252525] bg-[#0b0b0b] text-slate-300 ring-white/5'
+            }`}
         >
             <div className="flex items-start gap-3">
                 <span
-                    className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${active
-                        ? 'border-emerald-400/30 bg-emerald-500 text-white'
-                        : 'border-[#555] bg-transparent text-slate-400'
-                        }`}
+                    className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${
+                        highlight
+                            ? 'border-emerald-400/30 bg-emerald-500 text-white'
+                            : 'border-[#555] bg-transparent text-slate-400'
+                    }`}
                 >
-                    {active ? (
+                    {highlight ? (
                         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path
                                 strokeLinecap="round"
@@ -205,9 +234,16 @@ function RecommendedActionCard({
                         </svg>
                     )}
                 </span>
-                <p className="text-sm leading-7">
-                    {item}
-                </p>
+                <div className="min-w-0">
+                    {highlight ? (
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-200">
+                            Best next prevention move
+                        </div>
+                    ) : null}
+                    <p className={highlight ? 'mt-2 text-sm leading-7' : 'text-sm leading-7'}>
+                        {item}
+                    </p>
+                </div>
             </div>
         </div>
     );
@@ -241,11 +277,11 @@ export default function PreventionInsightsPanel({
 
     return (
         <div className="space-y-5">
-            <SidebarCard>
+            <PanelShell>
                 <div className="border-b border-[#232323] px-5 pb-5 pt-5">
-                    <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-500/12 text-orange-300">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex items-start gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-500/12 text-orange-300">
                                 <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path
                                         strokeLinecap="round"
@@ -255,92 +291,96 @@ export default function PreventionInsightsPanel({
                                     />
                                 </svg>
                             </div>
-                            <h2 className="text-lg font-semibold text-white">
-                                Prevention Insights
-                            </h2>
+                            <div>
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                                    Prevention Summary
+                                </div>
+                                <h2 className="mt-2 text-[1.35rem] font-semibold tracking-tight text-white">
+                                    Avoid repeating this failure pattern
+                                </h2>
+                                <p className="mt-2 text-sm leading-6 text-slate-400">
+                                    Historical signals, saved fixes, and AI context condensed into one prevention view.
+                                </p>
+                            </div>
                         </div>
-                        <span className="h-4 w-1.5 rounded-full bg-orange-500" />
+
+                        <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${riskTone.badgeClassName}`}>
+                            {riskTone.label} repeat risk
+                        </span>
                     </div>
                 </div>
 
-                <div className="p-5">
-                    <div>
+                <div className="space-y-5 p-5">
+                    <div className={`rounded-[22px] border px-4 py-4 ring-1 ring-white/5 ${riskTone.surfaceClassName}`}>
                         <div className="flex items-center justify-between gap-3">
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                                Repeat Risk
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-300">
+                                Repeat Risk Readout
                             </div>
-                            <span className={`rounded px-2 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${riskTone.badgeClassName}`}>
+                            <div className="text-sm font-semibold text-slate-100">
                                 {riskTone.label}
-                            </span>
+                            </div>
                         </div>
-                        <p className="mt-4 text-sm leading-7 text-slate-400">
-                            Uses the existing prevention feature: repeat signals, recommended actions, and derived history.
+                        <p className="mt-3 text-sm leading-7 text-slate-200">
+                            {riskTone.description}
                         </p>
-
-                        <div className="mt-5 h-1.5 rounded-full bg-[#242424]">
+                        <div className="mt-4 h-2 rounded-full bg-black/30">
                             <div className={`h-full rounded-full ${riskTone.meterClassName}`} />
                         </div>
-
-                        <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                            <div className="text-center">
-                                <div className="text-4xl font-semibold text-white">
-                                    {insights.derivedFrom.similarIssuesCount}
-                                </div>
-                                <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                                    {pluralize(insights.derivedFrom.similarIssuesCount, 'similar')}
-                                </div>
-                            </div>
-                            <div className="h-12 w-px bg-[#2a2a2a]" />
-                            <div className="text-center">
-                                <div className="text-4xl font-semibold text-white">
-                                    {insights.derivedFrom.resolutionNotesUsed}
-                                </div>
-                                <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                                    {pluralize(insights.derivedFrom.resolutionNotesUsed, 'note')}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="mt-5 flex flex-wrap gap-2">
-                            {insights.derivedFrom.currentAnalysis && (
-                                <span className="rounded border border-[#2a2a2a] bg-black/40 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                                    Analysis Trend
-                                </span>
-                            )}
-                            {insights.derivedFrom.regressionHistory && (
-                                <span className="rounded border border-orange-500/25 bg-orange-500/10 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-orange-300">
-                                    Regression History
-                                </span>
-                            )}
-                            {actionItems.length > 0 && (
-                                <span className="rounded border border-[#2a2a2a] bg-black/40 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                                    Resolution Priority
-                                </span>
-                            )}
-                        </div>
                     </div>
 
-                    {reportSignals.length > 0 && (
-                        <div className="mt-6 border-t border-[#232323] pt-5">
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                                Report Signals
-                            </div>
-                            <ul className="mt-4 space-y-3">
-                                {reportSignals.map((item) => (
-                                    <li key={item} className="flex items-start gap-3 text-sm leading-6 text-slate-200">
-                                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-orange-400" />
-                                        <span>{item}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
+                    <div className="grid gap-3 md:grid-cols-3">
+                        <StatCard
+                            label="Similar Issues"
+                            value={String(insights.derivedFrom.similarIssuesCount)}
+                            detail={`${insights.derivedFrom.similarIssuesCount} historical ${pluralize(insights.derivedFrom.similarIssuesCount, 'match')} influenced this assessment.`}
+                        />
+                        <StatCard
+                            label="Saved Notes"
+                            value={String(insights.derivedFrom.resolutionNotesUsed)}
+                            detail={`${insights.derivedFrom.resolutionNotesUsed} resolution ${pluralize(insights.derivedFrom.resolutionNotesUsed, 'note')} is reusable context.`}
+                        />
+                        <StatCard
+                            label="Regression"
+                            value={insights.derivedFrom.regressionHistory ? 'Seen before' : 'No signal'}
+                            detail={insights.derivedFrom.regressionHistory
+                                ? 'Past issue patterns have resurfaced after being resolved.'
+                                : 'No repeated regression history is currently attached.'}
+                        />
+                    </div>
                 </div>
-            </SidebarCard>
+            </PanelShell>
 
-            {actionItems.length > 0 && (
+            {reportSignals.length > 0 ? (
+                <PanelShell>
+                    <div className="border-b border-[#232323] px-5 pb-4 pt-5">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            Report Signals
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-slate-400">
+                            Short evidence points behind this prevention recommendation.
+                        </p>
+                    </div>
+                    <div className="grid gap-3 p-5">
+                        {reportSignals.map((item) => (
+                            <div
+                                key={item}
+                                className="guidance-panel-soft rounded-[18px] border border-[#252525] px-4 py-4 ring-1 ring-white/5"
+                            >
+                                <div className="flex items-start gap-3">
+                                    <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-orange-400" />
+                                    <p className="text-sm leading-7 text-slate-200">
+                                        {item}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </PanelShell>
+            ) : null}
+
+            {actionItems.length > 0 ? (
                 <section className="space-y-3">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                         Recommended Actions
                     </div>
                     <div className="space-y-3">
@@ -348,12 +388,12 @@ export default function PreventionInsightsPanel({
                             <RecommendedActionCard
                                 key={item}
                                 item={item}
-                                active={index === 0}
+                                highlight={index === 0}
                             />
                         ))}
                     </div>
                 </section>
-            )}
+            ) : null}
         </div>
     );
 }
