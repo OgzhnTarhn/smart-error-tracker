@@ -29,6 +29,16 @@
   --dash-accent-yellow: #eab308;
   --dash-accent-blue: #3b82f6;
   --dash-accent-cyan: #06b6d4;
+  --enterprise-bg: #050505;
+  --enterprise-border: rgba(255, 255, 255, 0.08);
+  --enterprise-border-strong: rgba(255, 255, 255, 0.12);
+  --enterprise-text: #f5f0eb;
+  --enterprise-text-muted: #a79c92;
+  --enterprise-text-dim: #6d6258;
+  --enterprise-accent-orange: #f97316;
+  --enterprise-accent-blue: #4f8cff;
+  --enterprise-accent-green: #34d399;
+  --enterprise-accent-red: #fb7185;
 }
 
 body {
@@ -173,7 +183,8 @@ body {
   color: var(--dash-text-muted);
 }
 
-/* Issue detail styles (keep from original) */
+/* Enterprise surfaces */
+.enterprise-shell,
 .issue-detail-shell {
   background:
     radial-gradient(circle at top left, rgba(255, 94, 45, 0.14), transparent 22%),
@@ -182,10 +193,80 @@ body {
     linear-gradient(180deg, #050505 0%, #070707 44%, #020202 100%);
 }
 
+.enterprise-header-glass,
 .issue-header-glass {
   background: rgba(5, 5, 5, 0.92);
   backdrop-filter: blur(18px);
 }
+
+.enterprise-panel {
+  background:
+    linear-gradient(180deg, rgba(31, 24, 18, 0.96) 0%, rgba(11, 10, 10, 0.99) 100%);
+  border: 1px solid var(--enterprise-border);
+  border-radius: 24px;
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.enterprise-panel-soft {
+  background:
+    linear-gradient(180deg, rgba(18, 16, 14, 0.94) 0%, rgba(10, 10, 10, 0.98) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 18px 40px rgba(0, 0, 0, 0.24);
+}
+
+.enterprise-panel-muted {
+  background: rgba(9, 9, 9, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+}
+
+.enterprise-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(249, 115, 22, 0.2);
+  background: rgba(249, 115, 22, 0.12);
+  color: #fdba74;
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.enterprise-metric-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 126px;
+  border: 1px solid var(--enterprise-border);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(24, 18, 14, 0.96) 0%, rgba(8, 8, 8, 0.98) 100%);
+  box-shadow:
+    0 20px 48px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.enterprise-metric-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 18px;
+  bottom: 18px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--metric-accent, var(--enterprise-accent-orange));
+  box-shadow: 0 0 16px color-mix(in srgb, var(--metric-accent, var(--enterprise-accent-orange)) 45%, transparent);
+}
+
+.enterprise-metric-accent-blue { --metric-accent: var(--enterprise-accent-blue); }
+.enterprise-metric-accent-green { --metric-accent: var(--enterprise-accent-green); }
+.enterprise-metric-accent-red { --metric-accent: var(--enterprise-accent-red); }
+.enterprise-metric-accent-orange { --metric-accent: var(--enterprise-accent-orange); }
+.enterprise-metric-accent-slate { --metric-accent: #94a3b8; }
 
 .guidance-panel {
   background:

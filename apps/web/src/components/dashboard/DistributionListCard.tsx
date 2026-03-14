@@ -13,6 +13,7 @@ interface DistributionListCardProps {
     barClassName?: string;
     mode?: 'bar' | 'donut';
     showPercentage?: boolean;
+    variant?: 'default' | 'enterprise';
 }
 
 function DistributionSkeleton() {
@@ -29,52 +30,87 @@ function DistributionSkeleton() {
     );
 }
 
-function DonutChart({ items }: { items: DashboardBreakdownItem[] }) {
+function DonutChart({
+    items,
+    variant,
+}: {
+    items: DashboardBreakdownItem[];
+    variant: 'default' | 'enterprise';
+}) {
     const total = items.reduce((s, i) => s + i.count, 0);
     if (total === 0) return null;
 
     const topItem = items[0];
     const topPct = Math.round((topItem.count / total) * 100);
 
-    const colors = ['#f97316', '#6b7280', '#3b82f6', '#22c55e', '#eab308'];
-    const size = 130;
-    const strokeWidth = 18;
+    const colors =
+        variant === 'enterprise'
+            ? ['#f97316', '#3b82f6', '#22c55e', '#f43f5e', '#94a3b8']
+            : ['#f97316', '#6b7280', '#3b82f6', '#22c55e', '#eab308'];
+    const size = variant === 'enterprise' ? 156 : 130;
+    const strokeWidth = variant === 'enterprise' ? 16 : 18;
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
 
-    let accumulated = 0;
-    const segments = items.map((item, idx) => {
-        const pct = item.count / total;
-        const dashLength = circumference * pct;
-        const dashGap = circumference - dashLength;
-        const offset = -circumference * accumulated + circumference * 0.25;
-        accumulated += pct;
-        return (
-            <circle
-                key={item.name}
-                cx={size / 2}
-                cy={size / 2}
-                r={radius}
-                fill="none"
-                stroke={colors[idx % colors.length]}
-                strokeWidth={strokeWidth}
-                strokeDasharray={`${dashLength} ${dashGap}`}
-                strokeDashoffset={offset}
-                strokeLinecap="round"
-            />
-        );
-    });
+    const segments = items.reduce<{
+        elements: ReactNode[];
+        accumulated: number;
+    }>(
+        (state, item, idx) => {
+            const pct = item.count / total;
+            const dashLength = circumference * pct;
+            const dashGap = circumference - dashLength;
+            const offset = -circumference * state.accumulated + circumference * 0.25;
+
+            state.elements.push(
+                <circle
+                    key={item.name}
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    fill="none"
+                    stroke={colors[idx % colors.length]}
+                    strokeWidth={strokeWidth}
+                    strokeDasharray={`${dashLength} ${dashGap}`}
+                    strokeDashoffset={offset}
+                    strokeLinecap="round"
+                />,
+            );
+
+            return {
+                elements: state.elements,
+                accumulated: state.accumulated + pct,
+            };
+        },
+        { elements: [], accumulated: 0 },
+    ).elements;
 
     return (
-        <div className="flex items-center gap-8">
+        <div className={`flex items-center ${variant === 'enterprise' ? 'gap-6' : 'gap-8'}`}>
             <div className="relative" style={{ width: size, height: size }}>
                 <svg width={size} height={size}>
+                    {variant === 'enterprise' ? (
+                        <circle
+                            cx={size / 2}
+                            cy={size / 2}
+                            r={radius}
+                            fill="none"
+                            stroke="rgba(255,255,255,0.06)"
+                            strokeWidth={strokeWidth}
+                        />
+                    ) : null}
                     {segments}
                 </svg>
                 <div className="donut-center">
                     <span className="text-2xl font-bold text-white">{topPct}%</span>
-                    <span className="text-[10px] uppercase tracking-wider text-[var(--dash-text-dim)] font-semibold">
-                        PROD
+                    <span
+                        className={`text-[10px] font-semibold uppercase tracking-wider ${
+                            variant === 'enterprise'
+                                ? 'text-[var(--enterprise-text-dim)]'
+                                : 'text-[var(--dash-text-dim)]'
+                        }`}
+                    >
+                        {topItem.name}
                     </span>
                 </div>
             </div>
@@ -85,7 +121,15 @@ function DonutChart({ items }: { items: DashboardBreakdownItem[] }) {
                             className="w-2.5 h-2.5 rounded-full"
                             style={{ background: colors[idx % colors.length] }}
                         />
-                        <span className="text-sm text-[var(--dash-text-muted)]">{item.name}</span>
+                        <span
+                            className={`text-sm ${
+                                variant === 'enterprise'
+                                    ? 'text-[var(--enterprise-text-muted)]'
+                                    : 'text-[var(--dash-text-muted)]'
+                            }`}
+                        >
+                            {item.name}
+                        </span>
                     </div>
                 ))}
             </div>
@@ -104,19 +148,33 @@ export default function DistributionListCard({
     barClassName = 'bg-gradient-to-r from-red-500 to-rose-400',
     mode = 'bar',
     showPercentage = false,
+    variant = 'default',
 }: DistributionListCardProps) {
     const total = items.reduce((s, i) => s + i.count, 0);
+    const isEnterprise = variant === 'enterprise';
 
     return (
-        <DashboardSectionCard title={title} icon={icon} description={description} contentClassName="p-5">
+        <DashboardSectionCard
+            title={title}
+            icon={icon}
+            description={description}
+            contentClassName={isEnterprise ? 'p-6' : 'p-5'}
+            variant={variant}
+        >
             {loading ? (
                 <DistributionSkeleton />
             ) : items.length === 0 ? (
-                <div className="py-8 text-center text-sm text-[var(--dash-text-dim)]">
+                <div
+                    className={`py-8 text-center text-sm ${
+                        isEnterprise
+                            ? 'text-[var(--enterprise-text-dim)]'
+                            : 'text-[var(--dash-text-dim)]'
+                    }`}
+                >
                     {emptyMessage}
                 </div>
             ) : mode === 'donut' ? (
-                <DonutChart items={items} />
+                <DonutChart items={items} variant={variant} />
             ) : (
                 <div className="space-y-4">
                     {items.map((item) => {
@@ -128,7 +186,11 @@ export default function DistributionListCard({
                             <div key={item.name} className="space-y-1.5">
                                 <div className="flex items-center justify-between gap-3">
                                     <span
-                                        className={`text-sm text-[var(--dash-text)] ${monospaceLabels ? 'font-mono' : ''}`}
+                                        className={`text-sm ${
+                                            isEnterprise
+                                                ? 'text-white'
+                                                : 'text-[var(--dash-text)]'
+                                        } ${monospaceLabels ? 'font-mono' : ''}`}
                                     >
                                         {item.name}
                                     </span>
@@ -136,7 +198,11 @@ export default function DistributionListCard({
                                         {showPercentage ? pctLabel : item.count.toLocaleString()}
                                     </span>
                                 </div>
-                                <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                                <div
+                                    className={`overflow-hidden rounded-full ${
+                                        isEnterprise ? 'h-2.5 bg-white/6' : 'h-2 bg-white/5'
+                                    }`}
+                                >
                                     <div
                                         className={`h-full rounded-full transition-all ${barClassName}`}
                                         style={{ width: `${width}%` }}

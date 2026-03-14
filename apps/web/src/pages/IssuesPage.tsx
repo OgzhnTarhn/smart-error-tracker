@@ -307,7 +307,10 @@ export default function IssuesPage() {
 
     return (
         <div className="min-h-screen bg-slate-900 text-slate-100">
-            <DashboardNavbar />
+            <DashboardNavbar
+                activeItem="issues"
+                projectName="production-api-cluster"
+            />
             <header className="border-b border-slate-800 px-6 py-4">
                 <div className="max-w-7xl mx-auto flex items-center justify-between">
                     <div>
