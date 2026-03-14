@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import EventDetailPanel from '../components/issue-detail/EventDetailPanel';
 import EventList from '../components/issue-detail/EventList';
+import FixMemoryPanel from '../components/issue-detail/FixMemoryPanel';
 import PreventionInsightsPanel, { PreventionRecommendedActionsPanel } from '../components/issue-detail/PreventionInsightsPanel';
 import SimilarPastIssuesPanel from '../components/issue-detail/SimilarPastIssuesPanel';
 import type { EventTab } from '../components/issue-detail/types';
@@ -10,7 +11,9 @@ import EnterpriseTopNavigation from '../components/layout/EnterpriseTopNavigatio
 import {
     analyzeEvent,
     type EventAiAnalysis,
+    type FixMemory,
     type EventSourceMapResult,
+    getFixMemory,
     getGroupDetail,
     getPreventionInsights,
     getSimilarIssues,
@@ -221,6 +224,9 @@ export default function IssueDetailPage() {
     const [preventionInsights, setPreventionInsights] = useState<PreventionInsights | null>(null);
     const [preventionInsightsLoading, setPreventionInsightsLoading] = useState(false);
     const [preventionInsightsError, setPreventionInsightsError] = useState<string | null>(null);
+    const [fixMemory, setFixMemory] = useState<FixMemory | null>(null);
+    const [fixMemoryLoading, setFixMemoryLoading] = useState(false);
+    const [fixMemoryError, setFixMemoryError] = useState<string | null>(null);
 
     const [copiedFingerprint, setCopiedFingerprint] = useState(false);
     const [stackCopied, setStackCopied] = useState(false);
@@ -394,6 +400,49 @@ export default function IssueDetailPage() {
             .finally(() => {
                 if (cancelled) return;
                 setPreventionInsightsLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [id]);
+
+    useEffect(() => {
+        if (!id) {
+            setFixMemory(null);
+            setFixMemoryLoading(false);
+            setFixMemoryError(null);
+            return;
+        }
+
+        let cancelled = false;
+
+        setFixMemory(null);
+        setFixMemoryLoading(true);
+        setFixMemoryError(null);
+
+        void getFixMemory(id)
+            .then((data) => {
+                if (cancelled) return;
+
+                if (!data.ok) {
+                    setFixMemoryError(data.error || 'Failed to load fix memory');
+                    setFixMemory(null);
+                    return;
+                }
+
+                setFixMemory(data.memory ?? null);
+            })
+            .catch((err: unknown) => {
+                if (cancelled) return;
+                setFixMemoryError(
+                    err instanceof Error ? err.message : 'Failed to load fix memory',
+                );
+                setFixMemory(null);
+            })
+            .finally(() => {
+                if (cancelled) return;
+                setFixMemoryLoading(false);
             });
 
         return () => {
@@ -760,6 +809,9 @@ export default function IssueDetailPage() {
                         preventionInsights={preventionInsights}
                         preventionInsightsLoading={preventionInsightsLoading}
                         preventionInsightsError={preventionInsightsError}
+                        fixMemory={fixMemory}
+                        fixMemoryLoading={fixMemoryLoading}
+                        fixMemoryError={fixMemoryError}
                         similarIssues={similarIssues}
                         similarIssuesLoading={similarIssuesLoading}
                         similarIssuesError={similarIssuesError}
@@ -1013,6 +1065,9 @@ function GuidanceTabContent({
     preventionInsights,
     preventionInsightsLoading,
     preventionInsightsError,
+    fixMemory,
+    fixMemoryLoading,
+    fixMemoryError,
     similarIssues,
     similarIssuesLoading,
     similarIssuesError,
@@ -1028,6 +1083,9 @@ function GuidanceTabContent({
     preventionInsights: PreventionInsights | null;
     preventionInsightsLoading: boolean;
     preventionInsightsError: string | null;
+    fixMemory: FixMemory | null;
+    fixMemoryLoading: boolean;
+    fixMemoryError: string | null;
     similarIssues: SimilarIssue[];
     similarIssuesLoading: boolean;
     similarIssuesError: string | null;
@@ -1215,7 +1273,12 @@ function GuidanceTabContent({
                 </div>
             </div>
 
-            <FixMemoryPreviewCard />
+            <FixMemoryPanel
+                memory={fixMemory}
+                loading={fixMemoryLoading}
+                error={fixMemoryError}
+                formatDate={formatDate}
+            />
         </div>
     );
 }
@@ -1494,79 +1557,6 @@ function ResolveIssueDialog({
                         {loading ? <Spinner /> : null}
                         {loading ? 'Resolving...' : 'Resolve Issue'}
                     </button>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function FixMemoryPreviewCard() {
-    return (
-        <div className="guidance-dashed-panel overflow-hidden rounded-[26px] border border-dashed border-[#313131] px-6 py-6 ring-1 ring-white/5">
-            <div className="flex flex-col gap-5">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="flex items-start gap-4">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#2e2e2e] bg-[#111] text-slate-400">
-                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="1.8"
-                                    d="M9 3h6m-7 4h8m-9 4h10m-5 4v6m-5-6h10"
-                                />
-                            </svg>
-                        </div>
-                        <div className="max-w-3xl">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                                    Memory teaser
-                                </div>
-                                <span className="rounded bg-orange-500/12 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-300">
-                                    Coming Soon
-                                </span>
-                            </div>
-                            <h3 className="mt-2 text-[1.15rem] font-semibold tracking-tight text-slate-100">
-                                Fix Memory
-                            </h3>
-                            <p className="mt-2 max-w-3xl text-[15px] leading-7 text-slate-400">
-                                Save the resolution pattern behind this issue, attach the final fix logic, and let future guidance recall the same debugging memory before the issue spreads again.
-                            </p>
-                        </div>
-                    </div>
-                    <button
-                        type="button"
-                        disabled
-                        className="self-start rounded-full border border-white/10 bg-white/95 px-5 py-2 text-[11px] font-bold uppercase tracking-[0.22em] text-black disabled:cursor-default disabled:opacity-100"
-                    >
-                        Notify Me
-                    </button>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-3">
-                    <div className="guidance-panel-soft rounded-[20px] border border-[#262626] px-4 py-4 ring-1 ring-white/5">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                            Capture
-                        </div>
-                        <p className="mt-3 text-sm leading-7 text-slate-300">
-                            Keep the actual fix path, not just the issue status change.
-                        </p>
-                    </div>
-                    <div className="guidance-panel-soft rounded-[20px] border border-[#262626] px-4 py-4 ring-1 ring-white/5">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                            Reuse
-                        </div>
-                        <p className="mt-3 text-sm leading-7 text-slate-300">
-                            Reapply that memory when a similar event appears in the same area.
-                        </p>
-                    </div>
-                    <div className="guidance-panel-soft rounded-[20px] border border-[#262626] px-4 py-4 ring-1 ring-white/5">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                            Reduce Drift
-                        </div>
-                        <p className="mt-3 text-sm leading-7 text-slate-300">
-                            Turn one successful resolution into repeatable operational knowledge.
-                        </p>
-                    </div>
                 </div>
             </div>
         </div>

@@ -23,6 +23,7 @@ import {
 import { DashboardStatsService } from '../dashboard/dashboard-stats.service';
 import { SimilarIssuesService } from './similar-issues.service';
 import { PreventionInsightsService } from './prevention-insights.service';
+import { FixMemoryService } from './fix-memory.service';
 import {
   createEmptyStructuredAiAnalysis,
   normalizeStoredAiAnalysis,
@@ -367,6 +368,7 @@ export class EventsController {
     private readonly dashboardStats: DashboardStatsService,
     private readonly similarIssues: SimilarIssuesService,
     private readonly preventionInsights: PreventionInsightsService,
+    private readonly fixMemory: FixMemoryService,
   ) {}
 
   private async findGroupDetailEvents(
@@ -990,6 +992,24 @@ export class EventsController {
     return {
       ok: true,
       insights,
+    };
+  }
+
+  @Get('groups/:id/fix-memory')
+  async getFixMemory(
+    @Headers('x-api-key') apiKey: string | undefined,
+    @Param('id') id: string,
+  ) {
+    const projectId = await this.resolveProjectIdFromApiKey(apiKey);
+    if (!projectId) return { ok: false, error: 'unauthorized' };
+    if (!id) return { ok: false, error: 'invalid' };
+
+    const memory = await this.fixMemory.getFixMemory(projectId, id);
+    if (!memory) return { ok: false, error: 'not_found' };
+
+    return {
+      ok: true,
+      memory,
     };
   }
 

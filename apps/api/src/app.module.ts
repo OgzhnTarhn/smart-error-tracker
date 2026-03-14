@@ -9,6 +9,7 @@ import { SourceMapService } from './source-maps/source-map.service';
 import { DashboardStatsService } from './dashboard/dashboard-stats.service';
 import { SimilarIssuesService } from './events/similar-issues.service';
 import { PreventionInsightsService } from './events/prevention-insights.service';
+import { FixMemoryService } from './events/fix-memory.service';
 
 @Module({
   imports: [PrismaModule],
@@ -20,6 +21,7 @@ import { PreventionInsightsService } from './events/prevention-insights.service'
     DashboardStatsService,
     SimilarIssuesService,
     PreventionInsightsService,
+    FixMemoryService,
   ],
 })
 export class AppModule {}

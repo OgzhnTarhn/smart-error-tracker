@@ -123,6 +123,9 @@ describe('EventsController', () => {
   const preventionInsights = {
     getPreventionInsights: jest.fn(),
   } as any;
+  const fixMemory = {
+    getFixMemory: jest.fn(),
+  } as any;
 
   let controller: EventsController;
 
@@ -137,6 +140,7 @@ describe('EventsController', () => {
       dashboardStats,
       similarIssues,
       preventionInsights,
+      fixMemory,
     );
   });
 
@@ -746,6 +750,93 @@ describe('EventsController', () => {
     preventionInsights.getPreventionInsights.mockResolvedValue(null);
 
     const result = await controller.getPreventionInsights(
+      'set_valid_key',
+      'group_missing',
+    );
+
+    expect(result).toEqual({ ok: false, error: 'not_found' });
+  });
+
+  it('returns fix memory for a group', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    fixMemory.getFixMemory.mockResolvedValue({
+      summary:
+        'Similar resolved issues were previously fixed with null guards and optional chaining.',
+      confidence: 'medium',
+      signals: [
+        '2 resolved similar issues with resolution notes were found.',
+      ],
+      recommendedActions: [
+        'Add null/undefined guards before property access.',
+      ],
+      relatedFixes: [
+        {
+          id: 'group_2',
+          title: "Cannot read properties of null (reading 'summary')",
+          status: 'resolved',
+          resolutionNote:
+            'Added null guard before rendering checkout summary.',
+          lastSeenAt: new Date('2026-03-07T10:00:00.000Z'),
+          reason:
+            'Resolved issue with matching null guards and optional chaining pattern in the same frontend route.',
+        },
+      ],
+      derivedFrom: {
+        resolvedSimilarIssues: 2,
+        resolutionNotesUsed: 2,
+        preventionInsightUsed: true,
+        currentAnalysisUsed: true,
+      },
+    });
+
+    const result = await controller.getFixMemory('set_valid_key', 'group_1');
+
+    expect(fixMemory.getFixMemory).toHaveBeenCalledWith('proj_1', 'group_1');
+    expect(result).toEqual({
+      ok: true,
+      memory: {
+        summary:
+          'Similar resolved issues were previously fixed with null guards and optional chaining.',
+        confidence: 'medium',
+        signals: [
+          '2 resolved similar issues with resolution notes were found.',
+        ],
+        recommendedActions: [
+          'Add null/undefined guards before property access.',
+        ],
+        relatedFixes: [
+          {
+            id: 'group_2',
+            title: "Cannot read properties of null (reading 'summary')",
+            status: 'resolved',
+            resolutionNote:
+              'Added null guard before rendering checkout summary.',
+            lastSeenAt: new Date('2026-03-07T10:00:00.000Z'),
+            reason:
+              'Resolved issue with matching null guards and optional chaining pattern in the same frontend route.',
+          },
+        ],
+        derivedFrom: {
+          resolvedSimilarIssues: 2,
+          resolutionNotesUsed: 2,
+          preventionInsightUsed: true,
+          currentAnalysisUsed: true,
+        },
+      },
+    });
+  });
+
+  it('returns not_found for fix memory when the group does not exist', async () => {
+    prisma.apiKey.findUnique.mockResolvedValue({
+      projectId: 'proj_1',
+      revokedAt: null,
+    });
+    fixMemory.getFixMemory.mockResolvedValue(null);
+
+    const result = await controller.getFixMemory(
       'set_valid_key',
       'group_missing',
     );

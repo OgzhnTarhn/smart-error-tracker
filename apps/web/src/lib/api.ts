@@ -189,6 +189,40 @@ export interface PreventionInsightsResponse {
 export const getPreventionInsights = (id: string) =>
     apiFetch<PreventionInsightsResponse>(`/groups/${id}/prevention-insights`);
 
+export type FixMemoryConfidence = 'low' | 'medium' | 'high';
+
+export interface FixMemoryRelatedFix {
+    id: string;
+    title: string;
+    status: string;
+    resolutionNote: string | null;
+    lastSeenAt: string;
+    reason: string;
+}
+
+export interface FixMemory {
+    summary: string | null;
+    confidence: FixMemoryConfidence;
+    signals: string[];
+    recommendedActions: string[];
+    relatedFixes: FixMemoryRelatedFix[];
+    derivedFrom: {
+        resolvedSimilarIssues: number;
+        resolutionNotesUsed: number;
+        preventionInsightUsed: boolean;
+        currentAnalysisUsed: boolean;
+    };
+}
+
+export interface FixMemoryResponse {
+    ok: boolean;
+    memory?: FixMemory;
+    error?: string;
+}
+
+export const getFixMemory = (id: string) =>
+    apiFetch<FixMemoryResponse>(`/groups/${id}/fix-memory`);
+
 export type StatusAction = 'resolve' | 'open' | 'ignore';
 export interface SetGroupStatusRequest {
     note?: string;
