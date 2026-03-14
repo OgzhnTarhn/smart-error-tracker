@@ -5,6 +5,14 @@ interface PreventionInsightsPanelProps {
     insights: PreventionInsights | null;
     loading: boolean;
     error: string | null;
+    showRecommendedActions?: boolean;
+}
+
+interface PreventionRecommendedActionsPanelProps {
+    insights: PreventionInsights | null;
+    loading: boolean;
+    error: string | null;
+    compact?: boolean;
 }
 
 function getRiskTone(risk: PreventionRepeatRisk) {
@@ -194,9 +202,11 @@ function EmptyState() {
 function RecommendedActionCard({
     item,
     highlight,
+    compact = false,
 }: {
     item: string;
     highlight: boolean;
+    compact?: boolean;
 }) {
     return (
         <div
@@ -240,7 +250,11 @@ function RecommendedActionCard({
                             Best next prevention move
                         </div>
                     ) : null}
-                    <p className={highlight ? 'mt-2 text-sm leading-7' : 'text-sm leading-7'}>
+                    <p className={highlight
+                        ? `mt-2 ${compact ? 'text-[13px] leading-6' : 'text-sm leading-7'}`
+                        : compact
+                            ? 'text-[13px] leading-6'
+                            : 'text-sm leading-7'}>
                         {item}
                     </p>
                 </div>
@@ -249,10 +263,93 @@ function RecommendedActionCard({
     );
 }
 
+function ActionsLoadingState({ compact = false }: { compact?: boolean }) {
+    return (
+        <PanelShell>
+            <div className={`${compact ? 'p-4' : 'p-5'} animate-pulse`}>
+                <div className="h-4 w-36 rounded bg-[#202020]" />
+                <div className="mt-2 h-3 w-52 rounded bg-[#181818]" />
+                <div className="mt-4 space-y-3">
+                    {[0, 1, 2].map((item) => (
+                        <div key={item} className={`rounded-[18px] border border-[#252525] bg-[#111] ${compact ? 'h-16' : 'h-20'}`} />
+                    ))}
+                </div>
+            </div>
+        </PanelShell>
+    );
+}
+
+function ActionsErrorState({ error, compact = false }: { error: string; compact?: boolean }) {
+    return (
+        <PanelShell className="border-red-500/25 bg-red-500/10">
+            <div className={compact ? 'p-4' : 'p-5'}>
+                <h3 className="text-sm font-semibold text-red-100">
+                    Recommended actions are unavailable
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-red-100/80">
+                    {error}
+                </p>
+            </div>
+        </PanelShell>
+    );
+}
+
+function ActionsEmptyState({ compact = false }: { compact?: boolean }) {
+    return (
+        <PanelShell>
+            <div className={`${compact ? 'px-4 py-8' : 'px-5 py-10'} text-center`}>
+                <h3 className="text-sm font-semibold text-slate-100">
+                    No recommended actions yet
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-400">
+                    Actionable prevention steps will appear here once enough context is available.
+                </p>
+            </div>
+        </PanelShell>
+    );
+}
+
+export function PreventionRecommendedActionsPanel({
+    insights,
+    loading,
+    error,
+    compact = false,
+}: PreventionRecommendedActionsPanelProps) {
+    if (loading) return <ActionsLoadingState compact={compact} />;
+    if (error) return <ActionsErrorState error={error} compact={compact} />;
+
+    const actionItems = insights ? dedupeItems([insights.preventionTip, ...insights.recommendedActions]) : [];
+    if (actionItems.length === 0) return <ActionsEmptyState compact={compact} />;
+
+    return (
+        <section className={compact ? 'space-y-3' : 'space-y-4'}>
+            <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    Recommended Actions
+                </div>
+                <p className={`mt-2 ${compact ? 'text-[13px] leading-6' : 'text-sm leading-6'} text-slate-400`}>
+                    Start with the top action, then move downward if more follow-up is needed.
+                </p>
+            </div>
+            <div className="space-y-3">
+                {actionItems.map((item, index) => (
+                    <RecommendedActionCard
+                        key={item}
+                        item={item}
+                        highlight={index === 0}
+                        compact={compact}
+                    />
+                ))}
+            </div>
+        </section>
+    );
+}
+
 export default function PreventionInsightsPanel({
     insights,
     loading,
     error,
+    showRecommendedActions = true,
 }: PreventionInsightsPanelProps) {
     const hasContent = Boolean(
         insights
@@ -378,21 +475,12 @@ export default function PreventionInsightsPanel({
                 </PanelShell>
             ) : null}
 
-            {actionItems.length > 0 ? (
-                <section className="space-y-3">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                        Recommended Actions
-                    </div>
-                    <div className="space-y-3">
-                        {actionItems.map((item, index) => (
-                            <RecommendedActionCard
-                                key={item}
-                                item={item}
-                                highlight={index === 0}
-                            />
-                        ))}
-                    </div>
-                </section>
+            {showRecommendedActions && actionItems.length > 0 ? (
+                <PreventionRecommendedActionsPanel
+                    insights={insights}
+                    loading={false}
+                    error={null}
+                />
             ) : null}
         </div>
     );

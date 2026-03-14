@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import EventDetailPanel from '../components/issue-detail/EventDetailPanel';
 import EventList from '../components/issue-detail/EventList';
-import PreventionInsightsPanel from '../components/issue-detail/PreventionInsightsPanel';
+import PreventionInsightsPanel, { PreventionRecommendedActionsPanel } from '../components/issue-detail/PreventionInsightsPanel';
 import SimilarPastIssuesPanel from '../components/issue-detail/SimilarPastIssuesPanel';
 import type { EventTab } from '../components/issue-detail/types';
 import IssueRegressionBadge from '../components/issues/IssueRegressionBadge';
@@ -1178,7 +1178,7 @@ function GuidanceTabContent({
                 ) : null}
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.9fr)] xl:items-start">
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.72fr)_minmax(320px,0.68fr)] xl:items-start">
                 <AiAnalysisPanel
                     analysis={selectedAnalysis}
                     selectedEvent={selectedEvent}
@@ -1191,16 +1191,29 @@ function GuidanceTabContent({
                         insights={preventionInsights}
                         loading={preventionInsightsLoading}
                         error={preventionInsightsError}
+                        showRecommendedActions={false}
                     />
                 </div>
             </div>
 
-            <SimilarPastIssuesPanel
-                items={similarIssues}
-                loading={similarIssuesLoading}
-                error={similarIssuesError}
-                formatDate={formatDate}
-            />
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.28fr)_minmax(300px,0.72fr)] xl:items-start">
+                <SimilarPastIssuesPanel
+                    items={similarIssues}
+                    loading={similarIssuesLoading}
+                    error={similarIssuesError}
+                    formatDate={formatDate}
+                    compact
+                />
+
+                <div className="min-w-0">
+                    <PreventionRecommendedActionsPanel
+                        insights={preventionInsights}
+                        loading={preventionInsightsLoading}
+                        error={preventionInsightsError}
+                        compact
+                    />
+                </div>
+            </div>
 
             <FixMemoryPreviewCard />
         </div>
@@ -1489,43 +1502,72 @@ function ResolveIssueDialog({
 
 function FixMemoryPreviewCard() {
     return (
-        <div className="guidance-dashed-panel overflow-hidden rounded-[24px] border border-dashed border-[#313131] px-5 py-5 ring-1 ring-white/5">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex items-start gap-4">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#2e2e2e] bg-[#111] text-slate-400">
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="1.8"
-                                d="M9 3h6m-7 4h8m-9 4h10m-5 4v6m-5-6h10"
-                            />
-                        </svg>
-                    </div>
-                    <div className="max-w-2xl">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                                Memory teaser
-                            </div>
-                            <span className="rounded bg-orange-500/12 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-300">
-                                Coming Soon
-                            </span>
+        <div className="guidance-dashed-panel overflow-hidden rounded-[26px] border border-dashed border-[#313131] px-6 py-6 ring-1 ring-white/5">
+            <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="flex items-start gap-4">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#2e2e2e] bg-[#111] text-slate-400">
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="1.8"
+                                    d="M9 3h6m-7 4h8m-9 4h10m-5 4v6m-5-6h10"
+                                />
+                            </svg>
                         </div>
-                        <h3 className="mt-2 text-lg font-semibold tracking-tight text-slate-100">
-                            Fix Memory
-                        </h3>
-                        <p className="mt-2 text-sm leading-7 text-slate-400">
-                            Save the resolution pattern behind this issue and turn future guidance into a reusable debugging memory.
+                        <div className="max-w-3xl">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                                    Memory teaser
+                                </div>
+                                <span className="rounded bg-orange-500/12 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-300">
+                                    Coming Soon
+                                </span>
+                            </div>
+                            <h3 className="mt-2 text-[1.15rem] font-semibold tracking-tight text-slate-100">
+                                Fix Memory
+                            </h3>
+                            <p className="mt-2 max-w-3xl text-[15px] leading-7 text-slate-400">
+                                Save the resolution pattern behind this issue, attach the final fix logic, and let future guidance recall the same debugging memory before the issue spreads again.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        disabled
+                        className="self-start rounded-full border border-white/10 bg-white/95 px-5 py-2 text-[11px] font-bold uppercase tracking-[0.22em] text-black disabled:cursor-default disabled:opacity-100"
+                    >
+                        Notify Me
+                    </button>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                    <div className="guidance-panel-soft rounded-[20px] border border-[#262626] px-4 py-4 ring-1 ring-white/5">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            Capture
+                        </div>
+                        <p className="mt-3 text-sm leading-7 text-slate-300">
+                            Keep the actual fix path, not just the issue status change.
+                        </p>
+                    </div>
+                    <div className="guidance-panel-soft rounded-[20px] border border-[#262626] px-4 py-4 ring-1 ring-white/5">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            Reuse
+                        </div>
+                        <p className="mt-3 text-sm leading-7 text-slate-300">
+                            Reapply that memory when a similar event appears in the same area.
+                        </p>
+                    </div>
+                    <div className="guidance-panel-soft rounded-[20px] border border-[#262626] px-4 py-4 ring-1 ring-white/5">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            Reduce Drift
+                        </div>
+                        <p className="mt-3 text-sm leading-7 text-slate-300">
+                            Turn one successful resolution into repeatable operational knowledge.
                         </p>
                     </div>
                 </div>
-                <button
-                    type="button"
-                    disabled
-                    className="self-start rounded-full border border-white/10 bg-white/95 px-5 py-2 text-[11px] font-bold uppercase tracking-[0.22em] text-black disabled:cursor-default disabled:opacity-100"
-                >
-                    Notify Me
-                </button>
             </div>
         </div>
     );
@@ -1541,11 +1583,11 @@ function GuidanceMetricCard({
     valueClassName: string;
 }) {
     return (
-        <div className="guidance-panel-soft rounded-[18px] border border-[#262626] px-4 py-4 ring-1 ring-white/5">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+        <div className="guidance-panel-soft min-h-[124px] rounded-[22px] border border-[#262626] px-5 py-5 ring-1 ring-white/5">
+            <div className="text-[12px] font-semibold uppercase tracking-[0.22em] text-slate-400">
                 {label}
             </div>
-            <div className={`mt-2 text-[1.1rem] font-semibold ${valueClassName}`}>
+            <div className={`mt-3 text-[1.45rem] font-semibold leading-tight ${valueClassName}`}>
                 {value}
             </div>
         </div>
@@ -1555,29 +1597,36 @@ function GuidanceMetricCard({
 function GuidanceDecisionCard({
     label,
     value,
+    supportingText,
     icon,
     iconClassName,
     toneClassName,
 }: {
     label: string;
     value: string;
+    supportingText?: string;
     icon: ReactNode;
     iconClassName: string;
     toneClassName: string;
 }) {
     return (
-        <div className={`rounded-[22px] border px-5 py-5 ring-1 ring-white/5 ${toneClassName}`}>
-            <div className="flex items-center gap-3">
-                <span className={`flex h-10 w-10 items-center justify-center rounded-xl border ${iconClassName}`}>
+        <div className={`flex min-h-[248px] flex-col rounded-[28px] border px-7 py-7 ring-1 ring-white/5 ${toneClassName}`}>
+            <div className="flex items-center gap-4">
+                <span className={`flex h-12 w-12 items-center justify-center rounded-2xl border ${iconClassName}`}>
                     {icon}
                 </span>
-                <div className="text-[12px] font-semibold uppercase tracking-[0.22em] text-slate-300">
+                <div className="text-[13px] font-semibold uppercase tracking-[0.24em] text-slate-200">
                     {label}
                 </div>
             </div>
-            <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-100">
+            <p className="mt-6 whitespace-pre-wrap text-[1.16rem] leading-10 text-slate-100">
                 {value}
             </p>
+            {supportingText ? (
+                <p className="mt-4 text-[15px] leading-7 text-slate-300/85">
+                    {supportingText}
+                </p>
+            ) : null}
         </div>
     );
 }
@@ -1598,22 +1647,22 @@ function AnalysisSectionCard({
     codeValue?: boolean;
 }) {
     return (
-        <div className="guidance-panel-soft rounded-[20px] border border-[#262626] p-5 ring-1 ring-white/5">
-            <div className="flex items-center gap-3">
-                <span className={`flex h-8 w-8 items-center justify-center rounded-lg border ${iconClassName}`}>
+        <div className="guidance-panel-soft min-h-[176px] rounded-[24px] border border-[#262626] p-6 ring-1 ring-white/5">
+            <div className="flex items-center gap-3.5">
+                <span className={`flex h-9 w-9 items-center justify-center rounded-xl border ${iconClassName}`}>
                     {icon}
                 </span>
-                <div className={`text-[12px] font-semibold uppercase tracking-[0.22em] ${labelClassName}`}>
+                <div className={`text-[13px] font-semibold uppercase tracking-[0.24em] ${labelClassName}`}>
                     {label}
                 </div>
             </div>
 
             {codeValue ? (
-                <div className="mt-4 rounded-lg border border-[#2b2b2b] bg-black px-3 py-2.5 font-mono text-[13px] text-orange-300">
+                <div className="mt-5 rounded-xl border border-[#2b2b2b] bg-black px-4 py-3.5 font-mono text-[15px] leading-7 text-orange-300">
                     {value}
                 </div>
             ) : (
-                <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-300">
+                <p className="mt-5 whitespace-pre-wrap text-[1.05rem] leading-8 text-slate-300">
                     {value}
                 </p>
             )}
@@ -1692,10 +1741,10 @@ function AiAnalysisPanel({
     const showEmptyState = !selectedEvent || (!showLoadingState && !hasRenderableAnalysis);
 
     return (
-        <div className="guidance-panel relative overflow-hidden rounded-[28px] border border-[#2b241f] ring-1 ring-white/5">
-            <div className="border-b border-[#252525] px-6 pb-5 pt-6">
+        <div className="guidance-panel relative overflow-hidden rounded-[30px] border border-[#2b241f] ring-1 ring-white/5">
+            <div className="border-b border-[#252525] px-7 pb-6 pt-7">
                 <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-500/12 text-orange-300">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] bg-orange-500/12 text-orange-300">
                         <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path
                                 strokeLinecap="round"
@@ -1706,42 +1755,42 @@ function AiAnalysisPanel({
                         </svg>
                     </div>
                     <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        <div className="text-[12px] font-semibold uppercase tracking-[0.22em] text-slate-400">
                             AI Decision Summary
                         </div>
-                        <h2 className="mt-2 text-[1.85rem] font-semibold tracking-tight text-white">
+                        <h2 className="mt-2 text-[2.15rem] font-semibold tracking-tight text-white">
                             AI Debug Guidance
                         </h2>
-                        <p className="mt-1 text-sm leading-6 text-slate-400">
+                        <p className="mt-2 max-w-4xl text-[16px] leading-8 text-slate-400">
                             {selectedEvent
-                                ? <>Decision support for event <span className="font-mono text-orange-300">{truncateIdentifier(selectedEvent.id, 12, 4)}</span>.</>
-                                : 'Choose an event from the list to generate structured debugging guidance.'}
+                                ? <>Decision support for event <span className="font-mono text-orange-300">{truncateIdentifier(selectedEvent.id, 12, 4)}</span>. Start with the summary below, confirm the likely failure path, then use the immediate next step to validate the diagnosis against the current event context.</>
+                                : 'Choose an event from the list to generate structured debugging guidance. This workspace is designed to help you move from suspicion to confirmation faster by highlighting the most actionable parts of the analysis first.'}
                         </p>
                     </div>
                 </div>
             </div>
 
-            <div className="p-6">
+            <div className="p-7">
                 {error && (
-                    <div className="mb-5 rounded-2xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-200 ring-1 ring-red-500/15">
+                    <div className="mb-6 rounded-2xl border border-red-500/25 bg-red-500/10 px-5 py-4 text-[15px] text-red-200 ring-1 ring-red-500/15">
                         {error}
                         {hasRenderableAnalysis ? ' Previous guidance is still shown below.' : ''}
                     </div>
                 )}
 
                 {showLoadingState ? (
-                    <div className="py-14 text-center">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-orange-200">
+                    <div className="py-16 text-center">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[0.2em] text-orange-200">
                             <Spinner />
                             Analyzing selected event
                         </div>
-                        <p className="mt-4 text-sm leading-6 text-slate-400">
+                        <p className="mt-5 text-[15px] leading-7 text-slate-400">
                             Building structured debugging guidance from the event context and stack trace.
                         </p>
                     </div>
                 ) : showEmptyState ? (
-                    <div className="py-14 text-center">
-                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-[#2a2a2a] bg-black/40 text-slate-500">
+                    <div className="py-16 text-center">
+                        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-[#2a2a2a] bg-black/40 text-slate-500">
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path
                                     strokeLinecap="round"
@@ -1751,133 +1800,137 @@ function AiAnalysisPanel({
                                 />
                             </svg>
                         </div>
-                        <h3 className="mt-4 text-base font-semibold text-slate-100">
+                        <h3 className="mt-5 text-lg font-semibold text-slate-100">
                             {selectedEvent ? 'No analysis for this event yet' : 'No event selected'}
                         </h3>
-                        <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-400">
+                        <p className="mx-auto mt-3 max-w-2xl text-[15px] leading-7 text-slate-400">
                             {selectedEvent
                                 ? 'Run analysis to get a concise root-cause readout, likely inspection area, and the best next debugging step.'
                                 : 'Choose an event from the event list to populate the guidance workspace.'}
                         </p>
                     </div>
                 ) : (
-                    <div className="space-y-5">
+                    <div className="space-y-6">
                         {analyzing && (
-                            <div className="rounded-2xl border border-orange-500/20 bg-orange-500/10 px-4 py-3 text-sm text-orange-100 ring-1 ring-orange-500/10">
+                            <div className="rounded-2xl border border-orange-500/20 bg-orange-500/10 px-5 py-4 text-[15px] text-orange-100 ring-1 ring-orange-500/10">
                                 Refreshing guidance for the selected event.
                             </div>
                         )}
 
-                        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.85fr)]">
-                            <div className="space-y-4">
-                                {analysis?.summary ? (
-                                    <div className="rounded-[24px] border border-[#2b2b2b] bg-black/35 px-5 py-5 ring-1 ring-white/5">
-                                        <div className="text-[12px] font-semibold uppercase tracking-[0.22em] text-slate-300">
-                                            Analysis Summary
-                                        </div>
-                                        <p className="mt-3 whitespace-pre-wrap text-base leading-8 text-slate-100">
-                                            {analysis.summary}
-                                        </p>
+                        <div className="space-y-6">
+                            {analysis?.summary ? (
+                                <div className="min-h-[250px] rounded-[32px] border border-[#2b2b2b] bg-black/35 px-8 py-8 ring-1 ring-white/5">
+                                    <div className="text-[13px] font-semibold uppercase tracking-[0.24em] text-slate-300">
+                                        Analysis Summary
                                     </div>
-                                ) : null}
-
-                                {(analysis?.rootCause || analysis?.nextStep) ? (
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                        {analysis?.rootCause ? (
-                                            <GuidanceDecisionCard
-                                                label="Root Cause"
-                                                value={analysis.rootCause}
-                                                iconClassName="border-orange-500/20 bg-orange-500/10 text-orange-300"
-                                                toneClassName="border-orange-500/15 bg-orange-500/[0.08]"
-                                                icon={(
-                                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                            strokeWidth="1.8"
-                                                            d="M13 10V3L4 14h7v7l9-11h-7z"
-                                                        />
-                                                    </svg>
-                                                )}
-                                            />
-                                        ) : null}
-                                        {analysis?.nextStep ? (
-                                            <GuidanceDecisionCard
-                                                label="Immediate Next Step"
-                                                value={analysis.nextStep}
-                                                iconClassName="border-amber-500/20 bg-amber-500/10 text-amber-200"
-                                                toneClassName="border-amber-500/15 bg-amber-500/[0.07]"
-                                                icon={(
-                                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                            strokeWidth="1.8"
-                                                            d="M13 3L4 14h6l-1 7 9-11h-6l1-7z"
-                                                        />
-                                                    </svg>
-                                                )}
-                                            />
-                                        ) : null}
-                                    </div>
-                                ) : null}
-                            </div>
-
-                            <div className="space-y-3">
-                                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                                    <GuidanceMetricCard
-                                        label="Severity"
-                                        value={getSeveritySummary(analysis?.severity ?? null)}
-                                        valueClassName={getSeverityValueClass(analysis?.severity ?? null)}
-                                    />
-                                    <GuidanceMetricCard
-                                        label="Confidence"
-                                        value={getConfidenceSummary(analysis?.confidence ?? null)}
-                                        valueClassName={getConfidenceValueClass(analysis?.confidence ?? null)}
-                                    />
-                                    <GuidanceMetricCard
-                                        label="Last Print"
-                                        value={selectedEvent
-                                            ? formatRelativeTime(selectedEvent.timestamp || selectedEvent.createdAt)
-                                            : '-'}
-                                        valueClassName="text-slate-100"
-                                    />
-                                    <GuidanceMetricCard
-                                        label="Environment"
-                                        value={getEventEnvironmentLabel(selectedEvent)}
-                                        valueClassName="text-slate-100"
-                                    />
+                                    <p className="mt-5 max-w-5xl whitespace-pre-wrap text-[1.28rem] leading-10 text-slate-100">
+                                        {analysis.summary}
+                                    </p>
+                                    <p className="mt-5 max-w-4xl text-[15px] leading-8 text-slate-400">
+                                        Treat this as the working diagnosis for the selected event. Use it to orient the investigation quickly before comparing the stack trace, release metadata, and similar issue history.
+                                    </p>
                                 </div>
+                            ) : null}
 
-                                {analysis?.preventionTip ? (
-                                    <div className="rounded-[20px] border border-orange-500/20 bg-orange-500/[0.08] px-5 py-4 text-sm ring-1 ring-orange-500/10">
-                                        <div className="flex items-center gap-3 text-orange-100">
-                                            <span className="flex h-8 w-8 items-center justify-center rounded-full border border-orange-400/20 bg-orange-400/10 text-orange-200">
+                            {(analysis?.rootCause || analysis?.nextStep) ? (
+                                <div className="grid gap-6 xl:grid-cols-2">
+                                    {analysis?.rootCause ? (
+                                        <GuidanceDecisionCard
+                                            label="Root Cause"
+                                            value={analysis.rootCause}
+                                            supportingText="This is the strongest current explanation for why the event failed. Validate it against the exact code path, event payload, and runtime conditions before applying a permanent fix."
+                                            iconClassName="border-orange-500/20 bg-orange-500/10 text-orange-300"
+                                            toneClassName="border-orange-500/15 bg-orange-500/[0.08]"
+                                            icon={(
                                                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path
                                                         strokeLinecap="round"
                                                         strokeLinejoin="round"
                                                         strokeWidth="1.8"
-                                                        d="M12 3a6 6 0 00-3.6 10.8V17a1 1 0 001 1h5.2a1 1 0 001-1v-3.2A6 6 0 0012 3zm-2 17h4m-3 0v1m2-1v1"
+                                                        d="M13 10V3L4 14h7v7l9-11h-7z"
                                                     />
                                                 </svg>
-                                            </span>
+                                            )}
+                                        />
+                                    ) : null}
+                                    {analysis?.nextStep ? (
+                                        <GuidanceDecisionCard
+                                            label="Immediate Next Step"
+                                            value={analysis.nextStep}
+                                            supportingText="Use this as the fastest confirmation step. The goal here is to prove or disprove the suspected failure path with the least amount of extra debugging work."
+                                            iconClassName="border-amber-500/20 bg-amber-500/10 text-amber-200"
+                                            toneClassName="border-amber-500/15 bg-amber-500/[0.07]"
+                                            icon={(
+                                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth="1.8"
+                                                        d="M13 3L4 14h6l-1 7 9-11h-6l1-7z"
+                                                    />
+                                                </svg>
+                                            )}
+                                        />
+                                    ) : null}
+                                </div>
+                            ) : null}
+
+                            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                                <GuidanceMetricCard
+                                    label="Severity"
+                                    value={getSeveritySummary(analysis?.severity ?? null)}
+                                    valueClassName={getSeverityValueClass(analysis?.severity ?? null)}
+                                />
+                                <GuidanceMetricCard
+                                    label="Confidence"
+                                    value={getConfidenceSummary(analysis?.confidence ?? null)}
+                                    valueClassName={getConfidenceValueClass(analysis?.confidence ?? null)}
+                                />
+                                <GuidanceMetricCard
+                                    label="Last Print"
+                                    value={selectedEvent
+                                        ? formatRelativeTime(selectedEvent.timestamp || selectedEvent.createdAt)
+                                        : '-'}
+                                    valueClassName="text-slate-100"
+                                />
+                                <GuidanceMetricCard
+                                    label="Environment"
+                                    value={getEventEnvironmentLabel(selectedEvent)}
+                                    valueClassName="text-slate-100"
+                                />
+                            </div>
+
+                            {analysis?.preventionTip ? (
+                                <div className="rounded-[26px] border border-orange-500/20 bg-orange-500/[0.08] px-7 py-6 text-[16px] ring-1 ring-orange-500/10">
+                                    <div className="flex items-start gap-4 text-orange-100">
+                                        <span className="flex h-11 w-11 items-center justify-center rounded-full border border-orange-400/20 bg-orange-400/10 text-orange-200">
+                                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth="1.8"
+                                                    d="M12 3a6 6 0 00-3.6 10.8V17a1 1 0 001 1h5.2a1 1 0 001-1v-3.2A6 6 0 0012 3zm-2 17h4m-3 0v1m2-1v1"
+                                                />
+                                            </svg>
+                                        </span>
                                             <div>
-                                                <div className="text-[12px] font-semibold uppercase tracking-[0.22em] text-orange-300">
+                                                <div className="text-[13px] font-semibold uppercase tracking-[0.22em] text-orange-300">
                                                     Pro-tip
                                                 </div>
-                                                <p className="mt-1 leading-6 text-orange-50/90">
+                                                <p className="mt-2 max-w-5xl leading-8 text-orange-50/90">
                                                     {analysis.preventionTip}
+                                                </p>
+                                                <p className="mt-3 max-w-4xl text-[15px] leading-7 text-orange-50/70">
+                                                    Small guardrails applied here usually pay off twice: they reduce repeat noise in the short term and improve the quality of future guidance for the same failure pattern.
                                                 </p>
                                             </div>
                                         </div>
                                     </div>
-                                ) : null}
-                            </div>
+                            ) : null}
                         </div>
 
                         {detailSections.length > 0 && (
-                            <div className="grid gap-4 xl:grid-cols-2">
+                            <div className="grid gap-5 xl:grid-cols-2">
                                 {detailSections.map((section) => (
                                     <AnalysisSectionCard
                                         key={section.label}
@@ -1897,7 +1950,7 @@ function AiAnalysisPanel({
                             && !analysis?.nextStep
                             && detailSections.length === 0
                             && !analysis?.preventionTip && (
-                            <div className="rounded-[22px] border border-slate-800/80 bg-slate-950/55 px-5 py-4 text-sm text-slate-400 ring-1 ring-white/5">
+                            <div className="rounded-[22px] border border-slate-800/80 bg-slate-950/55 px-6 py-5 text-[15px] leading-7 text-slate-400 ring-1 ring-white/5">
                                 Analysis returned limited structured data for this event.
                             </div>
                         )}

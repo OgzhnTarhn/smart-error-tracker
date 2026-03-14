@@ -6,6 +6,7 @@ interface SimilarPastIssuesPanelProps {
     loading: boolean;
     error: string | null;
     formatDate: (value: string) => string;
+    compact?: boolean;
 }
 
 function truncateText(value: string, maxLength: number) {
@@ -129,18 +130,19 @@ export default function SimilarPastIssuesPanel({
     loading,
     error,
     formatDate,
+    compact = false,
 }: SimilarPastIssuesPanelProps) {
     return (
-        <section className="space-y-5">
+        <section className={compact ? 'space-y-4' : 'space-y-5'}>
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                         Historical Comparison
                     </div>
-                    <h2 className="mt-2 text-[2rem] font-semibold tracking-tight text-white">
+                    <h2 className={`mt-2 font-semibold tracking-tight text-white ${compact ? 'text-[1.45rem]' : 'text-[2rem]'}`}>
                         Similar Past Issues
                     </h2>
-                    <p className="mt-2 text-sm leading-6 text-slate-400">
+                    <p className={`mt-2 ${compact ? 'text-[13px] leading-6' : 'text-sm leading-6'} text-slate-400`}>
                         Fast comparisons showing why a past issue matched and how it was resolved.
                     </p>
                 </div>
@@ -172,7 +174,7 @@ export default function SimilarPastIssuesPanel({
                         <li key={item.id}>
                             <Link
                                 to={`/issues/${item.id}`}
-                                className="guidance-panel group block overflow-hidden rounded-[24px] border border-[#2a2a2a] px-5 py-5 ring-1 ring-white/5 transition-colors duration-200 hover:border-orange-500/40"
+                                className={`guidance-panel group block overflow-hidden rounded-[24px] border border-[#2a2a2a] ring-1 ring-white/5 transition-colors duration-200 hover:border-orange-500/40 ${compact ? 'px-4 py-4' : 'px-5 py-5'}`}
                             >
                                 <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                                     <div className="min-w-0 flex-1">
@@ -199,14 +201,14 @@ export default function SimilarPastIssuesPanel({
                                             ) : null}
                                         </div>
 
-                                        <h3 className="mt-5 text-[1.1rem] font-semibold leading-8 text-white transition-colors group-hover:text-orange-50">
+                                        <h3 className={`mt-5 font-semibold text-white transition-colors group-hover:text-orange-50 ${compact ? 'text-[1rem] leading-7' : 'text-[1.1rem] leading-8'}`}>
                                             {truncateText(item.title, 160)}
                                         </h3>
-                                        <p className="mt-2 text-sm leading-7 text-slate-400">
+                                        <p className={`mt-2 ${compact ? 'text-[13px] leading-6' : 'text-sm leading-7'} text-slate-400`}>
                                             Open this issue to inspect the original stack trace, decision context, and saved resolution details.
                                         </p>
 
-                                        <div className="mt-5 grid gap-3 md:grid-cols-2">
+                                        <div className={`mt-5 grid gap-3 ${compact ? 'md:grid-cols-2' : 'md:grid-cols-2'}`}>
                                             <SimilarIssueDetailCard
                                                 label="Why It Matched"
                                                 value={truncateText(item.similarityReason, 220)}
@@ -224,15 +226,15 @@ export default function SimilarPastIssuesPanel({
                                         </div>
                                     </div>
 
-                                    <div className="xl:w-[220px]">
-                                        <div className="rounded-[22px] border border-orange-500/20 bg-orange-500/[0.08] px-5 py-5 ring-1 ring-orange-500/10">
+                                    <div className={compact ? 'xl:w-[190px]' : 'xl:w-[220px]'}>
+                                        <div className={`rounded-[22px] border border-orange-500/20 bg-orange-500/[0.08] ring-1 ring-orange-500/10 ${compact ? 'px-4 py-4' : 'px-5 py-5'}`}>
                                             <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-200">
                                                 Match Score
                                             </div>
-                                            <div className="mt-3 text-[2rem] font-semibold leading-none text-white">
+                                            <div className={`mt-3 font-semibold leading-none text-white ${compact ? 'text-[1.7rem]' : 'text-[2rem]'}`}>
                                                 {formatMatchScore(item.score)}
                                             </div>
-                                            <p className="mt-3 text-sm leading-6 text-orange-50/80">
+                                            <p className={`mt-3 ${compact ? 'text-[13px] leading-6' : 'text-sm leading-6'} text-orange-50/80`}>
                                                 Historical similarity based on error shape, metadata, and issue context.
                                             </p>
                                             <div className="mt-4 border-t border-orange-500/15 pt-4">
