@@ -1143,12 +1143,12 @@ function GuidanceTabContent({
                 <div className="border-b border-[#252525] px-5 pb-5 pt-5">
                     <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
                         <div className="max-w-3xl">
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            <h2 className="text-[1.9rem] font-semibold tracking-tight text-white">
                                 Guidance Workspace
-                            </div>
-                            <h2 className="mt-2 text-[1.55rem] font-semibold tracking-tight text-white">
-                                Focused debugging guidance for the selected issue
                             </h2>
+                            <p className="mt-2 text-[15px] font-medium leading-7 text-slate-200">
+                                Focused debugging guidance for the selected issue.
+                            </p>
                             <p className="mt-2 text-sm leading-6 text-slate-400">
                                 Move between event diagnosis, recurrence planning, and reusable fixes without leaving the current issue detail page.
                             </p>
@@ -1292,6 +1292,7 @@ function GuidanceTabContent({
                                     loading={preventionInsightsLoading}
                                     error={preventionInsightsError}
                                     compact
+                                    framed
                                 />
                             </div>
 
@@ -1302,6 +1303,7 @@ function GuidanceTabContent({
                                     error={similarIssuesError}
                                     formatDate={formatDate}
                                     compact
+                                    framed
                                 />
                             </div>
                         </div>
@@ -1384,9 +1386,9 @@ function GuidanceActiveEventSummary({
         <section className="guidance-panel-soft rounded-[24px] border border-[#262626] px-5 py-5 ring-1 ring-white/5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="max-w-4xl">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    <h3 className="text-[1.3rem] font-semibold tracking-tight text-white">
                         Active Event Summary
-                    </div>
+                    </h3>
                     <p className="mt-3 text-sm leading-7 text-slate-200">
                         {selectedEvent.message || 'No event message was attached to this occurrence.'}
                     </p>

@@ -141,12 +141,12 @@ export default function FixMemoryPanel({
                             </svg>
                         </div>
                         <div>
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            <h2 className="text-[1.6rem] font-semibold tracking-tight text-white">
                                 Fix Memory
-                            </div>
-                            <h2 className="mt-2 text-[1.35rem] font-semibold tracking-tight text-white">
-                                Reusable fix patterns inferred from resolved similar issues
                             </h2>
+                            <p className="mt-2 text-[15px] font-medium leading-7 text-slate-200">
+                                Reusable fix patterns inferred from resolved similar issues
+                            </p>
                             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
                                 Use this as a fix-reference layer: what has already worked, which patterns repeat, and which resolved issues are worth reviewing before closing the current one.
                             </p>
@@ -244,10 +244,10 @@ export default function FixMemoryPanel({
                     <div className="space-y-4">
                         <div className="flex items-center justify-between gap-3">
                             <div>
-                                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                                <h3 className="text-[1.3rem] font-semibold tracking-tight text-white">
                                     Related Resolved Fixes
-                                </div>
-                                <p className="mt-2 text-sm leading-6 text-slate-400">
+                                </h3>
+                                <p className="mt-2 text-[14px] leading-7 text-slate-400">
                                     Most useful resolved references to review now.
                                 </p>
                             </div>

@@ -13,6 +13,7 @@ interface PreventionRecommendedActionsPanelProps {
     loading: boolean;
     error: string | null;
     compact?: boolean;
+    framed?: boolean;
 }
 
 function getRiskTone(risk: PreventionRepeatRisk) {
@@ -263,7 +264,26 @@ function RecommendedActionCard({
     );
 }
 
-function ActionsLoadingState({ compact = false }: { compact?: boolean }) {
+function ActionsLoadingState({
+    compact = false,
+    framed = false,
+}: {
+    compact?: boolean;
+    framed?: boolean;
+}) {
+    if (framed) {
+        return (
+            <div className={`${compact ? 'space-y-3' : 'space-y-4'} animate-pulse`}>
+                {[0, 1, 2].map((item) => (
+                    <div
+                        key={item}
+                        className={`rounded-[18px] border border-[#252525] bg-[#111] ${compact ? 'h-16' : 'h-20'}`}
+                    />
+                ))}
+            </div>
+        );
+    }
+
     return (
         <PanelShell>
             <div className={`${compact ? 'p-4' : 'p-5'} animate-pulse`}>
@@ -279,7 +299,28 @@ function ActionsLoadingState({ compact = false }: { compact?: boolean }) {
     );
 }
 
-function ActionsErrorState({ error, compact = false }: { error: string; compact?: boolean }) {
+function ActionsErrorState({
+    error,
+    compact = false,
+    framed = false,
+}: {
+    error: string;
+    compact?: boolean;
+    framed?: boolean;
+}) {
+    if (framed) {
+        return (
+            <div className="rounded-[18px] border border-red-500/25 bg-red-500/10 px-4 py-4">
+                <h3 className="text-sm font-semibold text-red-100">
+                    Recommended actions are unavailable
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-red-100/80">
+                    {error}
+                </p>
+            </div>
+        );
+    }
+
     return (
         <PanelShell className="border-red-500/25 bg-red-500/10">
             <div className={compact ? 'p-4' : 'p-5'}>
@@ -294,7 +335,26 @@ function ActionsErrorState({ error, compact = false }: { error: string; compact?
     );
 }
 
-function ActionsEmptyState({ compact = false }: { compact?: boolean }) {
+function ActionsEmptyState({
+    compact = false,
+    framed = false,
+}: {
+    compact?: boolean;
+    framed?: boolean;
+}) {
+    if (framed) {
+        return (
+            <div className={`${compact ? 'px-1 py-2' : 'px-0 py-4'} text-center`}>
+                <h3 className="text-sm font-semibold text-slate-100">
+                    No recommended actions yet
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-400">
+                    Actionable prevention steps will appear here once enough context is available.
+                </p>
+            </div>
+        );
+    }
+
     return (
         <PanelShell>
             <div className={`${compact ? 'px-4 py-8' : 'px-5 py-10'} text-center`}>
@@ -314,33 +374,64 @@ export function PreventionRecommendedActionsPanel({
     loading,
     error,
     compact = false,
+    framed = false,
 }: PreventionRecommendedActionsPanelProps) {
-    if (loading) return <ActionsLoadingState compact={compact} />;
-    if (error) return <ActionsErrorState error={error} compact={compact} />;
-
     const actionItems = insights ? dedupeItems([insights.preventionTip, ...insights.recommendedActions]) : [];
-    if (actionItems.length === 0) return <ActionsEmptyState compact={compact} />;
+
+    const header = (
+        <div>
+            {framed ? (
+                <div className="text-[13px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+                    Prevention Actions
+                </div>
+            ) : null}
+            <h3 className={`font-semibold tracking-tight text-white ${compact ? 'text-[1.35rem]' : 'text-[1.15rem]'}`}>
+                Recommended Prevention Actions
+            </h3>
+            <p className={`mt-2 ${compact ? 'text-[14px] leading-7' : 'text-sm leading-6'} text-slate-400`}>
+                Start with the top recurrence-reduction action, then move downward if more follow-up is needed.
+            </p>
+        </div>
+    );
+
+    const content = loading
+        ? <ActionsLoadingState compact={compact} framed={framed} />
+        : error
+            ? <ActionsErrorState error={error} compact={compact} framed={framed} />
+            : actionItems.length === 0
+                ? <ActionsEmptyState compact={compact} framed={framed} />
+                : (
+                    <div className="space-y-3">
+                        {actionItems.map((item, index) => (
+                            <RecommendedActionCard
+                                key={item}
+                                item={item}
+                                highlight={index === 0}
+                                compact={compact}
+                            />
+                        ))}
+                    </div>
+                );
+
+    if (framed) {
+        return (
+            <PanelShell>
+                <div className="border-b border-[#232323] px-5 pb-5 pt-5">
+                    {header}
+                </div>
+                <div className="p-5">
+                    {content}
+                </div>
+            </PanelShell>
+        );
+    }
 
     return (
-        <section className={compact ? 'space-y-3' : 'space-y-4'}>
+        <section className={compact ? 'space-y-4' : 'space-y-4'}>
             <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                    Recommended Prevention Actions
-                </div>
-                <p className={`mt-2 ${compact ? 'text-[13px] leading-6' : 'text-sm leading-6'} text-slate-400`}>
-                    Start with the top recurrence-reduction action, then move downward if more follow-up is needed.
-                </p>
+                {header}
             </div>
-            <div className="space-y-3">
-                {actionItems.map((item, index) => (
-                    <RecommendedActionCard
-                        key={item}
-                        item={item}
-                        highlight={index === 0}
-                        compact={compact}
-                    />
-                ))}
-            </div>
+            {content}
         </section>
     );
 }
@@ -389,12 +480,12 @@ export default function PreventionInsightsPanel({
                                 </svg>
                             </div>
                             <div>
-                                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                                <h2 className="text-[1.6rem] font-semibold tracking-tight text-white">
                                     Prevention Summary
-                                </div>
-                                <h2 className="mt-2 text-[1.35rem] font-semibold tracking-tight text-white">
-                                    Avoid repeating this failure pattern
                                 </h2>
+                                <p className="mt-2 text-[15px] font-medium leading-7 text-slate-200">
+                                    Avoid repeating this failure pattern
+                                </p>
                                 <p className="mt-2 text-sm leading-6 text-slate-400">
                                     Historical signals, saved fixes, and AI context condensed into one prevention view.
                                 </p>
@@ -450,10 +541,10 @@ export default function PreventionInsightsPanel({
             {reportSignals.length > 0 ? (
                 <PanelShell>
                     <div className="border-b border-[#232323] px-5 pb-4 pt-5">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        <h3 className="text-[1.3rem] font-semibold tracking-tight text-white">
                             Report Signals
-                        </div>
-                        <p className="mt-2 text-sm leading-6 text-slate-400">
+                        </h3>
+                        <p className="mt-2 text-[14px] leading-7 text-slate-400">
                             Short evidence points behind this prevention recommendation.
                         </p>
                     </div>
