@@ -15,7 +15,7 @@ const NAV_ITEMS: Array<{
     path?: string;
 }> = [
     { key: 'dashboard', label: 'Dashboard', path: '/dashboard' },
-    { key: 'projects', label: 'Projects', path: '/' },
+    { key: 'projects', label: 'Projects' },
     { key: 'issues', label: 'Issues', path: '/issues' },
     { key: 'alerts', label: 'Alerts' },
 ];
@@ -31,13 +31,13 @@ export default function EnterpriseTopNavigation({
     return (
         <header className="enterprise-header-glass sticky top-0 z-30 border-b border-[var(--enterprise-border-strong)]">
             <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-4 px-5 py-3 md:px-6 xl:px-8">
-                <div className="flex min-w-0 items-center gap-8">
+                <div className="flex min-w-0 items-center gap-6 xl:gap-8">
                     <button
                         type="button"
-                        onClick={() => navigate('/')}
+                        onClick={() => navigate('/dashboard')}
                         className="flex shrink-0 items-center gap-3 text-left"
                     >
-                        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-orange-500 text-white shadow-[0_0_18px_rgba(249,115,22,0.25)]">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-orange-400/20 bg-orange-500/15 text-orange-200 shadow-[0_0_18px_rgba(249,115,22,0.18)]">
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path
                                     strokeLinecap="round"
@@ -69,15 +69,15 @@ export default function EnterpriseTopNavigation({
                                     onClick={() => item.path && navigate(item.path)}
                                     disabled={isDisabled}
                                     aria-current={isActive ? 'page' : undefined}
-                                    className={`border-b-2 pb-1 text-sm font-medium transition-colors ${
+                                    className={`rounded-full border px-3.5 py-2 text-sm font-medium transition-colors ${
                                         isActive
-                                            ? 'border-orange-500 text-white'
-                                            : 'border-transparent text-slate-500 hover:text-slate-200'
-                                    } ${isDisabled ? 'cursor-default opacity-100 hover:text-slate-500' : ''}`}
+                                            ? 'border-orange-500/30 bg-orange-500/12 text-white shadow-[0_10px_24px_rgba(249,115,22,0.08)]'
+                                            : 'border-transparent text-[var(--enterprise-text-muted)] hover:border-white/8 hover:bg-white/[0.04] hover:text-white'
+                                    } ${isDisabled ? 'cursor-default opacity-70 hover:border-transparent hover:bg-transparent hover:text-[var(--enterprise-text-muted)]' : ''}`}
                                 >
                                     {item.label}
                                     {item.key === 'issues' && projectName ? (
-                                        <span className="ml-2 rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-[var(--enterprise-text-dim)]">
+                                        <span className="ml-2 rounded-full border border-white/8 bg-white/5 px-2 py-0.5 text-[10px] text-[var(--enterprise-text-dim)]">
                                             {projectName}
                                         </span>
                                     ) : null}
@@ -89,9 +89,9 @@ export default function EnterpriseTopNavigation({
 
                 <div className="flex items-center gap-3">
                     {showSearch ? (
-                        <div className="relative hidden lg:block">
+                        <div className="relative hidden xl:block">
                             <svg
-                                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+                                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--enterprise-text-dim)]"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -105,15 +105,16 @@ export default function EnterpriseTopNavigation({
                             </svg>
                             <input
                                 type="text"
-                                placeholder="Search traces, users..."
-                                className="w-60 rounded-full border border-[#262626] bg-[#111] py-2 pl-9 pr-4 text-sm text-slate-200 outline-none placeholder:text-slate-500 focus:border-orange-500/60"
+                                placeholder="Search projects, issues, releases"
+                                className="w-72 rounded-full border border-[var(--enterprise-border)] bg-[#0d0d0d] py-2.5 pl-9 pr-4 text-sm text-slate-200 outline-none placeholder:text-[var(--enterprise-text-dim)] focus:border-orange-500/40"
                             />
                         </div>
                     ) : null}
                     <button
                         type="button"
-                        className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition-colors hover:text-slate-200"
+                        className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[var(--enterprise-border)] bg-white/[0.03] text-[var(--enterprise-text-muted)] transition-colors hover:text-white"
                     >
+                        <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-orange-400 ring-2 ring-[#050505]" />
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path
                                 strokeLinecap="round"
@@ -123,7 +124,7 @@ export default function EnterpriseTopNavigation({
                             />
                         </svg>
                     </button>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1d3b3b] text-xs font-semibold text-emerald-100">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/8 bg-gradient-to-br from-[#203133] to-[#162325] text-xs font-semibold text-emerald-100 shadow-[0_10px_28px_rgba(0,0,0,0.2)]">
                         {avatarLabel}
                     </div>
                 </div>
