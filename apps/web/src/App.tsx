@@ -13,5 +13,5 @@ export default function App() {
                 <Route path="/issues/:id" element={<IssueDetailPage />} />
             </Routes>
         </BrowserRouter>
-  );
+    );
 }
