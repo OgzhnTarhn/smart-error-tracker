@@ -1,5 +1,6 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 const API_KEY = import.meta.env.VITE_API_KEY || '';
+const ADMIN_TOKEN = import.meta.env.VITE_ADMIN_TOKEN || '';
 
 export const apiFetch = async <T = unknown>(
     endpoint: string,
@@ -23,6 +24,61 @@ export const apiFetch = async <T = unknown>(
 
     return response.json() as Promise<T>;
 };
+
+export const hasAdminConsoleAccess = Boolean(ADMIN_TOKEN);
+
+export const adminFetch = async <T = unknown>(
+    endpoint: string,
+    options: RequestInit = {},
+): Promise<T> => {
+    if (!ADMIN_TOKEN) {
+        throw new Error(
+            'VITE_ADMIN_TOKEN is required to create projects from the dashboard.',
+        );
+    }
+
+    const headers = new Headers(options.headers || {});
+    headers.set('x-admin-token', ADMIN_TOKEN);
+    if (!headers.has('Content-Type')) {
+        headers.set('Content-Type', 'application/json');
+    }
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers,
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || `Request failed with status ${response.status}`);
+    }
+
+    return response.json() as Promise<T>;
+};
+
+export interface AdminProjectSummary {
+    id: string;
+    name: string;
+    key: string;
+}
+
+export interface CreateAdminProjectRequest {
+    name: string;
+    label?: string;
+}
+
+export interface CreateAdminProjectResponse {
+    ok?: boolean;
+    project?: AdminProjectSummary;
+    apiKey?: string;
+    error?: string;
+}
+
+export const createAdminProject = (body: CreateAdminProjectRequest) =>
+    adminFetch<CreateAdminProjectResponse>('/admin/projects', {
+        method: 'POST',
+        body: JSON.stringify(body),
+    });
 
 export interface DashboardBreakdownItem {
     name: string;
