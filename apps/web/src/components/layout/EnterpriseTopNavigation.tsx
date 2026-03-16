@@ -15,7 +15,7 @@ const NAV_ITEMS: Array<{
     path?: string;
 }> = [
     { key: 'dashboard', label: 'Dashboard', path: '/dashboard' },
-    { key: 'projects', label: 'Projects' },
+    { key: 'projects', label: 'Projects', path: '/projects' },
     { key: 'issues', label: 'Issues', path: '/issues' },
     { key: 'alerts', label: 'Alerts' },
 ];
