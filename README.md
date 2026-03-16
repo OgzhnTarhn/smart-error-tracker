@@ -1,259 +1,274 @@
 # Smart Error Tracker
 
-Smart Error Tracker is a Sentry-like error tracking system for modern web and backend applications.
+Smart Error Tracker is a Sentry-inspired error monitoring platform for modern TypeScript applications. It combines a NestJS ingest API, a React investigation dashboard, and lightweight Node.js and browser SDKs so teams can capture runtime failures, group them into actionable issues, and investigate them from one place.
 
-It is designed to:
-- ingest application errors from multiple runtimes
-- group related errors into actionable issues
-- accelerate debugging with stack, context, and raw event inspection
+## Highlights
 
-## Project Overview
-
-This repository is a production-style monorepo prototype that includes:
-- a NestJS ingest and issue management API
-- a React dashboard for triage and investigation
-- Node and Browser SDK packages
-- demo apps for integration scenarios
+- Browser and Node.js SDKs for automatic capture, manual reporting, and Express middleware integration
+- Project-scoped API keys for ingestion and dashboard access
+- Fingerprint-based issue grouping to collapse repeated failures into a single investigation unit
+- Issue lifecycle controls with `open`, `resolved`, and `ignored` states
+- Automatic regression reopening when a resolved issue appears again
+- Event-level investigation with stack traces, structured context, raw payloads, release, environment, and SDK metadata
+- Source map resolution for minified frontend stack traces
+- Optional AI-assisted analysis, prevention insights, and fix memory when `GEMINI_API_KEY` is configured
+- Demo applications for end-to-end local validation
 
 ## Architecture
 
-High-level flow:
-
 ```text
-Application (Browser / Node)
-  ->
-SDK
-  ->
-Ingest API (NestJS)
-  ->
-Fingerprint grouping
-  ->
-PostgreSQL
-  ->
-React Dashboard
+Browser / Node application
+        |
+        v
+Smart Error Tracker SDK
+        |
+        v
+NestJS ingest API
+        |
+        +--> API key validation
+        +--> payload validation and rate limiting
+        +--> fingerprint-based grouping
+        +--> optional source-map and AI enrichment
+        |
+        v
+    PostgreSQL
+        |
+        v
+ React dashboard
 ```
 
-## Core Features
+## Current Status
 
-- Event ingestion pipeline  
-  Errors are captured via Browser and Node SDKs and sent to the ingest API.
+- The issue list and issue detail flows are backed by the live API and database.
+- The top-level Overview experience currently uses a mock data layer to prototype a richer enterprise analytics surface.
+- Project and API key bootstrapping are available through the seed script and local-only admin endpoints.
 
-- Issue grouping  
-  Similar events are grouped by fingerprint into a single issue.
+## Repository Layout
 
-- Issue lifecycle management  
-  Issues support `open`, `resolved`, and `ignored` states.
+| Path | Purpose |
+| --- | --- |
+| `apps/api` | NestJS API for ingestion, grouping, project/key management, source maps, and AI enrichment |
+| `apps/web` | React + Vite dashboard for overview, issue list, and issue detail workflows |
+| `apps/demo-api` | Express demo application using the Node SDK |
+| `apps/demo-web` | Browser demo application using the browser SDK |
+| `packages/sdk-node` | Node.js SDK with manual capture, global handlers, and Express error middleware |
+| `packages/sdk-browser` | Browser SDK with automatic global capture and manual reporting |
+| `infra/docker-compose.yml` | Local PostgreSQL service definition |
 
-- Regression detection  
-  If a `resolved` issue receives a matching event again, it is automatically reopened and marked as regression.
+## Quick Start
 
-- Event drill-down  
-  Every issue exposes a latest-events list with selectable event detail.
+### Prerequisites
 
-- Stack trace viewer  
-  Stack traces are displayed in a readable monospace viewer.
+- Node.js LTS
+- `pnpm` 10+
+- Docker
 
-- Context inspection  
-  Event context is visible in structured form.
-
-- Raw payload viewer  
-  Raw event JSON can be inspected directly.
-
-- Source map resolution  
-  Minified frames can be resolved to original source locations.
-
-- AI error analysis  
-  Event-based AI analysis can generate root-cause and fix suggestions.
-
-## Dashboard
-
-The Overview dashboard includes:
-- Total events
-- Total issues
-- Open issues
-- Resolved issues
-- Ignored issues
-
-It also shows:
-- 7-day event trend chart
-- Top issues list by event count
-
-## Issue Lifecycle
-
-Issue status flow:
-- `open` -> active issue
-- `resolved` -> fixed/closed
-- `ignored` -> intentionally muted
-
-Manual actions are supported from the issue detail page:
-- Resolve
-- Ignore
-- Reopen
-
-## Issue List
-
-The Issues page supports advanced filtering:
-- Search (title/message)
-- Status filter
-- Environment filter
-- Level filter
-- Release filter
-
-Filter state is synchronized with URL query parameters, so refresh/share keeps state.
-
-## Event Inspection
-
-Issue detail supports event-level investigation:
-- selectable latest events list
-- event metadata (timestamp, source, level, environment, release, SDK)
-- `Stack` tab
-- `Context` tab
-- `Raw` tab
-
-Issue-level overview remains separate from event-level detail.
-
-## Source Map Resolution
-
-For minified production stacks, source maps can resolve frames to original source.
-
-UI highlights include:
-- `Source mapped` badge
-- Original source location (file:line:column)
-- Minified frame location
-- Function name (when available)
-
-If source mapping cannot be resolved, stack trace still renders with graceful fallback messaging.
-
-## Regression Detection
-
-When a new event matches a previously `resolved` issue:
-- issue is automatically reopened (`resolved` -> `open`)
-- issue is marked as regression
-- regression count increments
-- last regressed timestamp is updated
-
-Ignored issues remain ignored by design.
-
-## SDK Usage
-
-Node.js and Browser SDK packages are available:
-- `@smart-error-tracker/node`
-- `@smart-error-tracker/browser`
-
-Node example:
-
-```ts
-import express from 'express'
-import { initTracker } from '@smart-error-tracker/node'
-
-const app = express()
-
-initTracker({
-  dsn: 'http://localhost:3000/events',
-})
-
-app.listen(3001)
-```
-
-Browser example:
-
-```html
-<script type="module">
-  import { init } from '@smart-error-tracker/browser'
-
-  init({
-    dsn: 'http://localhost:3000/events',
-  })
-</script>
-```
-
-For package-level options and integration details, see `packages/*/README.md` and `apps/demo-*`.
-
-## Monorepo Structure
-
-- `apps/api` - NestJS backend (Prisma + PostgreSQL)
-- `apps/web` - React + Vite dashboard
-- `packages/sdk-node` - Node SDK
-- `packages/sdk-browser` - Browser SDK
-- `apps/demo-api`, `apps/demo-web` - demo integrations
-- `infra/docker-compose.yml` - local PostgreSQL service
-
-## Local Development
-
-1. Install dependencies:
+### 1. Install workspace dependencies
 
 ```bash
 pnpm install
 ```
 
-2. Start PostgreSQL:
+### 2. Start PostgreSQL
 
 ```bash
 docker compose -f infra/docker-compose.yml up -d
 ```
 
-3. Prepare Prisma for API:
+The bundled Compose file provisions PostgreSQL 16 on `localhost:5432` with:
+
+- database: `set_db`
+- username: `set_user`
+- password: `set_pass`
+
+### 3. Configure the API
+
+Create `apps/api/.env`:
+
+```dotenv
+DATABASE_URL="postgresql://set_user:set_pass@localhost:5432/set_db"
+ADMIN_TOKEN="dev-admin-token"
+INGEST_RATE_LIMIT_MAX=60
+INGEST_RATE_LIMIT_WINDOW_MS=60000
+
+# Optional: enables AI analysis endpoints
+# GEMINI_API_KEY="your-key"
+```
+
+### 4. Prepare the database schema
 
 ```bash
 cd apps/api
-pnpm install
 npx prisma generate
-# Use migrate deploy for migration-based environments:
 npx prisma migrate deploy
-# Or use db push for local schema iteration:
-npx prisma db push
 ```
 
-4. Optional seed step (if available):
+For fast local iteration, `npx prisma db push` can be used instead of `migrate deploy`.
+
+### 5. Create a local project and API key
+
+Still in `apps/api`, run:
 
 ```bash
-pnpm exec ts-node -r tsconfig-paths/register scripts/seed.ts
+pnpm exec ts-node -r tsconfig-paths/register scripts/seed.ts demo default
 ```
 
-5. Run API:
+The script prints:
+
+- a project id
+- a project key
+- a raw API key
+
+Keep the API key. It is only shown once and is required by the dashboard and SDKs.
+
+### 6. Configure the dashboard
+
+Create `apps/web/.env.local`:
+
+```dotenv
+VITE_API_BASE_URL="http://localhost:3000"
+VITE_API_KEY="set_your_generated_api_key"
+```
+
+### 7. Run the core services
+
+Open two terminals from the repository root:
 
 ```bash
-pnpm --filter api run start:dev
+pnpm --filter api start:dev
 ```
-
-6. Run Web (in another terminal):
 
 ```bash
-pnpm --filter web run dev
+pnpm --filter web dev
 ```
 
-7. Build SDK packages:
+Defaults:
+
+- API: `http://localhost:3000`
+- Dashboard: `http://localhost:5173`
+
+The API currently allows CORS from `http://localhost:*` during local development.
+
+## Running the Demo Apps
+
+The demos are useful for generating realistic traffic and verifying the SDKs end to end.
+
+Create `apps/demo-api/.env`:
+
+```dotenv
+API_BASE_URL="http://localhost:3000"
+API_KEY="set_your_generated_api_key"
+ENVIRONMENT="local"
+RELEASE="demo-api@0.0.0"
+PORT=4000
+```
+
+Create `apps/demo-web/.env.local`:
+
+```dotenv
+VITE_API_BASE_URL="http://localhost:3000"
+VITE_API_KEY="set_your_generated_api_key"
+VITE_ENVIRONMENT="local"
+VITE_RELEASE="demo-web@0.0.0"
+```
+
+Then start them from the repo root:
 
 ```bash
-pnpm --filter @smart-error-tracker/node run build
-pnpm --filter @smart-error-tracker/browser run build
+pnpm --filter demo-api dev
+pnpm --filter demo-web dev
 ```
 
-8. Run API tests:
+The demo API exposes routes such as `/error`, `/reject`, `/manual`, and `/message` to generate test events.
+
+## SDK Integration
+
+### Browser SDK
+
+```ts
+import { init, installGlobalHandlers } from '@smart-error-tracker/browser';
+
+init({
+  baseUrl: 'http://localhost:3000',
+  apiKey: 'set_your_generated_api_key',
+  environment: 'production',
+  release: 'web@1.2.3',
+});
+
+installGlobalHandlers();
+```
+
+### Node.js SDK
+
+```ts
+import express from 'express';
+import {
+  init,
+  installGlobalHandlers,
+  expressErrorHandler,
+} from '@smart-error-tracker/node';
+
+init({
+  baseUrl: 'http://localhost:3000',
+  apiKey: 'set_your_generated_api_key',
+  environment: 'production',
+  release: 'api@1.2.3',
+});
+
+installGlobalHandlers();
+
+const app = express();
+app.use(expressErrorHandler());
+```
+
+For the full SDK APIs, DSN mode, and advanced usage, see:
+
+- `packages/sdk-browser/README.md`
+- `packages/sdk-node/README.md`
+
+## Configuration Reference
+
+### API
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `DATABASE_URL` | Yes | PostgreSQL connection string used by Prisma |
+| `ADMIN_TOKEN` | No | Enables local-only `/admin/*` management endpoints via `x-admin-token` |
+| `GEMINI_API_KEY` | No | Enables AI analysis for `POST /events/:id/analyze` |
+| `INGEST_RATE_LIMIT_MAX` | No | Max ingest requests per window, default `60` |
+| `INGEST_RATE_LIMIT_WINDOW_MS` | No | Rate-limit window in milliseconds, default `60000` |
+
+### Dashboard
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `VITE_API_BASE_URL` | No | API base URL, defaults to `http://localhost:3000` |
+| `VITE_API_KEY` | Yes | Project API key sent as `x-api-key` for dashboard requests |
+
+## Development Commands
 
 ```bash
-pnpm --filter api run test
+pnpm lint
+pnpm --filter api test
+pnpm --filter api test:e2e
+pnpm --filter web build
+pnpm --filter @smart-error-tracker/node build
+pnpm --filter @smart-error-tracker/browser build
 ```
 
-## Deployment Suggestions
+`pnpm dev` is also available at the workspace root, but it runs every package `dev` script, including demos and SDK watchers. In practice, filtered commands are usually easier to manage.
 
-Frontend:
-- Vercel
-- Netlify
+## Notes
 
-Backend:
-- Docker container deployment
-- DigitalOcean App Platform
-- AWS ECS
-
-Database:
-- Managed PostgreSQL (Supabase / AWS RDS)
+- Most API and dashboard routes are project-scoped through the `x-api-key` header.
+- Source map resolution expects `.map` files to be reachable by the API server.
+- Admin endpoints are intentionally disabled in production mode.
+- Package-level notes are available in `apps/api/README.md`, `apps/web/README.md`, and the SDK READMEs.
 
 ## Roadmap
 
-Planned improvements:
-- Alerting system
-- Webhook integrations
-- Advanced analytics
+- Alerting and notification channels
+- Webhook and third-party integrations
+- Deeper analytics and release health reporting
 - Session replay
-- Error rate monitoring
+- Error rate and stability monitoring
