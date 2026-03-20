@@ -717,6 +717,28 @@ export class EventsController {
     return row.projectId;
   }
 
+  @Get('project-context')
+  async getProjectContext(@Headers('x-api-key') apiKey: string | undefined) {
+    const projectId = await this.resolveProjectIdFromApiKey(apiKey);
+    if (!projectId) return { ok: false, error: 'unauthorized' };
+
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: {
+        id: true,
+        name: true,
+        key: true,
+      },
+    });
+
+    if (!project) return { ok: false, error: 'project_not_found' };
+
+    return {
+      ok: true,
+      project,
+    };
+  }
+
   @Post('events')
   @UseGuards(IngestRateLimitGuard)
   @UsePipes(

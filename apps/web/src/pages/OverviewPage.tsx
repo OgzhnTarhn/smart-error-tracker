@@ -2,9 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardSectionCard from '../components/dashboard/DashboardSectionCard';
 import EnterpriseTopNavigation from '../components/layout/EnterpriseTopNavigation';
+import { useAdminProjects } from '../hooks/useAdminProjects';
+import { useDashboardProjectContext } from '../hooks/useDashboardProjectContext';
 import {
+    clearDashboardApiKey,
     createAdminProject,
+    getDashboardApiKeyOverride,
+    setDashboardApiKey,
     hasAdminConsoleAccess,
+    type AdminProjectListItem,
     type CreateAdminProjectResponse,
 } from '../lib/api';
 
@@ -141,6 +147,18 @@ const FLOW_CARDS = [
             'As errors happen, Smart Error Tracker groups them into issues and makes them explorable.',
     },
 ];
+
+const DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+});
+
+const API_KEY_SOURCE_LABELS = {
+    runtime: 'Browser override',
+    env: 'Environment default',
+    none: 'No key connected',
+} as const;
 
 function PrimaryButton({
     label,
@@ -286,6 +304,27 @@ function FlowCard({
     );
 }
 
+function ProjectPreviewCard({ project }: { project: AdminProjectListItem }) {
+    return (
+        <div className="enterprise-panel-soft rounded-[22px] border border-[var(--enterprise-border)] p-5">
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <div className="text-lg font-semibold text-white">{project.name}</div>
+                    <div className="mt-2 font-mono text-[12px] text-[var(--enterprise-text-dim)]">
+                        {project.key}
+                    </div>
+                </div>
+                <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+                    {project.apiKeyCount} key{project.apiKeyCount === 1 ? '' : 's'}
+                </span>
+            </div>
+            <div className="mt-4 text-sm text-[var(--enterprise-text-muted)]">
+                Created {DATE_FORMATTER.format(new Date(project.createdAt))}
+            </div>
+        </div>
+    );
+}
+
 function SetupModal({
     open,
     onClose,
@@ -297,6 +336,7 @@ function SetupModal({
     setKeyLabel,
     submitting,
     onSubmit,
+    onUseDashboardApiKey,
     createError,
     createdProject,
 }: {
@@ -310,6 +350,7 @@ function SetupModal({
     setKeyLabel: (value: string) => void;
     submitting: boolean;
     onSubmit: () => void;
+    onUseDashboardApiKey: (apiKey: string) => void;
     createError: string | null;
     createdProject: CreateAdminProjectResponse | null;
 }) {
@@ -447,8 +488,14 @@ function SetupModal({
                                             <div className="mt-2 break-all font-mono text-[14px] text-orange-50">
                                                 {createdProject.apiKey}
                                             </div>
-                                            <div className="mt-3">
+                                            <div className="mt-3 flex flex-wrap gap-3">
                                                 <CopyButton label="api key" value={createdProject.apiKey} />
+                                                <SecondaryButton
+                                                    label="Use In Dashboard"
+                                                    onClick={() =>
+                                                        onUseDashboardApiKey(createdProject.apiKey)
+                                                    }
+                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -538,6 +585,16 @@ function SetupModal({
 
 export default function OverviewPage() {
     const navigate = useNavigate();
+    const { projects, loading: projectsLoading, error: projectsError, refresh: refreshProjects } =
+        useAdminProjects();
+    const {
+        project: connectedProject,
+        loading: workspaceLoading,
+        error: workspaceError,
+        hasApiKey,
+        apiKeySource,
+        refresh: refreshWorkspace,
+    } = useDashboardProjectContext();
     const [selectedIntegration, setSelectedIntegration] = useState<IntegrationKey>('nextjs');
     const [setupOpen, setSetupOpen] = useState(false);
     const [projectName, setProjectName] = useState('');
@@ -545,6 +602,9 @@ export default function OverviewPage() {
     const [submitting, setSubmitting] = useState(false);
     const [createError, setCreateError] = useState<string | null>(null);
     const [createdProject, setCreatedProject] = useState<CreateAdminProjectResponse | null>(null);
+    const [connectApiKeyInput, setConnectApiKeyInput] = useState('');
+    const [connectError, setConnectError] = useState<string | null>(null);
+    const [connectSuccess, setConnectSuccess] = useState<string | null>(null);
 
     const activeIntegration = useMemo(
         () => INTEGRATIONS.find((item) => item.key === selectedIntegration) ?? INTEGRATIONS[0],
@@ -558,6 +618,43 @@ export default function OverviewPage() {
 
     const closeSetup = () => {
         setSetupOpen(false);
+    };
+
+    const handleConnectApiKey = async (apiKey?: string) => {
+        const normalizedApiKey = (apiKey ?? connectApiKeyInput).trim();
+        if (!normalizedApiKey) {
+            setConnectSuccess(null);
+            setConnectError('API key is required.');
+            return;
+        }
+
+        const previousOverride = getDashboardApiKeyOverride();
+        setConnectError(null);
+        setConnectSuccess(null);
+        setDashboardApiKey(normalizedApiKey);
+
+        const ok = await refreshWorkspace();
+        if (!ok) {
+            if (previousOverride) {
+                setDashboardApiKey(previousOverride);
+            } else {
+                clearDashboardApiKey();
+            }
+            await refreshWorkspace();
+            setConnectError('Dashboard could not verify that API key.');
+            return;
+        }
+
+        setConnectApiKeyInput(normalizedApiKey);
+        setConnectSuccess('Dashboard workspace connected successfully.');
+    };
+
+    const handleClearOverride = async () => {
+        clearDashboardApiKey();
+        setConnectApiKeyInput('');
+        setConnectError(null);
+        setConnectSuccess(null);
+        await refreshWorkspace();
     };
 
     const handleCreateProject = async () => {
@@ -587,6 +684,8 @@ export default function OverviewPage() {
             setCreatedProject(response);
             setProjectName('');
             setKeyLabel('');
+            setConnectApiKeyInput(response.apiKey);
+            await refreshProjects();
         } catch (err: unknown) {
             setCreateError(
                 err instanceof Error ? err.message : 'Project could not be created.',
@@ -645,6 +744,184 @@ export default function OverviewPage() {
                     ))}
                 </div>
 
+                <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+                    <DashboardSectionCard
+                        title="Current Dashboard Workspace"
+                        description="Use the main dashboard to connect a real project before moving into issue tracking."
+                        contentClassName="p-6"
+                        variant="enterprise"
+                    >
+                        <div className="space-y-5">
+                            <div className="enterprise-panel-soft rounded-[24px] border border-[var(--enterprise-border)] p-5">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-200">
+                                            Connected scope
+                                        </div>
+                                        <h3 className="mt-2 text-xl font-semibold text-white">
+                                            {connectedProject?.name ??
+                                                (hasApiKey
+                                                    ? 'Validating connected project'
+                                                    : 'No project connected yet')}
+                                        </h3>
+                                    </div>
+                                    <span className="rounded-full border border-white/8 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--enterprise-text-muted)]">
+                                        {API_KEY_SOURCE_LABELS[apiKeySource]}
+                                    </span>
+                                </div>
+
+                                <p className="mt-3 text-[15px] leading-8 text-[var(--enterprise-text-muted)]">
+                                    {connectedProject
+                                        ? 'The dashboard is already pointed at a real project. You can jump straight into Issues.'
+                                        : 'If someone already has a project API key, they can connect this dashboard from here instead of landing on synthetic data first.'}
+                                </p>
+
+                                {connectedProject ? (
+                                    <div className="mt-5 rounded-[18px] border border-white/8 bg-black/35 p-4">
+                                        <div className="text-xs uppercase tracking-[0.18em] text-[var(--enterprise-text-dim)]">
+                                            Project key
+                                        </div>
+                                        <div className="mt-2 break-all font-mono text-[13px] text-white">
+                                            {connectedProject.key}
+                                        </div>
+                                    </div>
+                                ) : null}
+
+                                {workspaceLoading ? (
+                                    <div className="mt-5 text-sm animate-pulse text-[var(--enterprise-text-dim)]">
+                                        Verifying dashboard workspace...
+                                    </div>
+                                ) : null}
+
+                                {workspaceError ? (
+                                    <div className="mt-5 rounded-[18px] border border-red-500/20 bg-red-500/10 px-4 py-4 text-sm text-red-100">
+                                        {workspaceError}
+                                    </div>
+                                ) : null}
+
+                                <div className="mt-5 flex flex-wrap gap-3">
+                                    <PrimaryButton
+                                        label="Open Issues"
+                                        onClick={() => navigate('/issues')}
+                                    />
+                                    <SecondaryButton
+                                        label="Refresh Workspace"
+                                        onClick={() => void refreshWorkspace()}
+                                    />
+                                    {apiKeySource === 'runtime' ? (
+                                        <SecondaryButton
+                                            label="Clear Browser Override"
+                                            onClick={() => void handleClearOverride()}
+                                        />
+                                    ) : null}
+                                </div>
+                            </div>
+
+                            <div className="rounded-[24px] border border-[var(--enterprise-border)] bg-black/30 p-5">
+                                <div className="text-sm font-semibold text-white">
+                                    Connect with an API key
+                                </div>
+                                <p className="mt-2 text-[15px] leading-8 text-[var(--enterprise-text-muted)]">
+                                    Paste an existing project API key to point this dashboard at a
+                                    real workspace immediately.
+                                </p>
+
+                                <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                                    <input
+                                        type="text"
+                                        value={connectApiKeyInput}
+                                        onChange={(event) => setConnectApiKeyInput(event.target.value)}
+                                        placeholder="set_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                                        className="w-full rounded-2xl border border-[var(--enterprise-border)] bg-black/35 px-4 py-3.5 text-[15px] text-white outline-none placeholder:text-[var(--enterprise-text-dim)] focus:border-orange-500/35"
+                                    />
+                                    <PrimaryButton
+                                        label="Use API Key"
+                                        onClick={() => void handleConnectApiKey()}
+                                    />
+                                </div>
+
+                                {connectError ? (
+                                    <div className="mt-4 rounded-[18px] border border-red-500/20 bg-red-500/10 px-4 py-4 text-sm text-red-100">
+                                        {connectError}
+                                    </div>
+                                ) : null}
+
+                                {connectSuccess ? (
+                                    <div className="mt-4 rounded-[18px] border border-emerald-500/20 bg-emerald-500/10 px-4 py-4 text-sm text-emerald-100">
+                                        {connectSuccess}
+                                    </div>
+                                ) : null}
+                            </div>
+                        </div>
+                    </DashboardSectionCard>
+
+                    <DashboardSectionCard
+                        title="Recent Local Projects"
+                        description="The dashboard should acknowledge real projects before showing deeper investigation work."
+                        contentClassName="p-6"
+                        variant="enterprise"
+                        action={
+                            hasAdminConsoleAccess ? (
+                                <button
+                                    type="button"
+                                    onClick={() => void refreshProjects()}
+                                    className="rounded-full border border-[var(--enterprise-border)] bg-white/[0.03] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--enterprise-text-muted)] transition-colors hover:text-white"
+                                >
+                                    Refresh
+                                </button>
+                            ) : undefined
+                        }
+                    >
+                        {!hasAdminConsoleAccess ? (
+                            <div className="enterprise-panel-muted rounded-[22px] px-5 py-10 text-center">
+                                <h3 className="text-lg font-semibold text-white">
+                                    Admin project listing is disabled
+                                </h3>
+                                <p className="mx-auto mt-3 max-w-xl text-[15px] leading-8 text-[var(--enterprise-text-muted)]">
+                                    Set `VITE_ADMIN_TOKEN` for local admin access, or create a project
+                                    from the API seed script and connect it with its raw API key.
+                                </p>
+                            </div>
+                        ) : projectsLoading ? (
+                            <div className="space-y-4">
+                                {[0, 1, 2].map((index) => (
+                                    <div
+                                        key={index}
+                                        className="enterprise-panel-soft rounded-[22px] border border-[var(--enterprise-border)] p-5 animate-pulse"
+                                    >
+                                        <div className="h-5 w-36 rounded bg-white/7" />
+                                        <div className="mt-3 h-4 w-44 rounded bg-white/6" />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : projectsError ? (
+                            <div className="rounded-[18px] border border-red-500/20 bg-red-500/10 px-4 py-4 text-sm text-red-100">
+                                {projectsError}
+                            </div>
+                        ) : projects.length === 0 ? (
+                            <div className="enterprise-panel-muted rounded-[22px] px-5 py-10 text-center">
+                                <h3 className="text-lg font-semibold text-white">No projects yet</h3>
+                                <p className="mx-auto mt-3 max-w-xl text-[15px] leading-8 text-[var(--enterprise-text-muted)]">
+                                    Start with project creation from the modal above, then use the
+                                    generated API key to connect the dashboard workspace.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {projects.slice(0, 3).map((project) => (
+                                    <ProjectPreviewCard key={project.id} project={project} />
+                                ))}
+                                <div className="pt-2">
+                                    <SecondaryButton
+                                        label="Open Projects Workspace"
+                                        onClick={() => navigate('/projects')}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </DashboardSectionCard>
+                </div>
+
                 <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
                     <DashboardSectionCard
                         title="Supported SDK Integrations"
@@ -694,6 +971,7 @@ export default function OverviewPage() {
                 setKeyLabel={setKeyLabel}
                 submitting={submitting}
                 onSubmit={() => void handleCreateProject()}
+                onUseDashboardApiKey={(apiKey) => void handleConnectApiKey(apiKey)}
                 createError={createError}
                 createdProject={createdProject}
             />

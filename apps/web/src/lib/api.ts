@@ -1,13 +1,57 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 const API_KEY = import.meta.env.VITE_API_KEY || '';
 const ADMIN_TOKEN = import.meta.env.VITE_ADMIN_TOKEN || '';
+const DASHBOARD_API_KEY_STORAGE_KEY = 'smart-error-tracker.dashboard-api-key';
+
+export type DashboardApiKeySource = 'runtime' | 'env' | 'none';
+
+function readStoredDashboardApiKey() {
+    if (typeof window === 'undefined') return '';
+    return window.localStorage.getItem(DASHBOARD_API_KEY_STORAGE_KEY)?.trim() ?? '';
+}
+
+export function getDashboardApiKeyOverride() {
+    return readStoredDashboardApiKey();
+}
+
+export function getDashboardApiKey() {
+    return readStoredDashboardApiKey() || API_KEY;
+}
+
+export function getDashboardApiKeySource(): DashboardApiKeySource {
+    if (readStoredDashboardApiKey()) return 'runtime';
+    if (API_KEY) return 'env';
+    return 'none';
+}
+
+export function setDashboardApiKey(apiKey: string) {
+    if (typeof window === 'undefined') return;
+
+    const normalized = apiKey.trim();
+    if (!normalized) {
+        window.localStorage.removeItem(DASHBOARD_API_KEY_STORAGE_KEY);
+        return;
+    }
+
+    window.localStorage.setItem(DASHBOARD_API_KEY_STORAGE_KEY, normalized);
+}
+
+export function clearDashboardApiKey() {
+    if (typeof window === 'undefined') return;
+    window.localStorage.removeItem(DASHBOARD_API_KEY_STORAGE_KEY);
+}
 
 export const apiFetch = async <T = unknown>(
     endpoint: string,
     options: RequestInit = {},
 ): Promise<T> => {
     const headers = new Headers(options.headers || {});
-    headers.set('x-api-key', API_KEY);
+    const apiKey = getDashboardApiKey();
+    if (apiKey) {
+        headers.set('x-api-key', apiKey);
+    } else {
+        headers.delete('x-api-key');
+    }
     if (!headers.has('Content-Type')) {
         headers.set('Content-Type', 'application/json');
     }
@@ -62,6 +106,17 @@ export interface AdminProjectSummary {
     key: string;
 }
 
+export interface AdminProjectListItem extends AdminProjectSummary {
+    createdAt: string;
+    apiKeyCount: number;
+}
+
+export interface AdminProjectsResponse {
+    ok?: boolean;
+    projects?: AdminProjectListItem[];
+    error?: string;
+}
+
 export interface CreateAdminProjectRequest {
     name: string;
     label?: string;
@@ -79,6 +134,24 @@ export const createAdminProject = (body: CreateAdminProjectRequest) =>
         method: 'POST',
         body: JSON.stringify(body),
     });
+
+export const getAdminProjects = () =>
+    adminFetch<AdminProjectsResponse>('/admin/projects');
+
+export interface ProjectContext {
+    id: string;
+    name: string;
+    key: string;
+}
+
+export interface ProjectContextResponse {
+    ok: boolean;
+    project?: ProjectContext;
+    error?: string;
+}
+
+export const getProjectContext = () =>
+    apiFetch<ProjectContextResponse>('/project-context');
 
 export interface DashboardBreakdownItem {
     name: string;
