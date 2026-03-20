@@ -7,6 +7,7 @@ import IssueLevelBadge from '../components/issues/IssueLevelBadge';
 import IssueRegressionBadge from '../components/issues/IssueRegressionBadge';
 import IssueStatusBadge from '../components/issues/IssueStatusBadge';
 import EnterpriseTopNavigation from '../components/layout/EnterpriseTopNavigation';
+import { useDashboardProjectContext } from '../hooks/useDashboardProjectContext';
 import type {
     IssueFilters,
     IssueLevelFilter,
@@ -17,7 +18,6 @@ import { getGroupFilters, getGroups } from '../lib/api';
 
 const PAGE_LIMIT = 20;
 const SEARCH_DEBOUNCE_MS = 320;
-const PROJECT_NAME = 'production-api-cluster';
 
 const STATUS_FILTER_VALUES: readonly IssueStatusFilter[] = [
     'all',
@@ -319,6 +319,7 @@ function IssueListCard({
 
 export default function IssuesPage() {
     const navigate = useNavigate();
+    const { project: connectedProject, hasApiKey } = useDashboardProjectContext();
     const [searchParams, setSearchParams] = useSearchParams();
     const searchParamsKey = searchParams.toString();
 
@@ -431,11 +432,27 @@ export default function IssuesPage() {
     );
 
     useEffect(() => {
+        if (!hasApiKey) {
+            setIssues([]);
+            setHasMore(false);
+            setOffset(0);
+            setLoading(false);
+            setLoadingMore(false);
+            setError(null);
+            return;
+        }
+
         setOffset(0);
         void fetchIssues(false, 0, filters);
-    }, [fetchIssues, filters]);
+    }, [fetchIssues, filters, hasApiKey]);
 
     useEffect(() => {
+        if (!hasApiKey) {
+            setEnvironmentOptions([]);
+            setReleaseOptions([]);
+            return;
+        }
+
         let active = true;
 
         const loadFilterMetadata = async () => {
@@ -454,7 +471,9 @@ export default function IssuesPage() {
         return () => {
             active = false;
         };
-    }, []);
+    }, [hasApiKey]);
+
+    const projectLabel = connectedProject?.name ?? (hasApiKey ? 'Connected project' : 'No project connected');
 
     const environmentSelectOptions = useMemo(
         () =>
@@ -494,6 +513,11 @@ export default function IssuesPage() {
     const visibleEventCount = issues.reduce((sum, issue) => sum + issue.eventCount, 0);
 
     const handleRefresh = () => {
+        if (!hasApiKey) {
+            navigate('/dashboard');
+            return;
+        }
+
         const activeFilters: IssueFilters = {
             ...filters,
             search: searchInput.trim(),
@@ -508,7 +532,7 @@ export default function IssuesPage() {
 
     return (
         <div className="enterprise-shell min-h-screen text-slate-100">
-            <EnterpriseTopNavigation activeItem="issues" projectName={PROJECT_NAME} />
+            <EnterpriseTopNavigation activeItem="issues" projectName={connectedProject?.name} />
 
             <main className="mx-auto max-w-[1480px] px-5 py-8 md:px-6 xl:px-8 xl:py-9">
                 <section className="border-b border-[var(--enterprise-border-strong)] pb-7">
@@ -517,10 +541,16 @@ export default function IssuesPage() {
                             <div className="flex flex-wrap items-center gap-3">
                                 <span className="enterprise-chip">Issues</span>
                                 <span className="text-xs text-[var(--enterprise-text-muted)]">
-                                    Search, triage, and inspect issue groups for {PROJECT_NAME}
+                                    {hasApiKey
+                                        ? `Search, triage, and inspect issue groups for ${projectLabel}`
+                                        : 'Connect a project from the dashboard before viewing issues'}
                                 </span>
                                 <span className="text-xs text-[var(--enterprise-text-dim)]">
-                                    {hasActiveFilters ? `${activeFilterCount} filters active` : 'All issues visible'}
+                                    {hasApiKey
+                                        ? hasActiveFilters
+                                            ? `${activeFilterCount} filters active`
+                                            : 'All issues visible'
+                                        : 'Project connection required'}
                                 </span>
                             </div>
                             <h1 className="mt-4 max-w-5xl text-3xl font-semibold tracking-tight text-white md:text-[2.5rem]">
@@ -538,67 +568,94 @@ export default function IssuesPage() {
                     </div>
                 </section>
 
-                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    <OverviewMetricCard
-                        label="Visible Issues"
-                        value={issues.length}
-                        accentClass="enterprise-metric-accent-orange"
-                        loading={loading && issues.length === 0}
+                {!hasApiKey ? (
+                    <DashboardSectionCard
+                        title="Connect A Project First"
+                        description="The issue workspace is project-scoped. Start from the main dashboard, create or connect a project API key, then return here."
+                        contentClassName="p-5"
                         variant="enterprise"
-                    />
-                    <OverviewMetricCard
-                        label="Open Visible"
-                        value={visibleOpenCount}
-                        accentClass="enterprise-metric-accent-red"
-                        loading={loading && issues.length === 0}
-                        variant="enterprise"
-                    />
-                    <OverviewMetricCard
-                        label="Regressions"
-                        value={visibleRegressionCount}
-                        accentClass="enterprise-metric-accent-blue"
-                        loading={loading && issues.length === 0}
-                        variant="enterprise"
-                    />
-                    <OverviewMetricCard
-                        label="Visible Events"
-                        value={visibleEventCount}
-                        accentClass="enterprise-metric-accent-green"
-                        loading={loading && issues.length === 0}
-                        variant="enterprise"
-                    />
-                </div>
+                    >
+                        <div className="enterprise-panel-muted flex flex-col items-start gap-4 rounded-[20px] p-6">
+                            <div className="max-w-2xl text-sm leading-7 text-[var(--enterprise-text-muted)]">
+                                No dashboard API key is configured right now, so there is no real
+                                project context to inspect.
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => navigate('/dashboard')}
+                                className="rounded-full border border-orange-400/20 bg-orange-500/15 px-5 py-3 text-sm font-semibold text-orange-100 transition-colors hover:border-orange-400/30 hover:bg-orange-500/20"
+                            >
+                                Open Main Dashboard
+                            </button>
+                        </div>
+                    </DashboardSectionCard>
+                ) : null}
 
-                <div className="mt-6">
-                    <IssueFilterBar
-                        searchValue={searchInput}
-                        onSearchChange={setSearchInput}
-                        status={filters.status}
-                        onStatusChange={(status) =>
-                            updateFilters({ status, search: searchInput.trim() })
-                        }
-                        environment={filters.environment}
-                        onEnvironmentChange={(environment) =>
-                            updateFilters({ environment, search: searchInput.trim() })
-                        }
-                        level={filters.level}
-                        onLevelChange={(level) =>
-                            updateFilters({ level, search: searchInput.trim() })
-                        }
-                        release={filters.release}
-                        onReleaseChange={(release) =>
-                            updateFilters({ release, search: searchInput.trim() })
-                        }
-                        environmentOptions={environmentSelectOptions}
-                        releaseOptions={releaseSelectOptions}
-                        onClearFilters={clearFilters}
-                        activeFilterCount={activeFilterCount}
-                        resultCountLabel={`${issues.length} loaded`}
-                        variant="enterprise"
-                    />
-                </div>
+                {hasApiKey ? (
+                    <>
+                        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                            <OverviewMetricCard
+                                label="Visible Issues"
+                                value={issues.length}
+                                accentClass="enterprise-metric-accent-orange"
+                                loading={loading && issues.length === 0}
+                                variant="enterprise"
+                            />
+                            <OverviewMetricCard
+                                label="Open Visible"
+                                value={visibleOpenCount}
+                                accentClass="enterprise-metric-accent-red"
+                                loading={loading && issues.length === 0}
+                                variant="enterprise"
+                            />
+                            <OverviewMetricCard
+                                label="Regressions"
+                                value={visibleRegressionCount}
+                                accentClass="enterprise-metric-accent-blue"
+                                loading={loading && issues.length === 0}
+                                variant="enterprise"
+                            />
+                            <OverviewMetricCard
+                                label="Visible Events"
+                                value={visibleEventCount}
+                                accentClass="enterprise-metric-accent-green"
+                                loading={loading && issues.length === 0}
+                                variant="enterprise"
+                            />
+                        </div>
 
-                {error ? (
+                        <div className="mt-6">
+                            <IssueFilterBar
+                                searchValue={searchInput}
+                                onSearchChange={setSearchInput}
+                                status={filters.status}
+                                onStatusChange={(status) =>
+                                    updateFilters({ status, search: searchInput.trim() })
+                                }
+                                environment={filters.environment}
+                                onEnvironmentChange={(environment) =>
+                                    updateFilters({ environment, search: searchInput.trim() })
+                                }
+                                level={filters.level}
+                                onLevelChange={(level) =>
+                                    updateFilters({ level, search: searchInput.trim() })
+                                }
+                                release={filters.release}
+                                onReleaseChange={(release) =>
+                                    updateFilters({ release, search: searchInput.trim() })
+                                }
+                                environmentOptions={environmentSelectOptions}
+                                releaseOptions={releaseSelectOptions}
+                                onClearFilters={clearFilters}
+                                activeFilterCount={activeFilterCount}
+                                resultCountLabel={`${issues.length} loaded`}
+                                variant="enterprise"
+                            />
+                        </div>
+                    </>
+                ) : null}
+
+                {hasApiKey && error ? (
                     <div className="enterprise-panel mb-6 border-l-4 border-l-amber-500 px-5 py-4">
                         <div className="flex items-start gap-3">
                             <svg className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -613,11 +670,11 @@ export default function IssuesPage() {
                     </div>
                 ) : null}
 
-                {loading && issues.length === 0 ? (
+                {hasApiKey && loading && issues.length === 0 ? (
                     <IssuesLoadingState />
-                ) : issues.length === 0 ? (
+                ) : hasApiKey && issues.length === 0 ? (
                     <IssuesEmptyState hasActiveFilters={hasActiveFilters} />
-                ) : (
+                ) : hasApiKey ? (
                     <DashboardSectionCard
                         title="Issue Stream"
                         description="Prioritized issue groups ordered by the current API response."
@@ -635,9 +692,9 @@ export default function IssuesPage() {
                             ))}
                         </div>
                     </DashboardSectionCard>
-                )}
+                ) : null}
 
-                {hasMore ? (
+                {hasApiKey && hasMore ? (
                     <div className="mt-6 flex justify-center">
                         <button
                             type="button"

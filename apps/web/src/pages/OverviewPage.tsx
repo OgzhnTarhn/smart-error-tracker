@@ -489,11 +489,16 @@ function SetupModal({
                                                 {createdProject.apiKey}
                                             </div>
                                             <div className="mt-3 flex flex-wrap gap-3">
-                                                <CopyButton label="api key" value={createdProject.apiKey} />
+                                                <CopyButton
+                                                    label="api key"
+                                                    value={createdProject.apiKey ?? ''}
+                                                />
                                                 <SecondaryButton
                                                     label="Use In Dashboard"
                                                     onClick={() =>
-                                                        onUseDashboardApiKey(createdProject.apiKey)
+                                                        onUseDashboardApiKey(
+                                                            createdProject.apiKey ?? '',
+                                                        )
                                                     }
                                                 />
                                             </div>

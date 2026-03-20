@@ -40,7 +40,7 @@ NestJS ingest API
 ## Current Status
 
 - The issue list and issue detail flows are backed by the live API and database.
-- The top-level Overview experience currently uses a mock data layer to prototype a richer enterprise analytics surface.
+- The main dashboard now focuses on project creation, API key connection, and setup guidance before users move into issue investigation.
 - Project and API key bootstrapping are available through the seed script and local-only admin endpoints.
 
 ## Repository Layout
@@ -129,6 +129,8 @@ Create `apps/web/.env.local`:
 VITE_API_BASE_URL="http://localhost:3000"
 VITE_API_KEY="set_your_generated_api_key"
 ```
+
+You can also paste a project API key directly from the main dashboard to switch the browser workspace without rebuilding the frontend.
 
 ### 7. Run the core services
 
