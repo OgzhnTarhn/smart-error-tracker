@@ -12,6 +12,8 @@ import {
     createAdminProjectApiKey,
     hasAdminConsoleAccess,
     setDashboardApiKey,
+    type DashboardStatsData,
+    type DashboardRange,
     type DashboardTrendPoint,
 } from '../lib/api';
 import {
@@ -97,6 +99,31 @@ function SecondaryButton({
     );
 }
 
+function RangeToggleButton({
+    label,
+    active,
+    onClick,
+}: {
+    label: string;
+    active: boolean;
+    onClick: () => void;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            aria-pressed={active}
+            className={`h-9 rounded-md border px-3 text-sm font-semibold transition-colors ${
+                active
+                    ? 'border-amber-600/30 bg-amber-600/10 text-amber-100'
+                    : 'border-[var(--enterprise-border)] bg-[#16181b] text-[var(--enterprise-text-muted)] hover:bg-[#1a1d20] hover:text-[var(--enterprise-text)]'
+            }`}
+        >
+            {label}
+        </button>
+    );
+}
+
 function computePeakTrendPoint(trend: DashboardTrendPoint[]) {
     return trend.reduce<DashboardTrendPoint | null>((best, point) => {
         if (!best || point.count > best.count) return point;
@@ -104,18 +131,41 @@ function computePeakTrendPoint(trend: DashboardTrendPoint[]) {
     }, null);
 }
 
+function hasProjectActivity(stats: DashboardStatsData | null) {
+    if (!stats) return false;
+
+    return (
+        stats.totals.totalEvents > 0 ||
+        stats.totals.totalIssues > 0 ||
+        stats.topIssues.length > 0 ||
+        stats.errorsByLevel.length > 0 ||
+        stats.errorsByEnvironment.length > 0 ||
+        stats.errorsByRelease.length > 0 ||
+        stats.topRoutes.length > 0
+    );
+}
+
 function EventVolumeCard({
     trend,
     loading,
+    rangeLabel,
 }: {
     trend: DashboardTrendPoint[];
     loading: boolean;
+    rangeLabel: string;
 }) {
     const total = trend.reduce((sum, point) => sum + point.count, 0);
     const peak = computePeakTrendPoint(trend);
     const maxCount = Math.max(...trend.map((point) => point.count), 0);
     const chartHeight = 180;
     const chartWidth = 620;
+    const axisStep = trend.length > 7 ? Math.ceil(trend.length / 6) : 1;
+    const axisLabels = trend.filter(
+        (_point, index) =>
+            index === 0 ||
+            index === trend.length - 1 ||
+            index % axisStep === 0,
+    );
 
     const points = trend.map((point, index) => {
         const x = trend.length === 1 ? 0 : (index / Math.max(trend.length - 1, 1)) * chartWidth;
@@ -134,7 +184,7 @@ function EventVolumeCard({
     return (
         <DashboardSectionCard
             title="Event Volume"
-            description="Observed across the selected 7 day project window."
+            description={`Observed across the selected ${rangeLabel} project window.`}
             action={<span className="enterprise-chip">{trend.length || 0} points</span>}
             contentClassName="p-4"
             variant="enterprise"
@@ -234,9 +284,11 @@ function EventVolumeCard({
                             </svg>
                         </div>
 
-                        <div className="mt-3 grid grid-cols-7 gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--enterprise-text-dim)]">
-                            {trend.map((point) => (
-                                <div key={point.date}>{point.date}</div>
+                        <div className="mt-3 flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--enterprise-text-dim)]">
+                            {axisLabels.map((point) => (
+                                <div key={point.date} className="truncate">
+                                    {point.date}
+                                </div>
                             ))}
                         </div>
                     </div>
@@ -262,6 +314,7 @@ export default function ProjectIssuesPage() {
     const [storedProject, setStoredProject] = useState(() =>
         id ? getStoredProjectRecord(id) : null,
     );
+    const [selectedRange, setSelectedRange] = useState<DashboardRange>('7d');
     const [attemptedAutoConnect, setAttemptedAutoConnect] = useState(false);
     const [connectionLoading, setConnectionLoading] = useState(false);
     const [connectError, setConnectError] = useState<string | null>(null);
@@ -366,11 +419,15 @@ export default function ProjectIssuesPage() {
 
     const projectConnected = connectedProject?.id === id;
     const {
-        stats,
-        loading: statsLoading,
-        error: statsError,
+        stats: activeStats,
+        loading: activeStatsLoading,
+        error: activeStatsError,
         refresh: refreshStats,
-    } = useDashboardStats('7d', projectConnected && hasApiKey);
+    } = useDashboardStats(selectedRange, projectConnected && hasApiKey);
+
+    const activeRangeLabel = selectedRange === '30d' ? '30 day' : '7 day';
+    const isEmptySelectedRange =
+        !activeStatsLoading && !hasProjectActivity(activeStats);
 
     if (!id) {
         return <Navigate to="/projects" replace />;
@@ -494,7 +551,7 @@ export default function ProjectIssuesPage() {
                                     {getRuntimeTypeLabel(project.runtimeType)}
                                 </span>
                                 <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--enterprise-text-dim)]">
-                                    Last 7 day telemetry window
+                                    Last {activeRangeLabel} telemetry window
                                 </span>
                             </div>
 
@@ -509,6 +566,18 @@ export default function ProjectIssuesPage() {
                         </div>
 
                         <div className="flex shrink-0 flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-2">
+                                <RangeToggleButton
+                                    label="7d"
+                                    active={selectedRange === '7d'}
+                                    onClick={() => setSelectedRange('7d')}
+                                />
+                                <RangeToggleButton
+                                    label="30d"
+                                    active={selectedRange === '30d'}
+                                    onClick={() => setSelectedRange('30d')}
+                                />
+                            </div>
                             <SecondaryButton
                                 label="Project Setup"
                                 onClick={() => navigate(`/projects/${id}/setup`)}
@@ -518,66 +587,74 @@ export default function ProjectIssuesPage() {
                                 onClick={() => navigate('/issues')}
                             />
                             <PrimaryButton
-                                label={statsLoading ? 'Refreshing...' : 'Refresh'}
+                                label={activeStatsLoading ? 'Refreshing...' : 'Refresh'}
                                 onClick={() => void refreshStats()}
                             />
                         </div>
                     </div>
                 </section>
 
-                {statsError ? (
+                {selectedRange === '7d' && isEmptySelectedRange ? (
+                    <div className="rounded-md border border-blue-500/20 bg-blue-500/10 px-3.5 py-3 text-sm text-blue-100">
+                        No activity was found in the last 7 days for this project. Switch to
+                        `30d` to inspect older project telemetry.
+                    </div>
+                ) : null}
+
+                {activeStatsError ? (
                     <div className="rounded-md border border-amber-600/20 bg-amber-600/10 px-3.5 py-3 text-sm text-amber-200">
-                        {statsError}
+                        {activeStatsError}
                     </div>
                 ) : null}
 
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-5">
                     <OverviewMetricCard
                         label="Total Events"
-                        value={stats?.totals.totalEvents ?? 0}
+                        value={activeStats?.totals.totalEvents ?? 0}
                         accentClass="enterprise-metric-accent-blue"
-                        loading={statsLoading && !stats}
+                        loading={activeStatsLoading && !activeStats}
                         variant="enterprise"
                     />
                     <OverviewMetricCard
                         label="Total Issues"
-                        value={stats?.totals.totalIssues ?? 0}
+                        value={activeStats?.totals.totalIssues ?? 0}
                         accentClass="enterprise-metric-accent-orange"
-                        loading={statsLoading && !stats}
+                        loading={activeStatsLoading && !activeStats}
                         variant="enterprise"
                     />
                     <OverviewMetricCard
                         label="Open"
-                        value={stats?.totals.openIssues ?? 0}
+                        value={activeStats?.totals.openIssues ?? 0}
                         accentClass="enterprise-metric-accent-red"
-                        loading={statsLoading && !stats}
+                        loading={activeStatsLoading && !activeStats}
                         variant="enterprise"
                     />
                     <OverviewMetricCard
                         label="Resolved"
-                        value={stats?.totals.resolvedIssues ?? 0}
+                        value={activeStats?.totals.resolvedIssues ?? 0}
                         accentClass="enterprise-metric-accent-green"
-                        loading={statsLoading && !stats}
+                        loading={activeStatsLoading && !activeStats}
                         variant="enterprise"
                     />
                     <OverviewMetricCard
                         label="Ignored"
-                        value={stats?.totals.ignoredIssues ?? 0}
+                        value={activeStats?.totals.ignoredIssues ?? 0}
                         accentClass="enterprise-metric-accent-slate"
-                        loading={statsLoading && !stats}
+                        loading={activeStatsLoading && !activeStats}
                         variant="enterprise"
                     />
                 </div>
 
                 <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,1fr)]">
                     <EventVolumeCard
-                        trend={stats?.trend7d ?? []}
-                        loading={statsLoading && !stats}
+                        trend={activeStats?.trend7d ?? []}
+                        loading={activeStatsLoading && !activeStats}
+                        rangeLabel={activeRangeLabel}
                     />
 
                     <TopIssuesCard
-                        issues={stats?.topIssues ?? []}
-                        loading={statsLoading && !stats}
+                        issues={activeStats?.topIssues ?? []}
+                        loading={activeStatsLoading && !activeStats}
                         onSelectIssue={(issueId) => navigate(`/issues/${issueId}`)}
                         onViewAll={() => navigate('/issues')}
                         formatRelativeTime={formatRelativeTime}
@@ -589,9 +666,9 @@ export default function ProjectIssuesPage() {
                     <DistributionListCard
                         title="Errors by Level"
                         description="Severity distribution across the current project stream."
-                        items={stats?.errorsByLevel ?? []}
+                        items={activeStats?.errorsByLevel ?? []}
                         emptyMessage="No level distribution available yet."
-                        loading={statsLoading && !stats}
+                        loading={activeStatsLoading && !activeStats}
                         showPercentage
                         variant="enterprise"
                     />
@@ -599,9 +676,9 @@ export default function ProjectIssuesPage() {
                     <DistributionListCard
                         title="Errors by Environment"
                         description="Environment breakdown for the incoming event volume."
-                        items={stats?.errorsByEnvironment ?? []}
+                        items={activeStats?.errorsByEnvironment ?? []}
                         emptyMessage="No environment data has been captured yet."
-                        loading={statsLoading && !stats}
+                        loading={activeStatsLoading && !activeStats}
                         mode="donut"
                         variant="enterprise"
                     />
@@ -609,9 +686,9 @@ export default function ProjectIssuesPage() {
                     <DistributionListCard
                         title="Top Failing Routes"
                         description="Most error-prone endpoints in the selected project window."
-                        items={stats?.topRoutes ?? []}
+                        items={activeStats?.topRoutes ?? []}
                         emptyMessage="No route metadata has been captured yet."
-                        loading={statsLoading && !stats}
+                        loading={activeStatsLoading && !activeStats}
                         monospaceLabels
                         barClassName="bg-gradient-to-r from-amber-600 to-orange-400"
                         variant="enterprise"
@@ -620,9 +697,9 @@ export default function ProjectIssuesPage() {
                     <DistributionListCard
                         title="Errors by Release"
                         description="How releases are contributing to the current issue load."
-                        items={stats?.errorsByRelease ?? []}
+                        items={activeStats?.errorsByRelease ?? []}
                         emptyMessage="No release metadata has been captured yet."
-                        loading={statsLoading && !stats}
+                        loading={activeStatsLoading && !activeStats}
                         monospaceLabels
                         barClassName="bg-gradient-to-r from-amber-500 to-yellow-400"
                         variant="enterprise"
@@ -663,7 +740,7 @@ export default function ProjectIssuesPage() {
                         variant="enterprise"
                     >
                         <div className="space-y-3">
-                            {(stats?.topIssues ?? []).slice(0, 3).map((issue) => (
+                            {(activeStats?.topIssues ?? []).slice(0, 3).map((issue) => (
                                 <button
                                     key={issue.id}
                                     type="button"
@@ -683,7 +760,7 @@ export default function ProjectIssuesPage() {
                                     </div>
                                 </button>
                             ))}
-                            {(stats?.topIssues?.length ?? 0) === 0 && !statsLoading ? (
+                            {(activeStats?.topIssues?.length ?? 0) === 0 && !activeStatsLoading ? (
                                 <div className="rounded-md border border-[var(--enterprise-border)] bg-[#16181b] px-4 py-4 text-sm text-[var(--enterprise-text-muted)]">
                                     No issue pressure to report yet.
                                 </div>
