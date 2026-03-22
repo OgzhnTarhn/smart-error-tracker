@@ -138,6 +138,42 @@ export const createAdminProject = (body: CreateAdminProjectRequest) =>
 export const getAdminProjects = () =>
     adminFetch<AdminProjectsResponse>('/admin/projects');
 
+export interface AdminProjectApiKeyListItem {
+    id: string;
+    label: string | null;
+    createdAt: string;
+    revokedAt: string | null;
+}
+
+export interface AdminProjectApiKeysResponse {
+    ok?: boolean;
+    keys?: AdminProjectApiKeyListItem[];
+    error?: string;
+}
+
+export interface CreateAdminProjectApiKeyRequest {
+    label?: string;
+}
+
+export interface CreateAdminProjectApiKeyResponse {
+    ok?: boolean;
+    apiKey?: string;
+    keyId?: string;
+    error?: string;
+}
+
+export const getAdminProjectApiKeys = (projectId: string) =>
+    adminFetch<AdminProjectApiKeysResponse>(`/admin/projects/${projectId}/keys`);
+
+export const createAdminProjectApiKey = (
+    projectId: string,
+    body: CreateAdminProjectApiKeyRequest,
+) =>
+    adminFetch<CreateAdminProjectApiKeyResponse>(`/admin/projects/${projectId}/keys`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+    });
+
 export interface ProjectContext {
     id: string;
     name: string;

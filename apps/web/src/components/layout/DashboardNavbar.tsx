@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 
-type NavItemKey = 'dashboard' | 'projects' | 'issues' | 'alerts';
+type NavItemKey = 'dashboard' | 'projects' | 'issues' | 'settings';
 
 interface DashboardNavbarProps {
     activeItem?: NavItemKey;
@@ -9,14 +9,15 @@ interface DashboardNavbarProps {
 
 const NAV_ITEMS: Array<{ key: NavItemKey; label: string; path?: string }> = [
     { key: 'dashboard', label: 'Dashboard', path: '/dashboard' },
-    { key: 'projects', label: 'Projects', path: '/' },
+    { key: 'projects', label: 'Projects', path: '/projects' },
     { key: 'issues', label: 'Issues', path: '/issues' },
-    { key: 'alerts', label: 'Alerts' },
+    { key: 'settings', label: 'Settings', path: '/settings' },
 ];
 
 function resolveActiveItem(pathname: string): NavItemKey {
     if (pathname === '/dashboard') return 'dashboard';
     if (pathname === '/issues' || pathname.startsWith('/issues/')) return 'issues';
+    if (pathname === '/settings') return 'settings';
     return 'projects';
 }
 
@@ -34,7 +35,7 @@ export default function DashboardNavbar({
                 <div className="flex items-center gap-6 text-slate-100">
                     <button
                         type="button"
-                        onClick={() => navigate('/')}
+                        onClick={() => navigate('/dashboard')}
                         className="flex items-center gap-2 cursor-pointer"
                     >
                         <svg className="w-7 h-7 text-orange-500" viewBox="0 0 24 24" fill="currentColor">

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 
-type NavItemKey = 'dashboard' | 'projects' | 'issues' | 'alerts';
+type NavItemKey = 'dashboard' | 'projects' | 'issues' | 'settings';
 
 interface EnterpriseTopNavigationProps {
     activeItem: NavItemKey;
@@ -17,7 +17,7 @@ const NAV_ITEMS: Array<{
     { key: 'dashboard', label: 'Dashboard', path: '/dashboard' },
     { key: 'projects', label: 'Projects', path: '/projects' },
     { key: 'issues', label: 'Issues', path: '/issues' },
-    { key: 'alerts', label: 'Alerts' },
+    { key: 'settings', label: 'Settings', path: '/settings' },
 ];
 
 export default function EnterpriseTopNavigation({

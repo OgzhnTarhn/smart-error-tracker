@@ -48,12 +48,20 @@ interface UseDashboardStatsResult {
 
 export function useDashboardStats(
     range: DashboardRange = '7d',
+    enabled = true,
 ): UseDashboardStatsResult {
     const [stats, setStats] = useState<DashboardStatsData | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(enabled);
     const [error, setError] = useState<string | null>(null);
 
     const refresh = useCallback(async () => {
+        if (!enabled) {
+            setStats(null);
+            setError(null);
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         setError(null);
 
@@ -73,7 +81,7 @@ export function useDashboardStats(
         } finally {
             setLoading(false);
         }
-    }, [range]);
+    }, [enabled, range]);
 
     useEffect(() => {
         void refresh();
