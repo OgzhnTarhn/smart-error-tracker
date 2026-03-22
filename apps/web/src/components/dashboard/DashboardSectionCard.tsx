@@ -19,7 +19,7 @@ export default function DashboardSectionCard({
     action,
     children,
     className = '',
-    contentClassName = 'p-5',
+    contentClassName = 'p-4',
     headerClassName = '',
     variant = 'default',
 }: DashboardSectionCardProps) {
@@ -32,22 +32,22 @@ export default function DashboardSectionCard({
             } ${className}`}
         >
             <div
-                className={`flex justify-between gap-4 ${
+                className={`flex justify-between gap-3 ${
                     isEnterprise
-                        ? 'items-start border-b border-[var(--enterprise-border)] px-6 py-5'
-                        : 'items-center px-5 py-4'
+                        ? 'items-start border-b border-[var(--enterprise-border)] px-4 py-3.5'
+                        : 'items-center px-4 py-3'
                 } ${headerClassName}`}
             >
                 <div className="min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
                         {icon ? (
-                            <span className={isEnterprise ? 'text-[13px] text-orange-300' : 'text-lg'}>
+                            <span className={isEnterprise ? 'text-[12px] text-amber-600' : 'text-base'}>
                                 {icon}
                             </span>
                         ) : null}
                         <h2
-                            className={`truncate font-semibold tracking-tight text-white ${
-                                isEnterprise ? 'text-lg' : 'text-sm'
+                            className={`truncate font-semibold tracking-tight text-[var(--enterprise-text)] ${
+                                isEnterprise ? 'text-base' : 'text-sm'
                             }`}
                         >
                             {title}
@@ -57,7 +57,7 @@ export default function DashboardSectionCard({
                         <p
                             className={`${
                                 isEnterprise
-                                    ? 'mt-1.5 text-sm leading-6 text-[var(--enterprise-text-muted)]'
+                                    ? 'mt-1 text-xs leading-5 text-[var(--enterprise-text-muted)]'
                                     : 'mt-0.5 truncate text-xs text-[var(--dash-text-muted)]'
                             }`}
                         >

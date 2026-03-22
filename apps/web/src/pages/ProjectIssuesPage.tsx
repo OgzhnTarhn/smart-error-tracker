@@ -19,7 +19,7 @@ function PrimaryButton({
         <button
             type="button"
             onClick={onClick}
-            className="rounded-full border border-orange-400/20 bg-orange-500/15 px-5 py-3 text-sm font-semibold text-orange-100 transition-colors hover:border-orange-400/30 hover:bg-orange-500/20"
+            className="ui-primary-button h-9 px-3 text-sm font-semibold"
         >
             {label}
         </button>
@@ -37,7 +37,7 @@ function SecondaryButton({
         <button
             type="button"
             onClick={onClick}
-            className="rounded-full border border-[var(--enterprise-border)] bg-white/[0.03] px-5 py-3 text-sm font-semibold text-[var(--enterprise-text-muted)] transition-colors hover:border-white/12 hover:text-white"
+            className="ui-secondary-button h-9 px-3 text-sm font-semibold"
         >
             {label}
         </button>
@@ -75,7 +75,12 @@ export default function ProjectIssuesPage() {
     );
 
     useEffect(() => {
-        if (!id || !storedProject?.apiKey || connectedProject?.id === id || attemptedAutoConnect) {
+        if (
+            !id
+            || !storedProject?.apiKey
+            || connectedProject?.id === id
+            || attemptedAutoConnect
+        ) {
             return;
         }
 
@@ -118,39 +123,39 @@ export default function ProjectIssuesPage() {
     }
 
     const isAutoConnecting =
-        Boolean(storedProject?.apiKey) &&
-        connectedProject?.id !== id &&
-        !connectError &&
-        (workspaceLoading || attemptedAutoConnect);
+        Boolean(storedProject?.apiKey)
+        && connectedProject?.id !== id
+        && !connectError
+        && (workspaceLoading || attemptedAutoConnect);
 
     if (isAutoConnecting) {
         return (
-            <div className="enterprise-shell min-h-screen text-slate-100">
+            <div className="enterprise-shell min-h-screen text-[var(--enterprise-text)]">
                 <EnterpriseTopNavigation activeItem="issues" showSearch={false} />
-                <main className="mx-auto max-w-[920px] px-5 py-8 md:px-6 xl:px-8 xl:py-9">
-                    <div className="enterprise-panel-soft h-80 animate-pulse rounded-[30px] border border-[var(--enterprise-border)]" />
+                <main className="mx-auto max-w-3xl px-4 py-5 sm:px-6 md:px-8 md:py-6">
+                    <div className="enterprise-panel-soft h-64 animate-pulse rounded-md" />
                 </main>
             </div>
         );
     }
 
     return (
-        <div className="enterprise-shell min-h-screen text-slate-100">
+        <div className="enterprise-shell min-h-screen text-[var(--enterprise-text)]">
             <EnterpriseTopNavigation activeItem="issues" showSearch={false} />
 
-            <main className="mx-auto max-w-[920px] px-5 py-8 md:px-6 xl:px-8 xl:py-9">
+            <main className="mx-auto max-w-3xl px-4 py-5 sm:px-6 md:px-8 md:py-6">
                 <DashboardSectionCard
                     title="Project Issues"
                     description="This route keeps the issues workspace anchored to project setup."
-                    contentClassName="p-6"
+                    contentClassName="p-4"
                     variant="enterprise"
                 >
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         <div>
-                            <h2 className="text-2xl font-semibold text-white">
+                            <h2 className="text-lg font-semibold text-[var(--enterprise-text)]">
                                 {project?.name ?? 'Project issues workspace'}
                             </h2>
-                            <p className="mt-3 text-sm leading-7 text-[var(--enterprise-text-muted)]">
+                            <p className="mt-2 text-sm leading-6 text-[var(--enterprise-text-muted)]">
                                 {project?.isDraft
                                     ? 'This is a local draft. Generate a real project and API key before issues can load from the backend.'
                                     : storedProject?.apiKey
@@ -160,18 +165,22 @@ export default function ProjectIssuesPage() {
                         </div>
 
                         {connectedProject ? (
-                            <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-[var(--enterprise-text-muted)]">
-                                Dashboard is currently connected to <span className="text-white">{connectedProject.name}</span>.
+                            <div className="rounded-md border border-[var(--enterprise-border)] bg-[#16181b] px-3.5 py-3 text-sm text-[var(--enterprise-text-muted)]">
+                                Dashboard is currently connected to{' '}
+                                <span className="text-[var(--enterprise-text)]">
+                                    {connectedProject.name}
+                                </span>
+                                .
                             </div>
                         ) : null}
 
                         {connectError ? (
-                            <div className="rounded-[18px] border border-red-500/20 bg-red-500/10 px-4 py-4 text-sm text-red-100">
+                            <div className="rounded-md border border-red-500/20 bg-red-500/10 px-3.5 py-3 text-sm text-red-100">
                                 {connectError}
                             </div>
                         ) : null}
 
-                        <div className="flex flex-wrap gap-3">
+                        <div className="flex flex-wrap gap-2">
                             <PrimaryButton
                                 label="Open Setup"
                                 onClick={() => navigate(`/projects/${id}/setup`)}

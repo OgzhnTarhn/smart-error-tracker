@@ -15,11 +15,11 @@ export default function CodeSnippetCard({
 }: CodeSnippetCardProps) {
     return (
         <div className="enterprise-panel-muted overflow-hidden">
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--enterprise-border)] px-4 py-4">
+            <div className="flex flex-wrap items-start justify-between gap-2 border-b border-[var(--enterprise-border)] px-3.5 py-3">
                 <div className="min-w-0">
-                    <div className="text-sm font-semibold text-white">{title}</div>
+                    <div className="text-sm font-semibold text-[var(--enterprise-text)]">{title}</div>
                     {description ? (
-                        <p className="mt-1 text-sm leading-6 text-[var(--enterprise-text-muted)]">
+                        <p className="mt-1 text-xs leading-5 text-[var(--enterprise-text-muted)]">
                             {description}
                         </p>
                     ) : null}
@@ -27,7 +27,7 @@ export default function CodeSnippetCard({
                 <CopyButton label={copyLabel} value={code} />
             </div>
 
-            <pre className="overflow-x-auto px-4 py-4 text-sm leading-7 text-orange-50">
+            <pre className="ui-terminal-block overflow-x-auto px-3.5 py-3 text-[13px] leading-6">
                 <code>{code}</code>
             </pre>
         </div>

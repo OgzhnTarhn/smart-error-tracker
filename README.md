@@ -1,9 +1,10 @@
 # Smart Error Tracker
 
-Smart Error Tracker is a Sentry-inspired error monitoring platform for modern TypeScript applications. It combines a NestJS ingest API, a React investigation dashboard, and lightweight Node.js and browser SDKs so teams can capture runtime failures, group them into actionable issues, and investigate them from one place.
+Smart Error Tracker is a Sentry-inspired error monitoring platform for modern TypeScript applications. It combines a NestJS ingest API, a React dashboard, and lightweight Node.js and browser SDKs so teams can create a project, connect an SDK, capture runtime failures, group them into actionable issues, and investigate them from one place.
 
 ## Highlights
 
+- Guided dashboard onboarding flow: `Dashboard -> Create Project -> Project Setup -> Issues`
 - Browser and Node.js SDKs for automatic capture, manual reporting, and Express middleware integration
 - Project-scoped API keys for ingestion and dashboard access
 - Fingerprint-based issue grouping to collapse repeated failures into a single investigation unit
@@ -40,15 +41,41 @@ NestJS ingest API
 ## Current Status
 
 - The issue list and issue detail flows are backed by the live API and database.
-- The main dashboard now focuses on project creation, API key connection, and setup guidance before users move into issue investigation.
+- The main dashboard is now productized around project creation, setup guidance, and a cleaner first-run experience.
 - Project and API key bootstrapping are available through the seed script and local-only admin endpoints.
+- When admin endpoints are not enabled in the frontend, the dashboard still supports draft project setup flows in browser-local state.
+
+## Dashboard Flow
+
+The intended first-run path is:
+
+```text
+/dashboard
+    -> /projects
+    -> /projects/new
+    -> /projects/:id/setup
+    -> /projects/:id/issues
+```
+
+Primary routes:
+
+| Route | Purpose |
+| --- | --- |
+| `/dashboard` | Welcome page with summary metrics, onboarding checklist, and recent issue preview |
+| `/projects` | Project listing with setup and issues entry points |
+| `/projects/new` | Minimal create-project form |
+| `/projects/:id/setup` | Guided onboarding with install, init, API key, and test-event steps |
+| `/projects/:id/issues` | Project-aware bridge into the issues workspace |
+| `/issues` | Main live issue list for the currently connected dashboard project |
+| `/issues/:id` | Issue detail and investigation workspace |
+| `/settings` | Minimal workspace settings surface |
 
 ## Repository Layout
 
 | Path | Purpose |
 | --- | --- |
 | `apps/api` | NestJS API for ingestion, grouping, project/key management, source maps, and AI enrichment |
-| `apps/web` | React + Vite dashboard for overview, issue list, and issue detail workflows |
+| `apps/web` | React + Vite dashboard for onboarding, project management, issue list, and issue detail workflows |
 | `apps/demo-api` | Express demo application using the Node SDK |
 | `apps/demo-web` | Browser demo application using the browser SDK |
 | `packages/sdk-node` | Node.js SDK with manual capture, global handlers, and Express error middleware |
@@ -121,16 +148,27 @@ The script prints:
 
 Keep the API key. It is only shown once and is required by the dashboard and SDKs.
 
+You can also create projects from the dashboard after startup if `VITE_ADMIN_TOKEN` is configured in the web app and matches the API `ADMIN_TOKEN`.
+
 ### 6. Configure the dashboard
 
 Create `apps/web/.env.local`:
 
 ```dotenv
 VITE_API_BASE_URL="http://localhost:3000"
-VITE_API_KEY="set_your_generated_api_key"
+
+# Optional: connects the dashboard to a project immediately
+# VITE_API_KEY="set_your_generated_api_key"
+
+# Optional: enables local dashboard project creation and key generation
+# VITE_ADMIN_TOKEN="dev-admin-token"
 ```
 
-You can also paste a project API key directly from the main dashboard to switch the browser workspace without rebuilding the frontend.
+Notes:
+
+- `VITE_API_KEY` is optional. Without it, the dashboard still loads and guides the user through project creation and setup.
+- `VITE_ADMIN_TOKEN` is optional. Without it, the dashboard falls back to local draft setup flows instead of calling admin endpoints.
+- You can paste or generate a project API key from the setup flow to switch the browser workspace without rebuilding the frontend.
 
 ### 7. Run the core services
 
@@ -150,6 +188,17 @@ Defaults:
 - Dashboard: `http://localhost:5173`
 
 The API currently allows CORS from `http://localhost:*` during local development.
+
+### 8. Walk the onboarding flow
+
+Once the dashboard is running:
+
+1. Open `/dashboard`
+2. Create a project from `/projects/new`
+3. Continue to `/projects/:id/setup`
+4. Copy the SDK snippet and API key
+5. Send a test event
+6. Open `/projects/:id/issues` or `/issues`
 
 ## Running the Demo Apps
 
@@ -245,7 +294,8 @@ For the full SDK APIs, DSN mode, and advanced usage, see:
 | Variable | Required | Description |
 | --- | --- | --- |
 | `VITE_API_BASE_URL` | No | API base URL, defaults to `http://localhost:3000` |
-| `VITE_API_KEY` | Yes | Project API key sent as `x-api-key` for dashboard requests |
+| `VITE_API_KEY` | No | Project API key sent as `x-api-key` for dashboard requests |
+| `VITE_ADMIN_TOKEN` | No | Enables local dashboard project creation and API key generation through `/admin/*` |
 
 ## Development Commands
 
@@ -262,7 +312,8 @@ pnpm --filter @smart-error-tracker/browser build
 
 ## Notes
 
-- Most API and dashboard routes are project-scoped through the `x-api-key` header.
+- Most API and dashboard issue routes are project-scoped through the `x-api-key` header.
+- The dashboard can boot without a connected API key and then connect later from the onboarding flow.
 - Source map resolution expects `.map` files to be reachable by the API server.
 - Admin endpoints are intentionally disabled in production mode.
 - Package-level notes are available in `apps/api/README.md`, `apps/web/README.md`, and the SDK READMEs.

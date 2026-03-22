@@ -30,18 +30,18 @@ export default function DashboardNavbar({
     const resolvedActiveItem = activeItem ?? resolveActiveItem(pathname);
 
     return (
-        <nav className="dash-navbar z-40 border-b border-[var(--dash-border)] bg-[#10101a]">
+        <nav className="dash-navbar z-40 border-b border-[var(--dash-border)] bg-[#111315]">
             <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between gap-4 px-4 py-3 sm:px-6">
-                <div className="flex items-center gap-6 text-slate-100">
+                <div className="flex items-center gap-6 text-[var(--dash-text)]">
                     <button
                         type="button"
                         onClick={() => navigate('/dashboard')}
                         className="flex items-center gap-2 cursor-pointer"
                     >
-                        <svg className="w-7 h-7 text-orange-500" viewBox="0 0 24 24" fill="currentColor">
+                        <svg className="h-7 w-7 text-amber-600" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 2L2 19h20L12 2zm0 4l6.5 11h-13L12 6z" />
                         </svg>
-                        <span className="text-base font-bold text-white">Smart Error Tracker</span>
+                        <span className="text-base font-bold text-[var(--dash-text)]">Smart Error Tracker</span>
                     </button>
 
                     <div className="flex items-center gap-2">
@@ -56,15 +56,15 @@ export default function DashboardNavbar({
                                     disabled={isDisabled}
                                     onClick={() => item.path && navigate(item.path)}
                                     className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${isActive
-                                        ? 'border-orange-500/40 bg-orange-500/10 text-orange-300'
+                                        ? 'border-[var(--dash-border-strong)] bg-[#1a1d20] text-[var(--dash-text)]'
                                         : isDisabled
                                             ? 'border-transparent text-[var(--dash-text-dim)] cursor-default'
-                                            : 'border-transparent text-[var(--dash-text-muted)] hover:text-white hover:bg-white/5'
+                                            : 'border-transparent text-[var(--dash-text-muted)] hover:border-[var(--dash-border)] hover:bg-[#1a1d20] hover:text-[var(--dash-text)]'
                                         }`}
                                 >
                                     <span className="font-medium">{item.label}</span>
                                     {item.key === 'issues' && projectName ? (
-                                        <span className="ml-2 rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-[var(--dash-text-dim)]">
+                                        <span className="ml-2 rounded bg-[#1a1d20] px-1.5 py-0.5 text-[10px] text-[var(--dash-text-dim)]">
                                             {projectName}
                                         </span>
                                     ) : null}
@@ -74,7 +74,7 @@ export default function DashboardNavbar({
                     </div>
                 </div>
 
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-xs font-bold text-white">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--dash-border)] bg-[#1a1d20] text-xs font-bold text-[var(--dash-text)]">
                     U
                 </div>
             </div>

@@ -30,15 +30,15 @@ export default function EnterpriseTopNavigation({
 
     return (
         <header className="enterprise-header-glass sticky top-0 z-30 border-b border-[var(--enterprise-border-strong)]">
-            <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-4 px-5 py-3 md:px-6 xl:px-8">
-                <div className="flex min-w-0 items-center gap-6 xl:gap-8">
+            <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6 md:px-8">
+                <div className="flex min-w-0 items-center gap-4 lg:gap-6">
                     <button
                         type="button"
                         onClick={() => navigate('/dashboard')}
-                        className="flex shrink-0 items-center gap-3 text-left"
+                        className="flex shrink-0 items-center gap-2.5 text-left"
                     >
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-orange-400/20 bg-orange-500/15 text-orange-200 shadow-[0_0_18px_rgba(249,115,22,0.18)]">
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-md border border-amber-600/25 bg-amber-600/10 text-amber-600">
+                            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -48,16 +48,16 @@ export default function EnterpriseTopNavigation({
                             </svg>
                         </div>
                         <div className="hidden leading-none sm:block">
-                            <div className="text-sm font-bold uppercase tracking-[0.04em] text-white">
+                            <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--enterprise-text)]">
                                 Smart Error Tracker
                             </div>
-                            <div className="mt-1 text-[10px] uppercase tracking-[0.24em] text-[var(--enterprise-text-dim)]">
+                            <div className="mt-1 text-[9px] uppercase tracking-[0.22em] text-[var(--enterprise-text-dim)]">
                                 Enterprise Monitor
                             </div>
                         </div>
                     </button>
 
-                    <nav className="hidden items-center gap-6 md:flex">
+                    <nav className="hidden items-center gap-2 md:flex">
                         {NAV_ITEMS.map((item) => {
                             const isActive = item.key === activeItem;
                             const isDisabled = !item.path;
@@ -69,15 +69,15 @@ export default function EnterpriseTopNavigation({
                                     onClick={() => item.path && navigate(item.path)}
                                     disabled={isDisabled}
                                     aria-current={isActive ? 'page' : undefined}
-                                    className={`rounded-full border px-3.5 py-2 text-sm font-medium transition-colors ${
+                                    className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
                                         isActive
-                                            ? 'border-orange-500/30 bg-orange-500/12 text-white shadow-[0_10px_24px_rgba(249,115,22,0.08)]'
-                                            : 'border-transparent text-[var(--enterprise-text-muted)] hover:border-white/8 hover:bg-white/[0.04] hover:text-white'
+                                            ? 'border-[var(--enterprise-border-strong)] bg-[#1a1d20] text-[var(--enterprise-text)]'
+                                            : 'border-transparent text-[var(--enterprise-text-muted)] hover:border-[var(--enterprise-border)] hover:bg-[#1a1d20] hover:text-[var(--enterprise-text)]'
                                     } ${isDisabled ? 'cursor-default opacity-70 hover:border-transparent hover:bg-transparent hover:text-[var(--enterprise-text-muted)]' : ''}`}
                                 >
                                     {item.label}
                                     {item.key === 'issues' && projectName ? (
-                                        <span className="ml-2 rounded-full border border-white/8 bg-white/5 px-2 py-0.5 text-[10px] text-[var(--enterprise-text-dim)]">
+                                        <span className="ml-2 rounded-full border border-[var(--enterprise-border)] bg-[#16181b] px-1.5 py-0.5 text-[9px] uppercase tracking-[0.12em] text-[var(--enterprise-text-dim)]">
                                             {projectName}
                                         </span>
                                     ) : null}
@@ -87,11 +87,11 @@ export default function EnterpriseTopNavigation({
                     </nav>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                     {showSearch ? (
                         <div className="relative hidden xl:block">
                             <svg
-                                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--enterprise-text-dim)]"
+                                className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--enterprise-text-dim)]"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -106,16 +106,16 @@ export default function EnterpriseTopNavigation({
                             <input
                                 type="text"
                                 placeholder="Search projects, issues, releases"
-                                className="w-72 rounded-full border border-[var(--enterprise-border)] bg-[#0d0d0d] py-2.5 pl-9 pr-4 text-sm text-slate-200 outline-none placeholder:text-[var(--enterprise-text-dim)] focus:border-orange-500/40"
+                                className="ui-input h-8 w-64 rounded-md py-1.5 pl-8 pr-3 text-sm"
                             />
                         </div>
                     ) : null}
                     <button
                         type="button"
-                        className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[var(--enterprise-border)] bg-white/[0.03] text-[var(--enterprise-text-muted)] transition-colors hover:text-white"
+                        className="relative flex h-8 w-8 items-center justify-center rounded-md border border-[var(--enterprise-border)] bg-[#16181b] text-[var(--enterprise-text-muted)] transition-colors hover:bg-[#1a1d20] hover:text-[var(--enterprise-text)]"
                     >
-                        <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-orange-400 ring-2 ring-[#050505]" />
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-amber-600" />
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
@@ -124,7 +124,7 @@ export default function EnterpriseTopNavigation({
                             />
                         </svg>
                     </button>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/8 bg-gradient-to-br from-[#203133] to-[#162325] text-xs font-semibold text-emerald-100 shadow-[0_10px_28px_rgba(0,0,0,0.2)]">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--enterprise-border)] bg-[#1a1d20] text-[11px] font-semibold text-[var(--enterprise-text)]">
                         {avatarLabel}
                     </div>
                 </div>

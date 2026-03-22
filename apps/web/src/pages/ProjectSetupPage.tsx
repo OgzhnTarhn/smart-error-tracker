@@ -52,7 +52,7 @@ function PrimaryButton({
             type="button"
             onClick={onClick}
             disabled={disabled}
-            className="rounded-full border border-orange-400/20 bg-orange-500/15 px-5 py-3 text-sm font-semibold text-orange-100 transition-colors hover:border-orange-400/30 hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+            className="ui-primary-button h-9 px-3 text-sm font-semibold"
         >
             {label}
         </button>
@@ -73,7 +73,7 @@ function SecondaryButton({
             type="button"
             onClick={onClick}
             disabled={disabled}
-            className="rounded-full border border-[var(--enterprise-border)] bg-white/[0.03] px-5 py-3 text-sm font-semibold text-[var(--enterprise-text-muted)] transition-colors hover:border-white/12 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="ui-secondary-button h-9 px-3 text-sm font-semibold"
         >
             {label}
         </button>
@@ -90,12 +90,14 @@ function StepHeader({
     description: string;
 }) {
     return (
-        <div className="mb-5">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-200">
+        <div className="mb-4">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-600">
                 {step}
             </div>
-            <h2 className="mt-2 text-2xl font-semibold text-white">{title}</h2>
-            <p className="mt-2 text-sm leading-7 text-[var(--enterprise-text-muted)]">
+            <h2 className="mt-1.5 text-lg font-semibold text-[var(--enterprise-text)]">
+                {title}
+            </h2>
+            <p className="mt-1.5 text-sm leading-6 text-[var(--enterprise-text-muted)]">
                 {description}
             </p>
         </div>
@@ -104,9 +106,9 @@ function StepHeader({
 
 function KeyHistoryRow({ item }: { item: AdminProjectApiKeyListItem }) {
     return (
-        <div className="enterprise-panel-soft flex items-center justify-between gap-4 rounded-[18px] border border-[var(--enterprise-border)] px-4 py-3">
+        <div className="flex items-center justify-between gap-3 py-3">
             <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-white">
+                <div className="truncate text-sm font-semibold text-[var(--enterprise-text)]">
                     {item.label ?? 'Generated key'}
                 </div>
                 <div className="mt-1 text-xs text-[var(--enterprise-text-dim)]">
@@ -224,10 +226,10 @@ export default function ProjectSetupPage() {
 
     if (!project && (projectsLoading || workspaceLoading)) {
         return (
-            <div className="enterprise-shell min-h-screen text-slate-100">
+            <div className="enterprise-shell min-h-screen text-[var(--enterprise-text)]">
                 <EnterpriseTopNavigation activeItem="projects" showSearch={false} />
-                <main className="mx-auto max-w-[1480px] px-5 py-8 md:px-6 xl:px-8 xl:py-9">
-                    <div className="enterprise-panel-soft h-80 animate-pulse rounded-[30px] border border-[var(--enterprise-border)]" />
+                <main className="mx-auto max-w-6xl px-4 py-5 sm:px-6 md:px-8 md:py-6">
+                    <div className="enterprise-panel-soft h-64 animate-pulse rounded-md" />
                 </main>
             </div>
         );
@@ -235,22 +237,22 @@ export default function ProjectSetupPage() {
 
     if (!project) {
         return (
-            <div className="enterprise-shell min-h-screen text-slate-100">
+            <div className="enterprise-shell min-h-screen text-[var(--enterprise-text)]">
                 <EnterpriseTopNavigation activeItem="projects" showSearch={false} />
-                <main className="mx-auto max-w-[920px] px-5 py-8 md:px-6 xl:px-8 xl:py-9">
+                <main className="mx-auto max-w-3xl px-4 py-5 sm:px-6 md:px-8 md:py-6">
                     <DashboardSectionCard
                         title="Project Not Found"
                         description="This project is no longer available in the current browser session."
-                        contentClassName="p-6"
+                        contentClassName="p-4"
                         variant="enterprise"
                     >
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             {projectsError ? (
-                                <div className="rounded-[18px] border border-amber-500/20 bg-amber-500/10 px-4 py-4 text-sm text-amber-100">
+                                <div className="rounded-md border border-amber-600/20 bg-amber-600/10 px-3.5 py-3 text-sm text-amber-200">
                                     {projectsError}
                                 </div>
                             ) : null}
-                            <div className="flex flex-wrap gap-3">
+                            <div className="flex flex-wrap gap-2">
                                 <PrimaryButton
                                     label="Back to Projects"
                                     onClick={() => navigate('/projects')}
@@ -350,42 +352,42 @@ export default function ProjectSetupPage() {
     };
 
     return (
-        <div className="enterprise-shell min-h-screen text-slate-100">
+        <div className="enterprise-shell min-h-screen text-[var(--enterprise-text)]">
             <EnterpriseTopNavigation
                 activeItem="projects"
                 projectName={connectedProject?.name}
                 showSearch={false}
             />
 
-            <main className="mx-auto max-w-[1480px] px-5 py-8 md:px-6 xl:px-8 xl:py-9">
-                <section className="border-b border-[var(--enterprise-border-strong)] pb-7">
-                    <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <main className="mx-auto max-w-6xl px-4 py-5 sm:px-6 md:px-8 md:py-6">
+                <section className="border-b border-[var(--enterprise-border-strong)] pb-5">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                                 <span className="enterprise-chip">Project Setup</span>
-                                <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-100">
+                                <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-200">
                                     {getPlatformLabel(project.platform)}
                                 </span>
-                                <span className="rounded-full border border-white/8 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--enterprise-text-muted)]">
+                                <span className="rounded-full border border-[var(--enterprise-border)] bg-[#16181b] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--enterprise-text-muted)]">
                                     {getRuntimeTypeLabel(project.runtimeType)}
                                 </span>
                                 {project.isDraft ? (
-                                    <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-100">
+                                    <span className="rounded-full border border-amber-600/20 bg-amber-600/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-200">
                                         Draft
                                     </span>
                                 ) : null}
                             </div>
-                            <h1 className="mt-4 max-w-5xl text-3xl font-semibold tracking-tight text-white md:text-[2.5rem]">
+                            <h1 className="mt-3 max-w-4xl text-xl font-semibold tracking-tight text-[var(--enterprise-text)] sm:text-2xl">
                                 {project.name}
                             </h1>
-                            <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--enterprise-text-muted)]">
+                            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--enterprise-text-muted)]">
                                 Use this page as the onboarding guide: install the SDK, initialize
                                 the project, add the API key, and send one test event before opening
                                 the issues workspace.
                             </p>
                         </div>
 
-                        <div className="flex shrink-0 flex-wrap items-center gap-3">
+                        <div className="flex shrink-0 flex-wrap items-center gap-2">
                             <SecondaryButton
                                 label="Back to Projects"
                                 onClick={() => navigate('/projects')}
@@ -399,17 +401,17 @@ export default function ProjectSetupPage() {
                 </section>
 
                 {projectsError ? (
-                    <div className="mt-6 rounded-[20px] border border-amber-500/20 bg-amber-500/10 px-5 py-4 text-sm text-amber-100">
+                    <div className="mt-4 rounded-md border border-amber-600/20 bg-amber-600/10 px-3.5 py-3 text-sm text-amber-200">
                         {projectsError}
                     </div>
                 ) : null}
 
-                <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.9fr)]">
-                    <div className="space-y-6">
+                <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_320px]">
+                    <div className="space-y-4">
                         <DashboardSectionCard
                             title="Step 1: Install SDK"
                             description="Start with the package that matches this platform."
-                            contentClassName="p-6"
+                            contentClassName="p-4"
                             variant="enterprise"
                         >
                             <StepHeader
@@ -428,7 +430,7 @@ export default function ProjectSetupPage() {
                         <DashboardSectionCard
                             title="Step 2: Initialize project"
                             description="Bootstrap the SDK early so runtime failures are captured immediately."
-                            contentClassName="p-6"
+                            contentClassName="p-4"
                             variant="enterprise"
                         >
                             <StepHeader
@@ -446,7 +448,7 @@ export default function ProjectSetupPage() {
                         <DashboardSectionCard
                             title="Step 3: Add API key"
                             description="Use a real key when available. Otherwise the setup keeps a placeholder visible."
-                            contentClassName="p-6"
+                            contentClassName="p-4"
                             variant="enterprise"
                         >
                             <StepHeader
@@ -460,13 +462,13 @@ export default function ProjectSetupPage() {
                                 code={setupGuide.apiKeySnippet}
                             />
 
-                            <div className="mt-5 rounded-[22px] border border-[var(--enterprise-border)] bg-black/30 p-5">
+                            <div className="mt-4 rounded-md border border-[var(--enterprise-border)] bg-[#16181b] p-4">
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                     <div>
-                                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-orange-200">
+                                        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-600">
                                             Current API key
                                         </div>
-                                        <div className="mt-2 break-all font-mono text-sm text-white">
+                                        <div className="mt-1.5 break-all font-mono text-xs text-[var(--enterprise-text)]">
                                             {projectApiKey || 'YOUR_PROJECT_KEY'}
                                         </div>
                                     </div>
@@ -476,7 +478,7 @@ export default function ProjectSetupPage() {
                                     />
                                 </div>
 
-                                <p className="mt-3 text-sm leading-7 text-[var(--enterprise-text-muted)]">
+                                <p className="mt-3 text-sm leading-6 text-[var(--enterprise-text-muted)]">
                                     {projectApiKey
                                         ? 'A real API key is saved in this browser session and can be used by the dashboard immediately.'
                                         : project.isDraft
@@ -487,13 +489,13 @@ export default function ProjectSetupPage() {
                                 </p>
 
                                 {!project.isDraft && hasAdminConsoleAccess ? (
-                                    <div className="mt-5 flex flex-col gap-3 lg:flex-row">
+                                    <div className="mt-4 flex flex-col gap-2.5 lg:flex-row">
                                         <input
                                             type="text"
                                             value={keyLabel}
                                             onChange={(event) => setKeyLabel(event.target.value)}
                                             placeholder="production"
-                                            className="w-full rounded-2xl border border-[var(--enterprise-border)] bg-black/35 px-4 py-3.5 text-[15px] text-white outline-none placeholder:text-[var(--enterprise-text-dim)] focus:border-orange-500/35"
+                                            className="ui-input h-9 w-full px-3 text-sm"
                                         />
                                         <PrimaryButton
                                             label={
@@ -507,7 +509,7 @@ export default function ProjectSetupPage() {
                                     </div>
                                 ) : null}
 
-                                <div className="mt-5 flex flex-wrap gap-3">
+                                <div className="mt-4 flex flex-wrap gap-2">
                                     <SecondaryButton
                                         label={
                                             connecting
@@ -520,13 +522,13 @@ export default function ProjectSetupPage() {
                                 </div>
 
                                 {actionError ? (
-                                    <div className="mt-4 rounded-[18px] border border-red-500/20 bg-red-500/10 px-4 py-4 text-sm text-red-100">
+                                    <div className="mt-3 rounded-md border border-red-500/20 bg-red-500/10 px-3.5 py-3 text-sm text-red-100">
                                         {actionError}
                                     </div>
                                 ) : null}
 
                                 {actionSuccess ? (
-                                    <div className="mt-4 rounded-[18px] border border-emerald-500/20 bg-emerald-500/10 px-4 py-4 text-sm text-emerald-100">
+                                    <div className="mt-3 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-3 text-sm text-emerald-200">
                                         {actionSuccess}
                                     </div>
                                 ) : null}
@@ -536,7 +538,7 @@ export default function ProjectSetupPage() {
                         <DashboardSectionCard
                             title="Step 4: Send test event"
                             description="Confirm the end-to-end path before handing off to the issues workspace."
-                            contentClassName="p-6"
+                            contentClassName="p-4"
                             variant="enterprise"
                         >
                             <StepHeader
@@ -552,35 +554,35 @@ export default function ProjectSetupPage() {
                         </DashboardSectionCard>
                     </div>
 
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                         <DashboardSectionCard
                             title="Project Summary"
                             description="Keep the important context visible while onboarding."
-                            contentClassName="p-6"
+                            contentClassName="p-4"
                             variant="enterprise"
                         >
-                            <div className="space-y-4">
-                                <div className="enterprise-panel-soft rounded-[20px] border border-[var(--enterprise-border)] p-4">
-                                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--enterprise-text-dim)]">
+                            <div className="space-y-3">
+                                <div className="enterprise-panel-soft rounded-md p-3.5">
+                                    <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--enterprise-text-dim)]">
                                         Project
                                     </div>
-                                    <div className="mt-2 text-lg font-semibold text-white">
+                                    <div className="mt-1.5 text-sm font-semibold text-[var(--enterprise-text)]">
                                         {project.name}
                                     </div>
                                 </div>
-                                <div className="enterprise-panel-soft rounded-[20px] border border-[var(--enterprise-border)] p-4">
-                                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--enterprise-text-dim)]">
+                                <div className="enterprise-panel-soft rounded-md p-3.5">
+                                    <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--enterprise-text-dim)]">
                                         Created
                                     </div>
-                                    <div className="mt-2 text-sm text-white">
+                                    <div className="mt-1.5 text-sm text-[var(--enterprise-text)]">
                                         {formatDateTime(project.createdAt)}
                                     </div>
                                 </div>
-                                <div className="enterprise-panel-soft rounded-[20px] border border-[var(--enterprise-border)] p-4">
-                                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--enterprise-text-dim)]">
+                                <div className="enterprise-panel-soft rounded-md p-3.5">
+                                    <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--enterprise-text-dim)]">
                                         Connection status
                                     </div>
-                                    <div className="mt-2 text-sm text-white">
+                                    <div className="mt-1.5 text-sm text-[var(--enterprise-text)]">
                                         {connectedProject?.id === id
                                             ? 'Dashboard is already pointed at this project.'
                                             : 'Dashboard is not yet pointed at this project.'}
@@ -592,14 +594,14 @@ export default function ProjectSetupPage() {
                         <DashboardSectionCard
                             title="Notes"
                             description="Platform-specific reminders for this setup."
-                            contentClassName="p-6"
+                            contentClassName="p-4"
                             variant="enterprise"
                         >
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 {setupGuide.notes.map((note) => (
                                     <div
                                         key={note}
-                                        className="enterprise-panel-soft rounded-[20px] border border-[var(--enterprise-border)] px-4 py-3 text-sm leading-7 text-[var(--enterprise-text-muted)]"
+                                        className="enterprise-panel-soft rounded-md px-3.5 py-3 text-sm leading-6 text-[var(--enterprise-text-muted)]"
                                     >
                                         {note}
                                     </div>
@@ -611,28 +613,28 @@ export default function ProjectSetupPage() {
                             <DashboardSectionCard
                                 title="API Key History"
                                 description="Recent keys created for this project."
-                                contentClassName="p-6"
+                                contentClassName="p-4"
                                 variant="enterprise"
                             >
                                 {keyHistoryLoading ? (
-                                    <div className="space-y-3 animate-pulse">
+                                    <div className="space-y-2 animate-pulse">
                                         {[0, 1].map((index) => (
                                             <div
                                                 key={index}
-                                                className="enterprise-panel-soft h-20 rounded-[18px] border border-[var(--enterprise-border)]"
+                                                className="enterprise-panel-soft h-16 rounded-md"
                                             />
                                         ))}
                                     </div>
                                 ) : keyHistoryError ? (
-                                    <div className="rounded-[18px] border border-red-500/20 bg-red-500/10 px-4 py-4 text-sm text-red-100">
+                                    <div className="rounded-md border border-red-500/20 bg-red-500/10 px-3.5 py-3 text-sm text-red-100">
                                         {keyHistoryError}
                                     </div>
                                 ) : apiKeys.length === 0 ? (
-                                    <div className="rounded-[18px] border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-[var(--enterprise-text-muted)]">
+                                    <div className="rounded-md border border-[var(--enterprise-border)] bg-[#16181b] px-3.5 py-3 text-sm text-[var(--enterprise-text-muted)]">
                                         No stored key metadata yet.
                                     </div>
                                 ) : (
-                                    <div className="space-y-3">
+                                    <div className="divide-y divide-[var(--enterprise-border)]">
                                         {apiKeys.map((item) => (
                                             <KeyHistoryRow key={item.id} item={item} />
                                         ))}

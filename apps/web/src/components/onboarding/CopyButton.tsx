@@ -22,7 +22,7 @@ export default function CopyButton({ label, value }: CopyButtonProps) {
         <button
             type="button"
             onClick={() => void handleCopy()}
-            className="rounded-full border border-white/8 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--enterprise-text-muted)] transition-colors hover:text-white"
+            className="ui-secondary-button h-8 px-2.5 text-[10px] font-semibold uppercase tracking-[0.16em]"
         >
             {copied ? `${label} copied` : `Copy ${label}`}
         </button>

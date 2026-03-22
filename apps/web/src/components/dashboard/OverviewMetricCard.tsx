@@ -29,7 +29,7 @@ export default function OverviewMetricCard({
             ? 'text-emerald-400'
             : changeType === 'negative'
                 ? 'text-red-400'
-                : 'text-slate-500';
+                : 'text-[var(--enterprise-text-dim)]';
 
     function formatValue(val: number | string): string {
         if (typeof val === 'string') return val;
@@ -48,22 +48,22 @@ export default function OverviewMetricCard({
         <div
             className={`flex flex-col ${
                 isEnterprise
-                    ? `enterprise-metric-card ${accentClass} gap-2 px-5 py-5 sm:px-6`
-                    : `dash-card ${accentClass} gap-1.5 px-5 py-4`
+                    ? `enterprise-metric-card ${accentClass} gap-1.5 px-4 py-4`
+                    : `dash-card ${accentClass} gap-1.5 px-4 py-3.5`
             }`}
         >
             {loading ? (
                 <div className="animate-pulse space-y-2">
-                    <div className={`h-3 rounded ${isEnterprise ? 'w-24 bg-white/6' : 'w-20 bg-white/5'}`} />
-                    <div className={`rounded ${isEnterprise ? 'h-9 w-20 bg-white/7' : 'h-8 w-16 bg-white/5'}`} />
+                    <div className={`h-2.5 rounded ${isEnterprise ? 'w-20 bg-[#23272b]' : 'w-20 bg-[#23272b]'}`} />
+                    <div className={`rounded ${isEnterprise ? 'h-8 w-20 bg-[#2a2d31]' : 'h-8 w-16 bg-[#2a2d31]'}`} />
                 </div>
             ) : (
                 <>
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start justify-between gap-2">
                         <div
-                            className={`font-bold uppercase ${
+                            className={`font-semibold uppercase ${
                                 isEnterprise
-                                    ? 'text-[11px] tracking-[0.2em] text-[var(--enterprise-text-dim)]'
+                                    ? 'text-[10px] tracking-[0.16em] text-[var(--enterprise-text-muted)]'
                                     : 'text-[10px] tracking-[0.15em] text-[var(--dash-text-dim)]'
                             }`}
                         >
@@ -88,16 +88,16 @@ export default function OverviewMetricCard({
                             }`}
                         >
                             <span
-                                className={`font-bold tracking-tight text-white tabular-nums ${
-                                    isEnterprise ? 'text-[2.35rem]' : 'text-3xl'
+                                className={`font-bold tracking-tight text-[var(--enterprise-text)] tabular-nums ${
+                                    isEnterprise ? 'text-[1.9rem]' : 'text-3xl'
                                 }`}
                             >
                                 {formatValue(value)}
                             </span>
                             {change && (
                                 <span
-                                    className={`text-xs font-semibold ${changeColor} ${
-                                        isEnterprise ? 'rounded-full bg-white/5 px-2.5 py-1' : ''
+                                    className={`text-[11px] font-semibold ${changeColor} ${
+                                        isEnterprise ? 'rounded-full border border-[var(--enterprise-border)] bg-[#16181b] px-2 py-0.5' : ''
                                     }`}
                                 >
                                     {change}
@@ -106,7 +106,7 @@ export default function OverviewMetricCard({
                         </div>
                         {supportingText ? (
                             <div
-                                className={`mt-2 text-xs leading-5 ${
+                                className={`mt-1.5 text-xs leading-5 ${
                                     isEnterprise
                                         ? 'text-[var(--enterprise-text-muted)]'
                                         : 'text-[var(--dash-text-muted)]'

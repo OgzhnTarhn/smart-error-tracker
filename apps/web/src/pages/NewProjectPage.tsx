@@ -26,7 +26,7 @@ function PrimaryButton({
             type="button"
             onClick={onClick}
             disabled={disabled}
-            className="rounded-full border border-orange-400/20 bg-orange-500/15 px-5 py-3 text-sm font-semibold text-orange-100 transition-colors hover:border-orange-400/30 hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+            className="ui-primary-button h-9 px-3 text-sm font-semibold"
         >
             {label}
         </button>
@@ -44,7 +44,7 @@ function SecondaryButton({
         <button
             type="button"
             onClick={onClick}
-            className="rounded-full border border-[var(--enterprise-border)] bg-white/[0.03] px-5 py-3 text-sm font-semibold text-[var(--enterprise-text-muted)] transition-colors hover:border-white/12 hover:text-white"
+            className="ui-secondary-button h-9 px-3 text-sm font-semibold"
         >
             {label}
         </button>
@@ -112,23 +112,23 @@ export default function NewProjectPage() {
     };
 
     return (
-        <div className="enterprise-shell min-h-screen text-slate-100">
+        <div className="enterprise-shell min-h-screen text-[var(--enterprise-text)]">
             <EnterpriseTopNavigation activeItem="projects" showSearch={false} />
 
-            <main className="mx-auto max-w-[920px] px-5 py-8 md:px-6 xl:px-8 xl:py-9">
-                <section className="border-b border-[var(--enterprise-border-strong)] pb-7">
-                    <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <main className="mx-auto max-w-3xl px-4 py-5 sm:px-6 md:px-8 md:py-6">
+                <section className="border-b border-[var(--enterprise-border-strong)] pb-5">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-2">
                                 <span className="enterprise-chip">Create Project</span>
-                                <span className="text-xs text-[var(--enterprise-text-muted)]">
+                                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--enterprise-text-muted)]">
                                     First step of the onboarding flow
                                 </span>
                             </div>
-                            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white md:text-[2.5rem]">
+                            <h1 className="mt-3 text-xl font-semibold tracking-tight text-[var(--enterprise-text)] sm:text-2xl">
                                 Start a new project workspace
                             </h1>
-                            <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--enterprise-text-muted)]">
+                            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--enterprise-text-muted)]">
                                 Keep the initial form small. The next page will handle SDK setup, API
                                 key usage, and the first test event.
                             </p>
@@ -141,18 +141,18 @@ export default function NewProjectPage() {
                     </div>
                 </section>
 
-                <div className="mt-6">
+                <div className="mt-4">
                     <DashboardSectionCard
                         title="Project Details"
                         description="Capture only the minimum information needed for onboarding."
-                        contentClassName="p-6"
+                        contentClassName="p-4"
                         variant="enterprise"
                     >
-                        <div className="space-y-5">
+                        <div className="space-y-4">
                             <div className="space-y-2">
                                 <label
                                     htmlFor="project-name"
-                                    className="text-sm font-semibold text-white"
+                                    className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--enterprise-text-muted)]"
                                 >
                                     Project Name
                                 </label>
@@ -162,15 +162,15 @@ export default function NewProjectPage() {
                                     value={projectName}
                                     onChange={(event) => setProjectName(event.target.value)}
                                     placeholder="checkout-web"
-                                    className="w-full rounded-2xl border border-[var(--enterprise-border)] bg-black/35 px-4 py-3.5 text-[15px] text-white outline-none placeholder:text-[var(--enterprise-text-dim)] focus:border-orange-500/35"
+                                    className="ui-input h-9 w-full px-3 text-sm"
                                 />
                             </div>
 
-                            <div className="grid gap-5 md:grid-cols-2">
+                            <div className="grid gap-4 md:grid-cols-2">
                                 <div className="space-y-2">
                                     <label
                                         htmlFor="platform"
-                                        className="text-sm font-semibold text-white"
+                                        className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--enterprise-text-muted)]"
                                     >
                                         Platform
                                     </label>
@@ -180,7 +180,7 @@ export default function NewProjectPage() {
                                         onChange={(event) =>
                                             setPlatform(event.target.value as ProjectPlatform)
                                         }
-                                        className="enterprise-select w-full rounded-2xl border border-[var(--enterprise-border)] bg-black/35 px-4 py-3.5 text-[15px] outline-none focus:border-orange-500/35"
+                                        className="ui-input enterprise-select h-9 w-full px-3 text-sm"
                                     >
                                         {PLATFORM_OPTIONS.map((option) => (
                                             <option key={option.value} value={option.value}>
@@ -188,7 +188,7 @@ export default function NewProjectPage() {
                                             </option>
                                         ))}
                                     </select>
-                                    <p className="text-sm leading-6 text-[var(--enterprise-text-muted)]">
+                                    <p className="text-xs leading-5 text-[var(--enterprise-text-muted)]">
                                         {
                                             PLATFORM_OPTIONS.find(
                                                 (option) => option.value === platform,
@@ -200,7 +200,7 @@ export default function NewProjectPage() {
                                 <div className="space-y-2">
                                     <label
                                         htmlFor="runtime-type"
-                                        className="text-sm font-semibold text-white"
+                                        className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--enterprise-text-muted)]"
                                     >
                                         Runtime Type
                                     </label>
@@ -212,7 +212,7 @@ export default function NewProjectPage() {
                                                 event.target.value as ProjectRuntimeType,
                                             )
                                         }
-                                        className="enterprise-select w-full rounded-2xl border border-[var(--enterprise-border)] bg-black/35 px-4 py-3.5 text-[15px] outline-none focus:border-orange-500/35"
+                                        className="ui-input enterprise-select h-9 w-full px-3 text-sm"
                                     >
                                         {RUNTIME_TYPE_OPTIONS.map((option) => (
                                             <option key={option.value} value={option.value}>
@@ -220,7 +220,7 @@ export default function NewProjectPage() {
                                             </option>
                                         ))}
                                     </select>
-                                    <p className="text-sm leading-6 text-[var(--enterprise-text-muted)]">
+                                    <p className="text-xs leading-5 text-[var(--enterprise-text-muted)]">
                                         {
                                             RUNTIME_TYPE_OPTIONS.find(
                                                 (option) => option.value === runtimeType,
@@ -231,8 +231,8 @@ export default function NewProjectPage() {
                             </div>
 
                             {!hasAdminConsoleAccess ? (
-                                <div className="rounded-[20px] border border-amber-500/20 bg-amber-500/10 px-4 py-4 text-sm leading-7 text-amber-100">
-                                    <code className="font-mono text-amber-50">
+                                <div className="rounded-md border border-amber-600/20 bg-amber-600/10 px-3.5 py-3 text-sm leading-6 text-amber-200">
+                                    <code className="font-mono text-amber-100">
                                         VITE_ADMIN_TOKEN
                                     </code>{' '}
                                     is not configured, so this submit will create a temporary local
@@ -242,12 +242,12 @@ export default function NewProjectPage() {
                             ) : null}
 
                             {error ? (
-                                <div className="rounded-[20px] border border-red-500/20 bg-red-500/10 px-4 py-4 text-sm text-red-100">
+                                <div className="rounded-md border border-red-500/20 bg-red-500/10 px-3.5 py-3 text-sm text-red-100">
                                     {error}
                                 </div>
                             ) : null}
 
-                            <div className="flex flex-wrap gap-3 pt-2">
+                            <div className="flex flex-wrap gap-2 pt-1">
                                 <PrimaryButton
                                     label={submitting ? 'Creating...' : 'Create Project'}
                                     onClick={() => void handleSubmit()}

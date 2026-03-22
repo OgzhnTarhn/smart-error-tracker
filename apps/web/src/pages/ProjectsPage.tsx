@@ -38,7 +38,7 @@ function PrimaryButton({
         <button
             type="button"
             onClick={onClick}
-            className="rounded-full border border-orange-400/20 bg-orange-500/15 px-5 py-3 text-sm font-semibold text-orange-100 transition-colors hover:border-orange-400/30 hover:bg-orange-500/20"
+            className="ui-primary-button h-9 px-3 text-sm font-semibold"
         >
             {label}
         </button>
@@ -56,7 +56,7 @@ function SecondaryButton({
         <button
             type="button"
             onClick={onClick}
-            className="rounded-full border border-[var(--enterprise-border)] bg-white/[0.03] px-5 py-3 text-sm font-semibold text-[var(--enterprise-text-muted)] transition-colors hover:border-white/12 hover:text-white"
+            className="ui-secondary-button h-9 px-3 text-sm font-semibold"
         >
             {label}
         </button>
@@ -73,11 +73,11 @@ function ProjectCard({
     onOpenIssues: () => void;
 }) {
     return (
-        <div className="enterprise-panel-soft rounded-[24px] border border-[var(--enterprise-border)] p-5">
-            <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
+        <div className="py-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="truncate text-xl font-semibold text-white">
+                        <h2 className="truncate text-sm font-medium text-[var(--enterprise-text)]">
                             {project.name}
                         </h2>
                         {project.isConnected ? (
@@ -86,42 +86,43 @@ function ProjectCard({
                             </span>
                         ) : null}
                         {project.isDraft ? (
-                            <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-100">
+                            <span className="rounded-full border border-amber-600/20 bg-amber-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-200">
                                 Draft
                             </span>
                         ) : null}
                     </div>
 
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                        <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-blue-100">
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                        <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-blue-200">
                             {getPlatformLabel(project.platform)}
                         </span>
-                        <span className="rounded-full border border-white/8 bg-white/[0.04] px-2.5 py-1 text-[var(--enterprise-text-muted)]">
+                        <span className="rounded-full border border-[var(--enterprise-border)] bg-[#16181b] px-2.5 py-1 text-[var(--enterprise-text-muted)]">
                             {getRuntimeTypeLabel(project.runtimeType)}
                         </span>
-                        <span className="rounded-full border border-white/8 bg-white/[0.04] px-2.5 py-1 text-[var(--enterprise-text-muted)]">
+                        <span className="rounded-full border border-[var(--enterprise-border)] bg-[#16181b] px-2.5 py-1 text-[var(--enterprise-text-muted)]">
                             Created {formatCreatedAt(project.createdAt, project.isDraft)}
                         </span>
                     </div>
+
+                    <div className="mt-3 rounded-md border border-[var(--enterprise-border)] bg-[#16181b] px-3 py-2">
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--enterprise-text-dim)]">
+                            Project key
+                        </div>
+                        <div className="mt-1 break-all font-mono text-xs text-[var(--enterprise-text-muted)]">
+                            {project.key ?? 'Will be generated after creating a real project'}
+                        </div>
+                    </div>
                 </div>
 
-                <div className="rounded-full border border-white/8 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--enterprise-text-muted)]">
-                    {project.apiKeyCount} key{project.apiKeyCount === 1 ? '' : 's'}
+                <div className="flex shrink-0 flex-col items-start gap-3 lg:min-w-[232px] lg:items-end">
+                    <div className="rounded-full border border-[var(--enterprise-border)] bg-[#16181b] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--enterprise-text-muted)]">
+                        {project.apiKeyCount} key{project.apiKeyCount === 1 ? '' : 's'}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <PrimaryButton label="Open Setup" onClick={onOpenSetup} />
+                        <SecondaryButton label="Open Issues" onClick={onOpenIssues} />
+                    </div>
                 </div>
-            </div>
-
-            <div className="mt-5 rounded-[20px] border border-[var(--enterprise-border)] bg-black/30 p-4">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--enterprise-text-dim)]">
-                    Project key
-                </div>
-                <div className="mt-2 break-all font-mono text-sm text-white">
-                    {project.key ?? 'Will be generated after creating a real project'}
-                </div>
-            </div>
-
-            <div className="mt-5 flex flex-wrap gap-3">
-                <PrimaryButton label="Open Setup" onClick={onOpenSetup} />
-                <SecondaryButton label="Open Issues" onClick={onOpenIssues} />
             </div>
         </div>
     );
@@ -147,32 +148,32 @@ export default function ProjectsPage() {
     );
 
     return (
-        <div className="enterprise-shell min-h-screen text-slate-100">
+        <div className="enterprise-shell min-h-screen text-[var(--enterprise-text)]">
             <EnterpriseTopNavigation
                 activeItem="projects"
                 projectName={connectedProject?.name}
             />
 
-            <main className="mx-auto max-w-[1480px] px-5 py-8 md:px-6 xl:px-8 xl:py-9">
-                <section className="border-b border-[var(--enterprise-border-strong)] pb-7">
-                    <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <main className="mx-auto max-w-6xl px-4 py-5 sm:px-6 md:px-8 md:py-6">
+                <section className="border-b border-[var(--enterprise-border-strong)] pb-5">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-2">
                                 <span className="enterprise-chip">Projects</span>
-                                <span className="text-xs text-[var(--enterprise-text-muted)]">
+                                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--enterprise-text-muted)]">
                                     {'Dashboard -> Create Project -> Project Setup -> Issues'}
                                 </span>
                             </div>
-                            <h1 className="mt-4 max-w-5xl text-3xl font-semibold tracking-tight text-white md:text-[2.5rem]">
+                            <h1 className="mt-3 max-w-4xl text-xl font-semibold tracking-tight text-[var(--enterprise-text)] sm:text-2xl">
                                 Project workspace
                             </h1>
-                            <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--enterprise-text-muted)]">
+                            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--enterprise-text-muted)]">
                                 Keep project creation and setup clear. Existing issue investigation
                                 stays available through the dedicated issues routes.
                             </p>
                         </div>
 
-                        <div className="flex shrink-0 flex-wrap items-center gap-3">
+                        <div className="flex shrink-0 flex-wrap items-center gap-2">
                             {hasAdminConsoleAccess ? (
                                 <SecondaryButton
                                     label={loading ? 'Refreshing...' : 'Refresh'}
@@ -188,12 +189,12 @@ export default function ProjectsPage() {
                 </section>
 
                 {error ? (
-                    <div className="mt-6 rounded-[20px] border border-amber-500/20 bg-amber-500/10 px-5 py-4 text-sm text-amber-100">
+                    <div className="mt-4 rounded-md border border-amber-600/20 bg-amber-600/10 px-3.5 py-3 text-sm text-amber-200">
                         {error}
                     </div>
                 ) : null}
 
-                <div className="mt-6">
+                <div className="mt-4">
                     <DashboardSectionCard
                         title="Project List"
                         description={
@@ -201,26 +202,28 @@ export default function ProjectsPage() {
                                 ? 'Projects are read from the local admin endpoints and enriched with browser-side onboarding metadata.'
                                 : 'Admin listing is unavailable, so this view falls back to connected projects and local drafts.'
                         }
-                        contentClassName="p-6"
+                        contentClassName="p-4"
                         variant="enterprise"
                     >
                         {loading && catalog.length === 0 ? (
-                            <div className="grid gap-4 lg:grid-cols-2">
+                            <div className="space-y-2">
                                 {[0, 1].map((index) => (
                                     <div
                                         key={index}
-                                        className="enterprise-panel-soft h-64 animate-pulse rounded-[24px] border border-[var(--enterprise-border)]"
+                                        className="enterprise-panel-soft h-24 animate-pulse rounded-md"
                                     />
                                 ))}
                             </div>
                         ) : catalog.length === 0 ? (
-                            <div className="enterprise-panel-muted rounded-[22px] px-5 py-14 text-center">
-                                <h3 className="text-xl font-semibold text-white">No projects yet</h3>
-                                <p className="mx-auto mt-3 max-w-2xl text-[15px] leading-8 text-[var(--enterprise-text-muted)]">
+                            <div className="enterprise-panel-muted rounded-md px-4 py-8 text-center">
+                                <h3 className="text-base font-semibold text-[var(--enterprise-text)]">
+                                    No projects yet
+                                </h3>
+                                <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[var(--enterprise-text-muted)]">
                                     Create your first project to unlock the guided setup page and
                                     connect the dashboard to a real issues stream.
                                 </p>
-                                <div className="mt-6">
+                                <div className="mt-5">
                                     <PrimaryButton
                                         label="Create Project"
                                         onClick={() => navigate('/projects/new')}
@@ -228,7 +231,7 @@ export default function ProjectsPage() {
                                 </div>
                             </div>
                         ) : (
-                            <div className="grid gap-4 lg:grid-cols-2">
+                            <div className="divide-y divide-[var(--enterprise-border)]">
                                 {catalog.map((project) => (
                                     <ProjectCard
                                         key={project.id}
