@@ -115,9 +115,9 @@ export default function NewProjectPage() {
         <div className="enterprise-shell min-h-screen text-[var(--enterprise-text)]">
             <EnterpriseTopNavigation activeItem="projects" showSearch={false} />
 
-            <main className="mx-auto max-w-3xl px-4 py-5 sm:px-6 md:px-8 md:py-6">
-                <section className="border-b border-[var(--enterprise-border-strong)] pb-5">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 md:px-8 md:py-8">
+                <section className="border-b border-[var(--enterprise-border-strong)] pb-6">
+                    <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
                         <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                                 <span className="enterprise-chip">Create Project</span>
@@ -134,14 +134,16 @@ export default function NewProjectPage() {
                             </p>
                         </div>
 
-                        <SecondaryButton
-                            label="Back to Projects"
-                            onClick={() => navigate('/projects')}
-                        />
+                        <div className="flex flex-wrap items-center gap-2">
+                            <SecondaryButton
+                                label="Back to Projects"
+                                onClick={() => navigate('/projects')}
+                            />
+                        </div>
                     </div>
                 </section>
 
-                <div className="mt-4">
+                <div className="mx-auto w-full max-w-2xl">
                     <DashboardSectionCard
                         title="Project Details"
                         description="Capture only the minimum information needed for onboarding."
@@ -166,7 +168,7 @@ export default function NewProjectPage() {
                                 />
                             </div>
 
-                            <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <div className="space-y-2">
                                     <label
                                         htmlFor="platform"
@@ -247,7 +249,7 @@ export default function NewProjectPage() {
                                 </div>
                             ) : null}
 
-                            <div className="flex flex-wrap gap-2 pt-1">
+                            <div className="flex flex-wrap items-center gap-2 pt-1">
                                 <PrimaryButton
                                     label={submitting ? 'Creating...' : 'Create Project'}
                                     onClick={() => void handleSubmit()}

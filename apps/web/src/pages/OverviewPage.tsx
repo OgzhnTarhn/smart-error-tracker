@@ -98,7 +98,7 @@ function ChecklistItem({
     complete: boolean;
 }) {
     return (
-        <div className="enterprise-panel-soft flex items-start gap-3 rounded-md p-3">
+        <div className="flex items-start gap-3 px-4 py-3">
             <div
                 className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold uppercase tracking-[0.12em] ${
                     complete
@@ -135,26 +135,24 @@ function RecentProjectItem({
         <button
             type="button"
             onClick={onOpen}
-            className="w-full py-3 text-left transition-colors hover:text-[var(--enterprise-text)]"
+            className="flex w-full items-start justify-between gap-4 py-3.5 text-left transition-colors hover:text-[var(--enterprise-text)]"
         >
-            <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                    <div className="truncate text-sm font-medium text-[var(--enterprise-text)]">
-                        {name}
-                    </div>
-                    <div className="mt-1.5 flex flex-wrap gap-2 text-xs">
-                        <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-blue-200">
-                            {platform}
-                        </span>
-                        <span className="rounded-full border border-[var(--enterprise-border)] bg-[#16181b] px-2.5 py-1 text-[var(--enterprise-text-muted)]">
-                            {runtimeType}
-                        </span>
-                    </div>
+            <div className="min-w-0">
+                <div className="truncate text-sm font-medium text-[var(--enterprise-text)]">
+                    {name}
                 </div>
-                <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--enterprise-text-dim)]">
-                    {formatDate(createdAt)}
-                </span>
+                <div className="mt-1.5 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-blue-200">
+                        {platform}
+                    </span>
+                    <span className="rounded-full border border-[var(--enterprise-border)] bg-[#16181b] px-2.5 py-1 text-[var(--enterprise-text-muted)]">
+                        {runtimeType}
+                    </span>
+                </div>
             </div>
+            <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--enterprise-text-dim)]">
+                {formatDate(createdAt)}
+            </span>
         </button>
     );
 }
@@ -176,7 +174,7 @@ function RecentIssuePreview({
         <button
             type="button"
             onClick={onOpen}
-            className="flex w-full items-center justify-between gap-4 py-3 text-left transition-colors hover:text-[var(--enterprise-text)]"
+            className="flex w-full items-center justify-between gap-4 py-3.5 text-left transition-colors hover:text-[var(--enterprise-text)]"
         >
             <div className="min-w-0">
                 <div className="truncate text-sm font-medium text-[var(--enterprise-text)]">
@@ -264,8 +262,8 @@ export default function OverviewPage() {
         <div className="enterprise-shell min-h-screen text-[var(--enterprise-text)]">
             <EnterpriseTopNavigation activeItem="dashboard" showSearch={false} />
 
-            <main className="mx-auto max-w-6xl px-4 py-5 sm:px-6 md:px-8 md:py-6">
-                <section className="enterprise-panel relative overflow-hidden px-5 py-5 sm:px-6 sm:py-6">
+            <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 md:px-8 md:py-8">
+                <section className="enterprise-panel relative overflow-hidden px-6 py-6 md:px-8 md:py-7">
                     <div className="absolute inset-x-0 top-0 h-20 bg-[radial-gradient(circle_at_top_left,rgba(217,119,6,0.08),transparent_58%)]" />
                     <div className="relative max-w-3xl">
                         <div className="flex flex-wrap items-center gap-2">
@@ -299,7 +297,7 @@ export default function OverviewPage() {
                 </section>
 
                 {dashboardAlerts.length > 0 ? (
-                    <div className="mt-4 space-y-2">
+                    <div className="space-y-2">
                         {dashboardAlerts.map((alert) => (
                             <div
                                 key={alert}
@@ -311,7 +309,7 @@ export default function OverviewPage() {
                     </div>
                 ) : null}
 
-                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
                     <OverviewMetricCard
                         label="Total Projects"
                         value={catalog.length}
@@ -354,121 +352,131 @@ export default function OverviewPage() {
                     />
                 </div>
 
-                <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(300px,0.95fr)]">
-                    <DashboardSectionCard
-                        title="Onboarding"
-                        description="Move through the product in the same order new users should see it."
-                        contentClassName="p-4"
-                        variant="enterprise"
-                    >
-                        <div className="space-y-3">
-                            {checklistItems.map((item) => (
-                                <ChecklistItem
-                                    key={item.title}
-                                    title={item.title}
-                                    description={item.description}
-                                    complete={item.complete}
-                                />
-                            ))}
-                        </div>
-
-                        <div className="mt-4 rounded-md border border-[var(--enterprise-border)] bg-[#16181b] p-4">
-                            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--enterprise-text-muted)]">
-                                Workspace note
+                <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,1fr)]">
+                    <div className="space-y-6">
+                        <DashboardSectionCard
+                            title="Onboarding"
+                            description="Move through the product in the same order new users should see it."
+                            contentClassName="p-4"
+                            variant="enterprise"
+                        >
+                            <div className="overflow-hidden rounded-md border border-[var(--enterprise-border)]">
+                                <div className="divide-y divide-[var(--enterprise-border)]">
+                                    {checklistItems.map((item) => (
+                                        <ChecklistItem
+                                            key={item.title}
+                                            title={item.title}
+                                            description={item.description}
+                                            complete={item.complete}
+                                        />
+                                    ))}
+                                </div>
                             </div>
-                            <p className="mt-2 text-sm leading-6 text-[var(--enterprise-text-muted)]">
-                                {connectedProject
-                                    ? `The dashboard is currently connected to ${connectedProject.name}. You can continue into issues as soon as setup is complete.`
-                                    : 'No live project is connected yet. Create a project or paste a real API key during setup.'}
-                            </p>
-                        </div>
-                    </DashboardSectionCard>
 
-                    <DashboardSectionCard
-                        title="Recent Projects"
-                        description="Latest projects visible to this dashboard session."
-                        contentClassName="p-4"
-                        variant="enterprise"
-                    >
-                        {catalog.length === 0 ? (
-                            <div className="enterprise-panel-muted rounded-md px-4 py-8 text-center">
-                                <h3 className="text-base font-semibold text-[var(--enterprise-text)]">
-                                    No projects yet
-                                </h3>
-                                <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[var(--enterprise-text-muted)]">
-                                    Start by creating a project. The setup route will take over from
-                                    there.
+                            <div className="mt-4 rounded-md border border-[var(--enterprise-border)] bg-[#16181b] p-4">
+                                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--enterprise-text-muted)]">
+                                    Workspace note
+                                </div>
+                                <p className="mt-2 text-sm leading-6 text-[var(--enterprise-text-muted)]">
+                                    {connectedProject
+                                        ? `The dashboard is currently connected to ${connectedProject.name}. You can continue into issues as soon as setup is complete.`
+                                        : 'No live project is connected yet. Create a project or paste a real API key during setup.'}
                                 </p>
                             </div>
-                        ) : (
-                            <div className="divide-y divide-[var(--enterprise-border)]">
-                                {catalog.slice(0, 3).map((project) => (
-                                    <RecentProjectItem
-                                        key={project.id}
-                                        name={project.name}
-                                        platform={getPlatformLabel(project.platform)}
-                                        runtimeType={getRuntimeTypeLabel(project.runtimeType)}
-                                        createdAt={project.createdAt}
-                                        onOpen={() => navigate(`/projects/${project.id}/setup`)}
-                                    />
-                                ))}
-                            </div>
-                        )}
-                    </DashboardSectionCard>
-                </div>
+                        </DashboardSectionCard>
 
-                <div className="mt-4">
-                    <DashboardSectionCard
-                        title="Recent Issues Preview"
-                        description="Stay focused on the onboarding path while keeping the latest issue pressure visible."
-                        contentClassName="p-4"
-                        variant="enterprise"
-                    >
-                        {!hasApiKey ? (
-                            <div className="enterprise-panel-muted rounded-md px-4 py-8 text-center">
-                                <h3 className="text-base font-semibold text-[var(--enterprise-text)]">
-                                    Live issue preview unlocks after project setup
-                                </h3>
-                                <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-[var(--enterprise-text-muted)]">
-                                    Create a project, save a real API key, then send one test event
-                                    to turn this preview into the live issues stream.
-                                </p>
-                            </div>
-                        ) : statsLoading && !stats ? (
-                            <div className="space-y-2 animate-pulse">
-                                {[0, 1, 2].map((index) => (
-                                    <div
-                                        key={index}
-                                        className="enterprise-panel-soft h-20 rounded-md"
-                                    />
-                                ))}
-                            </div>
-                        ) : (stats?.topIssues?.length ?? 0) === 0 ? (
-                            <div className="enterprise-panel-muted rounded-md px-4 py-8 text-center">
-                                <h3 className="text-base font-semibold text-[var(--enterprise-text)]">
-                                    No issues yet
-                                </h3>
-                                <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-[var(--enterprise-text-muted)]">
-                                    The project is connected, but there is no issue traffic yet. Use
-                                    the setup guide to send a test event and verify the end-to-end
-                                    flow.
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="divide-y divide-[var(--enterprise-border)]">
-                                {(stats?.topIssues ?? []).slice(0, 4).map((issue) => (
-                                    <RecentIssuePreview
-                                        key={issue.id}
-                                        title={issue.title}
-                                        status={issue.status}
-                                        eventCount={issue.eventCount}
-                                        lastSeenAt={issue.lastSeenAt}
-                                        onOpen={() => navigate(`/issues/${issue.id}`)}
-                                    />
-                                ))}
-                            </div>
-                        )}
-                    </DashboardSectionCard>
+                        <DashboardSectionCard
+                            title="Recent Issues Preview"
+                            description="Stay focused on the onboarding path while keeping the latest issue pressure visible."
+                            contentClassName="p-4"
+                            variant="enterprise"
+                        >
+                            {!hasApiKey ? (
+                                <div className="enterprise-panel-muted flex min-h-[220px] items-center justify-center rounded-md px-4 py-8 text-center">
+                                    <div>
+                                        <h3 className="text-base font-semibold text-[var(--enterprise-text)]">
+                                            Live issue preview unlocks after project setup
+                                        </h3>
+                                        <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-[var(--enterprise-text-muted)]">
+                                            Create a project, save a real API key, then send one test event
+                                            to turn this preview into the live issues stream.
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : statsLoading && !stats ? (
+                                <div className="space-y-3 animate-pulse">
+                                    {[0, 1, 2].map((index) => (
+                                        <div
+                                            key={index}
+                                            className="enterprise-panel-soft h-20 rounded-md"
+                                        />
+                                    ))}
+                                </div>
+                            ) : (stats?.topIssues?.length ?? 0) === 0 ? (
+                                <div className="enterprise-panel-muted flex min-h-[220px] items-center justify-center rounded-md px-4 py-8 text-center">
+                                    <div>
+                                        <h3 className="text-base font-semibold text-[var(--enterprise-text)]">
+                                            No issues yet
+                                        </h3>
+                                        <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-[var(--enterprise-text-muted)]">
+                                            The project is connected, but there is no issue traffic yet. Use
+                                            the setup guide to send a test event and verify the end-to-end
+                                            flow.
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-[var(--enterprise-border)]">
+                                    {(stats?.topIssues ?? []).slice(0, 4).map((issue) => (
+                                        <RecentIssuePreview
+                                            key={issue.id}
+                                            title={issue.title}
+                                            status={issue.status}
+                                            eventCount={issue.eventCount}
+                                            lastSeenAt={issue.lastSeenAt}
+                                            onOpen={() => navigate(`/issues/${issue.id}`)}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </DashboardSectionCard>
+                    </div>
+
+                    <div className="space-y-6">
+                        <DashboardSectionCard
+                            title="Recent Projects"
+                            description="Latest projects visible to this dashboard session."
+                            contentClassName="p-4"
+                            variant="enterprise"
+                        >
+                            {catalog.length === 0 ? (
+                                <div className="enterprise-panel-muted flex min-h-[220px] items-center justify-center rounded-md px-4 py-8 text-center">
+                                    <div>
+                                        <h3 className="text-base font-semibold text-[var(--enterprise-text)]">
+                                            No projects yet
+                                        </h3>
+                                        <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[var(--enterprise-text-muted)]">
+                                            Start by creating a project. The setup route will take over from
+                                            there.
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-[var(--enterprise-border)]">
+                                    {catalog.slice(0, 5).map((project) => (
+                                        <RecentProjectItem
+                                            key={project.id}
+                                            name={project.name}
+                                            platform={getPlatformLabel(project.platform)}
+                                            runtimeType={getRuntimeTypeLabel(project.runtimeType)}
+                                            createdAt={project.createdAt}
+                                            onOpen={() => navigate(`/projects/${project.id}`)}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </DashboardSectionCard>
+                    </div>
                 </div>
             </main>
         </div>

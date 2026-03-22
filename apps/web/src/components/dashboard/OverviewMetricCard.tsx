@@ -46,7 +46,7 @@ export default function OverviewMetricCard({
 
     return (
         <div
-            className={`flex flex-col ${
+            className={`flex h-full flex-col ${
                 isEnterprise
                     ? `enterprise-metric-card ${accentClass} gap-1.5 px-4 py-4`
                     : `dash-card ${accentClass} gap-1.5 px-4 py-3.5`

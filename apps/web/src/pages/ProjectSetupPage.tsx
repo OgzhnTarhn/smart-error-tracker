@@ -228,7 +228,7 @@ export default function ProjectSetupPage() {
         return (
             <div className="enterprise-shell min-h-screen text-[var(--enterprise-text)]">
                 <EnterpriseTopNavigation activeItem="projects" showSearch={false} />
-                <main className="mx-auto max-w-6xl px-4 py-5 sm:px-6 md:px-8 md:py-6">
+                <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 md:px-8 md:py-8">
                     <div className="enterprise-panel-soft h-64 animate-pulse rounded-md" />
                 </main>
             </div>
@@ -239,10 +239,11 @@ export default function ProjectSetupPage() {
         return (
             <div className="enterprise-shell min-h-screen text-[var(--enterprise-text)]">
                 <EnterpriseTopNavigation activeItem="projects" showSearch={false} />
-                <main className="mx-auto max-w-3xl px-4 py-5 sm:px-6 md:px-8 md:py-6">
+                <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 md:px-8 md:py-8">
                     <DashboardSectionCard
                         title="Project Not Found"
                         description="This project is no longer available in the current browser session."
+                        className="mx-auto w-full max-w-2xl"
                         contentClassName="p-4"
                         variant="enterprise"
                     >
@@ -342,13 +343,13 @@ export default function ProjectSetupPage() {
         }
     };
 
-    const handleOpenIssues = async () => {
+    const handleOpenProject = async () => {
         if (projectApiKey) {
             setDashboardApiKey(projectApiKey);
             await refreshWorkspace();
         }
 
-        navigate(`/projects/${id}/issues`);
+        navigate(`/projects/${id}`);
     };
 
     return (
@@ -359,10 +360,10 @@ export default function ProjectSetupPage() {
                 showSearch={false}
             />
 
-            <main className="mx-auto max-w-6xl px-4 py-5 sm:px-6 md:px-8 md:py-6">
-                <section className="border-b border-[var(--enterprise-border-strong)] pb-5">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                        <div className="min-w-0">
+            <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 md:px-8 md:py-8">
+                <section className="border-b border-[var(--enterprise-border-strong)] pb-6">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                        <div className="min-w-0 max-w-3xl">
                             <div className="flex flex-wrap items-center gap-2">
                                 <span className="enterprise-chip">Project Setup</span>
                                 <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-200">
@@ -393,21 +394,21 @@ export default function ProjectSetupPage() {
                                 onClick={() => navigate('/projects')}
                             />
                             <PrimaryButton
-                                label="Open Issues"
-                                onClick={() => void handleOpenIssues()}
+                                label="Open Project"
+                                onClick={() => void handleOpenProject()}
                             />
                         </div>
                     </div>
                 </section>
 
                 {projectsError ? (
-                    <div className="mt-4 rounded-md border border-amber-600/20 bg-amber-600/10 px-3.5 py-3 text-sm text-amber-200">
+                    <div className="rounded-md border border-amber-600/20 bg-amber-600/10 px-3.5 py-3 text-sm text-amber-200">
                         {projectsError}
                     </div>
                 ) : null}
 
-                <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_320px]">
-                    <div className="space-y-4">
+                <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(300px,340px)]">
+                    <div className="space-y-6">
                         <DashboardSectionCard
                             title="Step 1: Install SDK"
                             description="Start with the package that matches this platform."
@@ -489,7 +490,7 @@ export default function ProjectSetupPage() {
                                 </p>
 
                                 {!project.isDraft && hasAdminConsoleAccess ? (
-                                    <div className="mt-4 flex flex-col gap-2.5 lg:flex-row">
+                                    <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
                                         <input
                                             type="text"
                                             value={keyLabel}
@@ -554,7 +555,7 @@ export default function ProjectSetupPage() {
                         </DashboardSectionCard>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                         <DashboardSectionCard
                             title="Project Summary"
                             description="Keep the important context visible while onboarding."

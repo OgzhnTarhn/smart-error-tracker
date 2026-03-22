@@ -27,7 +27,7 @@ export default function DashboardSectionCard({
 
     return (
         <section
-            className={`overflow-hidden ${
+            className={`flex h-full flex-col overflow-hidden ${
                 isEnterprise ? 'enterprise-panel' : 'dash-card'
             } ${className}`}
         >
@@ -67,7 +67,7 @@ export default function DashboardSectionCard({
                 </div>
                 {action && <div className="shrink-0">{action}</div>}
             </div>
-            <div className={contentClassName}>{children}</div>
+            <div className={`${isEnterprise ? 'flex-1' : ''} ${contentClassName}`}>{children}</div>
         </section>
     );
 }
