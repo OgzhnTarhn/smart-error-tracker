@@ -1,6 +1,6 @@
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { endAuthSession, getStoredAuthSession, hasDemoAccessConfigured } from '../../lib/authSession';
+import { useAuth } from '../../context/AuthContext';
 
 interface PublicSiteChromeProps {
     children: ReactNode;
@@ -13,16 +13,7 @@ const PUBLIC_NAV_ITEMS = [
 ];
 
 export default function PublicSiteChrome({ children }: PublicSiteChromeProps) {
-    const [sessionLabel, setSessionLabel] = useState(() => getStoredAuthSession()?.name ?? '');
-
-    useEffect(() => {
-        setSessionLabel(getStoredAuthSession()?.name ?? '');
-    }, []);
-
-    const handleEndSession = () => {
-        endAuthSession();
-        setSessionLabel('');
-    };
+    const { session, isAuthenticated, logout } = useAuth();
 
     return (
         <div className="enterprise-shell min-h-screen text-[var(--enterprise-text)]">
@@ -68,35 +59,33 @@ export default function PublicSiteChrome({ children }: PublicSiteChromeProps) {
                     </nav>
 
                     <div className="flex items-center gap-2">
-                        {sessionLabel ? (
+                        {isAuthenticated && session ? (
                             <>
                                 <span className="ui-accent-badge hidden rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] md:inline-flex">
-                                    {sessionLabel}
+                                    {session.user.name}
                                 </span>
                                 <Link
-                                    to="/dashboard"
+                                    to={session.project ? `/projects/${session.project.id}` : '/projects/new'}
                                     className="ui-secondary-button px-4 py-2 text-sm font-semibold text-[var(--enterprise-text)]"
                                 >
                                     Workspace
                                 </Link>
                                 <button
                                     type="button"
-                                    onClick={handleEndSession}
+                                    onClick={() => void logout()}
                                     className="ui-secondary-button px-4 py-2 text-sm font-semibold text-[var(--enterprise-text)]"
                                 >
-                                    End Demo
+                                    Sign Out
                                 </button>
                             </>
                         ) : (
                             <>
-                                {hasDemoAccessConfigured() ? (
-                                    <Link
-                                        to="/demo"
-                                        className="ui-secondary-button px-4 py-2 text-sm font-semibold text-[var(--enterprise-text)]"
-                                    >
-                                        Try Demo
-                                    </Link>
-                                ) : null}
+                                <Link
+                                    to="/demo"
+                                    className="ui-secondary-button px-4 py-2 text-sm font-semibold text-[var(--enterprise-text)]"
+                                >
+                                    Try Demo
+                                </Link>
                                 <Link
                                     to="/login"
                                     className="ui-secondary-button px-4 py-2 text-sm font-semibold text-[var(--enterprise-text)]"

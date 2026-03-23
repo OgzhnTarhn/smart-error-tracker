@@ -1,39 +1,41 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PublicSiteChrome from '../components/public/PublicSiteChrome';
-import { startDemoSession, getDemoDashboardApiKey, hasDemoAccessConfigured } from '../lib/authSession';
-import { getProjectContextForApiKey, type ProjectContext } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import { getDemoAccess, type DemoAccessResponse } from '../lib/api';
+import type { AuthProjectSummary } from '../lib/authSession';
 
 export default function DemoAccessPage() {
     const navigate = useNavigate();
-    const [project, setProject] = useState<ProjectContext | null>(null);
+    const { loginDemo } = useAuth();
+    const [project, setProject] = useState<AuthProjectSummary | null>(null);
+    const [demoUser, setDemoUser] = useState<DemoAccessResponse['user'] | null>(null);
     const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
     const [message, setMessage] = useState<string | null>(null);
     const [entering, setEntering] = useState(false);
 
-    const demoApiKey = getDemoDashboardApiKey();
-    const demoConfigured = hasDemoAccessConfigured();
-
     useEffect(() => {
-        if (!demoConfigured || !demoApiKey) {
-            setStatus('error');
-            setMessage('Demo API key is not configured yet for this environment.');
-            return;
-        }
-
         let active = true;
         setStatus('loading');
         setMessage(null);
 
         void (async () => {
             try {
-                const response = await getProjectContextForApiKey(demoApiKey);
-                if (!response.ok || !response.project) {
+                const response = await getDemoAccess();
+                if (!response.ok) {
                     throw new Error(response.error ?? 'Demo project context could not be loaded.');
                 }
 
                 if (!active) return;
-                setProject(response.project);
+                setDemoUser(response.user ?? null);
+                setProject(response.project ?? null);
+
+                if (!response.enabled || !response.project) {
+                    setStatus('error');
+                    setMessage('No existing demo project is available to bind right now.');
+                    return;
+                }
+
                 setStatus('ready');
             } catch (err: unknown) {
                 if (!active) return;
@@ -49,23 +51,21 @@ export default function DemoAccessPage() {
         return () => {
             active = false;
         };
-    }, [demoApiKey, demoConfigured]);
+    }, []);
 
-    const handleDemoEntry = () => {
-        const { apiKey } = startDemoSession();
-        if (!apiKey) {
-            setStatus('error');
-            setMessage('Demo access is not configured with a usable API key.');
-            return;
-        }
-
+    const handleDemoEntry = async () => {
         setEntering(true);
-        if (project?.id) {
-            navigate(`/projects/${project.id}`);
-            return;
-        }
+        setMessage(null);
 
-        navigate('/dashboard');
+        try {
+            const nextSession = await loginDemo();
+            navigate(nextSession.project ? `/projects/${nextSession.project.id}` : '/projects/new');
+        } catch (error: unknown) {
+            setStatus('error');
+            setMessage(error instanceof Error ? error.message : 'Demo login failed.');
+        } finally {
+            setEntering(false);
+        }
     };
 
     return (
@@ -80,8 +80,8 @@ export default function DemoAccessPage() {
                             Enter the existing demo project through a dedicated demo session.
                         </h1>
                         <p className="mt-6 max-w-2xl text-base leading-8 text-[var(--enterprise-text-muted)]">
-                            This page is not a fake marketing step. It uses the configured demo API key,
-                            resolves the real project context, and then opens the seeded workspace as a
+                            This page is not a fake marketing step. It resolves the real demo project
+                            binding from the backend and opens the seeded workspace through a dedicated
                             demo user path.
                         </p>
 
@@ -90,10 +90,10 @@ export default function DemoAccessPage() {
                                 Demo user
                             </div>
                             <div className="mt-3 text-2xl font-semibold text-white">
-                                Demo Analyst
+                                {demoUser?.name ?? 'Demo Analyst'}
                             </div>
                             <p className="mt-2 text-sm leading-7 text-[var(--enterprise-text-muted)]">
-                                demo@smarterror.dev
+                                {demoUser?.email ?? 'demo@smarterror.dev'}
                             </p>
                         </div>
                     </div>
@@ -111,15 +111,13 @@ export default function DemoAccessPage() {
                         <div className="space-y-5 px-6 py-6">
                             <div className="border-l border-[rgba(107,130,255,0.24)] pl-4">
                                 <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--enterprise-text-dim)]">
-                                    Demo key status
+                                    Demo access status
                                 </div>
                                 <div className="mt-2 text-lg font-semibold text-white">
-                                    {demoConfigured ? 'Configured' : 'Missing'}
+                                    {status === 'ready' ? 'Ready' : status === 'loading' ? 'Checking' : 'Unavailable'}
                                 </div>
                                 <p className="mt-2 text-sm leading-7 text-[var(--enterprise-text-muted)]">
-                                    {demoConfigured
-                                        ? 'The demo session can reuse the current configured dashboard project.'
-                                        : 'Add VITE_DEMO_API_KEY or reuse the current dashboard VITE_API_KEY for demo access.'}
+                                    The demo session is resolved from backend project membership instead of a fake frontend-only route.
                                 </p>
                             </div>
 
@@ -143,8 +141,8 @@ export default function DemoAccessPage() {
 
                             <button
                                 type="button"
-                                onClick={handleDemoEntry}
-                                disabled={!demoConfigured || status === 'loading' || entering}
+                                onClick={() => void handleDemoEntry()}
+                                disabled={status !== 'ready' || entering}
                                 className="ui-primary-button w-full px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 {entering

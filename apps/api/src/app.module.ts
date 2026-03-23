@@ -10,9 +10,10 @@ import { DashboardStatsService } from './dashboard/dashboard-stats.service';
 import { SimilarIssuesService } from './events/similar-issues.service';
 import { PreventionInsightsService } from './events/prevention-insights.service';
 import { FixMemoryService } from './events/fix-memory.service';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, AuthModule],
   controllers: [AppController, EventsController, AdminController],
   providers: [
     AppService,

@@ -1,14 +1,24 @@
 import { Body, Controller, Get, Headers, Param, Post } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { createHash, randomBytes } from 'crypto';
+import { AuthService } from '../auth/auth.service';
 
 function sha256(input: string) {
   return createHash('sha256').update(input).digest('hex');
 }
 
+function getBearerToken(authorization: string | undefined) {
+  const value = authorization?.trim() ?? '';
+  if (!value.toLowerCase().startsWith('bearer ')) return '';
+  return value.slice(7).trim();
+}
+
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly authService: AuthService,
+  ) {}
 
   private checkAdminToken(token: string | undefined): boolean {
     if (process.env.NODE_ENV === 'production') return false; // Dev/Local only
@@ -122,6 +132,7 @@ export class AdminController {
   @Post('projects')
   async createProject(
     @Headers('x-admin-token') adminToken: string,
+    @Headers('authorization') authorization: string | undefined,
     @Body() body: { name: string; label?: string },
   ) {
     if (!this.checkAdminToken(adminToken)) return { error: 'unauthorized' };
@@ -144,6 +155,12 @@ export class AdminController {
         label: body.label ?? 'default',
       },
     });
+
+    await this.authService.bindTokenToProject(
+      getBearerToken(authorization),
+      project.id,
+      'owner',
+    );
 
     return {
       ok: true,

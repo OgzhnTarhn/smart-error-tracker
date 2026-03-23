@@ -1,3 +1,6 @@
+import type { AuthProjectSummary, AuthUser } from './authSession';
+import { getStoredAuthToken } from './authSession';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 const API_KEY = import.meta.env.VITE_API_KEY || '';
 const ADMIN_TOKEN = import.meta.env.VITE_ADMIN_TOKEN || '';
@@ -44,14 +47,21 @@ export function clearDashboardApiKey() {
 const requestJson = async <T = unknown>(
     endpoint: string,
     apiKeyOverride: string | null,
+    authTokenOverride: string | null = null,
     options: RequestInit = {},
 ): Promise<T> => {
     const headers = new Headers(options.headers || {});
     const apiKey = apiKeyOverride ?? getDashboardApiKey();
+    const authToken = authTokenOverride ?? getStoredAuthToken();
     if (apiKey) {
         headers.set('x-api-key', apiKey);
     } else {
         headers.delete('x-api-key');
+    }
+    if (authToken) {
+        headers.set('Authorization', `Bearer ${authToken}`);
+    } else {
+        headers.delete('Authorization');
     }
     if (!headers.has('Content-Type')) {
         headers.set('Content-Type', 'application/json');
@@ -73,13 +83,13 @@ const requestJson = async <T = unknown>(
 export const apiFetch = async <T = unknown>(
     endpoint: string,
     options: RequestInit = {},
-): Promise<T> => requestJson<T>(endpoint, null, options);
+): Promise<T> => requestJson<T>(endpoint, null, null, options);
 
 export const apiFetchWithApiKey = async <T = unknown>(
     endpoint: string,
     apiKey: string,
     options: RequestInit = {},
-): Promise<T> => requestJson<T>(endpoint, apiKey, options);
+): Promise<T> => requestJson<T>(endpoint, apiKey, null, options);
 
 export const hasAdminConsoleAccess = Boolean(ADMIN_TOKEN);
 
@@ -95,6 +105,10 @@ export const adminFetch = async <T = unknown>(
 
     const headers = new Headers(options.headers || {});
     headers.set('x-admin-token', ADMIN_TOKEN);
+    const authToken = getStoredAuthToken();
+    if (authToken) {
+        headers.set('Authorization', `Bearer ${authToken}`);
+    }
     if (!headers.has('Content-Type')) {
         headers.set('Content-Type', 'application/json');
     }
@@ -203,6 +217,90 @@ export const getProjectContext = () =>
 
 export const getProjectContextForApiKey = (apiKey: string) =>
     apiFetchWithApiKey<ProjectContextResponse>('/project-context', apiKey);
+
+async function authRequest<T = unknown>(
+    endpoint: string,
+    options: RequestInit = {},
+    authTokenOverride: string | null = null,
+) {
+    const headers = new Headers(options.headers || {});
+    const authToken = authTokenOverride ?? getStoredAuthToken();
+    if (authToken) {
+        headers.set('Authorization', `Bearer ${authToken}`);
+    } else {
+        headers.delete('Authorization');
+    }
+    if (!headers.has('Content-Type')) {
+        headers.set('Content-Type', 'application/json');
+    }
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers,
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || `Request failed with status ${response.status}`);
+    }
+
+    return response.json() as Promise<T>;
+}
+
+export interface AuthResponse {
+    ok: boolean;
+    error?: string;
+    sessionToken?: string;
+    mode?: 'demo' | 'member';
+    user?: AuthUser;
+    project?: AuthProjectSummary | null;
+    dashboardApiKey?: string | null;
+}
+
+export interface AuthMeResponse {
+    ok: boolean;
+    error?: string;
+    mode?: 'demo' | 'member';
+    user?: AuthUser;
+    project?: AuthProjectSummary | null;
+    dashboardApiKeyAvailable?: boolean;
+}
+
+export interface DemoAccessResponse {
+    ok: boolean;
+    enabled?: boolean;
+    error?: string;
+    user?: Pick<AuthUser, 'name' | 'email'>;
+    project?: AuthProjectSummary | null;
+}
+
+export const registerUser = (body: { name: string; email: string; password: string }) =>
+    authRequest<AuthResponse>('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(body),
+    });
+
+export const loginUser = (body: { email: string; password: string }) =>
+    authRequest<AuthResponse>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(body),
+    });
+
+export const loginDemoUser = () =>
+    authRequest<AuthResponse>('/auth/demo-login', {
+        method: 'POST',
+    });
+
+export const getDemoAccess = () =>
+    authRequest<DemoAccessResponse>('/auth/demo-access');
+
+export const getAuthMe = (authToken?: string) =>
+    authRequest<AuthMeResponse>('/auth/me', {}, authToken ?? null);
+
+export const logoutUser = (authToken?: string) =>
+    authRequest<{ ok: boolean; error?: string }>('/auth/logout', {
+        method: 'POST',
+    }, authToken ?? null);
 
 export interface DashboardBreakdownItem {
     name: string;

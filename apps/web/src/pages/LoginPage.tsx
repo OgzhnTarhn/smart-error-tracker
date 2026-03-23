@@ -1,16 +1,26 @@
 import { type FormEvent, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import AuthShell from '../components/public/AuthShell';
-import { hasDemoAccessConfigured, startDemoSession } from '../lib/authSession';
+import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
+    const location = useLocation();
     const navigate = useNavigate();
+    const { login, loginDemo, isAuthenticated, session } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [notice, setNotice] = useState<string | null>(null);
-    const demoConfigured = hasDemoAccessConfigured();
+    const [submitting, setSubmitting] = useState(false);
+    const fallbackPath = session?.project ? `/projects/${session.project.id}` : '/projects/new';
 
-    const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    const nextPath = (location.state as { from?: string } | null)?.from
+        ?? fallbackPath;
+
+    if (isAuthenticated) {
+        return <Navigate to={nextPath} replace />;
+    }
+
+    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
         if (!email.trim() || !password.trim()) {
@@ -18,17 +28,37 @@ export default function LoginPage() {
             return;
         }
 
-        setNotice('Login UI is ready. The backend auth flow will be connected in the next phase.');
+        setSubmitting(true);
+        setNotice(null);
+
+        try {
+            const nextSession = await login({
+                email,
+                password,
+            });
+            navigate(
+                (location.state as { from?: string } | null)?.from
+                    ?? (nextSession.project ? `/projects/${nextSession.project.id}` : '/projects/new'),
+            );
+        } catch (error: unknown) {
+            setNotice(error instanceof Error ? error.message : 'Login failed.');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
-    const handleDemoLogin = () => {
-        const { apiKey } = startDemoSession();
-        if (!apiKey) {
-            setNotice('Demo access is not configured with a project key yet.');
-            return;
-        }
+    const handleDemoLogin = async () => {
+        setSubmitting(true);
+        setNotice(null);
 
-        navigate('/demo');
+        try {
+            const nextSession = await loginDemo();
+            navigate(nextSession.project ? `/projects/${nextSession.project.id}` : '/projects/new');
+        } catch (error: unknown) {
+            setNotice(error instanceof Error ? error.message : 'Demo login failed.');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -77,20 +107,20 @@ export default function LoginPage() {
 
                 <button
                     type="submit"
-                    className="ui-primary-button w-full px-4 py-3 text-sm font-semibold text-white"
+                    disabled={submitting}
+                    className="ui-primary-button w-full px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                    Continue to Login
+                    {submitting ? 'Signing in...' : 'Continue to Login'}
                 </button>
 
-                {demoConfigured ? (
-                    <button
-                        type="button"
-                        onClick={handleDemoLogin}
-                        className="ui-secondary-button w-full px-4 py-3 text-sm font-semibold text-[var(--enterprise-text)]"
-                    >
-                        Continue as Demo User
-                    </button>
-                ) : null}
+                <button
+                    type="button"
+                    onClick={() => void handleDemoLogin()}
+                    disabled={submitting}
+                    className="ui-secondary-button w-full px-4 py-3 text-sm font-semibold text-[var(--enterprise-text)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                    Continue as Demo User
+                </button>
             </form>
         </AuthShell>
     );

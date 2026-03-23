@@ -1,13 +1,23 @@
 import { type FormEvent, useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import AuthShell from '../components/public/AuthShell';
+import { useAuth } from '../context/AuthContext';
 
 export default function RegisterPage() {
+    const navigate = useNavigate();
+    const { register, isAuthenticated, session } = useAuth();
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [notice, setNotice] = useState<string | null>(null);
+    const [submitting, setSubmitting] = useState(false);
+    const fallbackPath = session?.project ? `/projects/${session.project.id}` : '/projects/new';
 
-    const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    if (isAuthenticated) {
+        return <Navigate to={fallbackPath} replace />;
+    }
+
+    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
         if (!name.trim() || !email.trim() || !password.trim()) {
@@ -15,7 +25,21 @@ export default function RegisterPage() {
             return;
         }
 
-        setNotice('Register UI is ready. The backend auth flow will be connected in the next phase.');
+        setSubmitting(true);
+        setNotice(null);
+
+        try {
+            const nextSession = await register({
+                name,
+                email,
+                password,
+            });
+            navigate(nextSession.project ? `/projects/${nextSession.project.id}` : '/projects/new');
+        } catch (error: unknown) {
+            setNotice(error instanceof Error ? error.message : 'Registration failed.');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -77,9 +101,10 @@ export default function RegisterPage() {
 
                 <button
                     type="submit"
-                    className="ui-primary-button w-full px-4 py-3 text-sm font-semibold text-white"
+                    disabled={submitting}
+                    className="ui-primary-button w-full px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                    Continue to Register
+                    {submitting ? 'Creating account...' : 'Continue to Register'}
                 </button>
 
                 <p className="text-sm leading-6 text-[var(--enterprise-text-muted)]">

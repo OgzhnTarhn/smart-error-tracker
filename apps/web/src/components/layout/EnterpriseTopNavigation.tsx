@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { getAuthAvatarLabel } from '../../lib/authSession';
 
 type NavItemKey = 'dashboard' | 'projects' | 'issues' | 'settings';
@@ -30,6 +31,7 @@ export default function EnterpriseTopNavigation({
 }: EnterpriseTopNavigationProps) {
     const location = useLocation();
     const navigate = useNavigate();
+    const { isAuthenticated, logout } = useAuth();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -77,6 +79,12 @@ export default function EnterpriseTopNavigation({
 
         setIsMobileMenuOpen(false);
         navigate(`/issues${params.toString() ? `?${params.toString()}` : ''}`);
+    };
+
+    const handleSignOut = async () => {
+        await logout();
+        setIsMobileMenuOpen(false);
+        navigate('/');
     };
 
     return (
@@ -195,6 +203,15 @@ export default function EnterpriseTopNavigation({
                         >
                             {resolvedAvatarLabel}
                         </button>
+                        {isAuthenticated ? (
+                            <button
+                                type="button"
+                                onClick={() => void handleSignOut()}
+                                className="ui-secondary-button hidden px-3 py-2 text-xs font-semibold text-[var(--enterprise-text)] md:inline-flex"
+                            >
+                                Sign Out
+                            </button>
+                        ) : null}
                         <button
                             type="button"
                             aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
@@ -311,10 +328,14 @@ export default function EnterpriseTopNavigation({
                                 </div>
                                 <button
                                     type="button"
-                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    onClick={
+                                        isAuthenticated
+                                            ? () => void handleSignOut()
+                                            : () => setIsMobileMenuOpen(false)
+                                    }
                                     className="ui-secondary-button px-3 py-2 text-xs font-semibold text-[var(--enterprise-text)]"
                                 >
-                                    Continue
+                                    {isAuthenticated ? 'Sign Out' : 'Continue'}
                                 </button>
                             </div>
                         </div>
