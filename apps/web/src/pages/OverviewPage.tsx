@@ -142,7 +142,7 @@ function RecentProjectItem({
                     {name}
                 </div>
                 <div className="mt-1.5 flex flex-wrap gap-2 text-xs">
-                    <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-blue-200">
+                    <span className="ui-accent-badge rounded-full px-2.5 py-1">
                         {platform}
                     </span>
                     <span className="rounded-full border border-[var(--enterprise-border)] bg-[#16181b] px-2.5 py-1 text-[var(--enterprise-text-muted)]">
@@ -181,7 +181,7 @@ function RecentIssuePreview({
                     {title}
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
-                    <span className="rounded-full border border-amber-600/25 bg-amber-600/10 px-2.5 py-1 text-amber-600">
+                    <span className="ui-accent-badge rounded-full px-2.5 py-1">
                         {status}
                     </span>
                     <span className="text-[var(--enterprise-text-muted)]">
@@ -264,7 +264,7 @@ export default function OverviewPage() {
 
             <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 md:px-8 md:py-8">
                 <section className="enterprise-panel relative overflow-hidden px-6 py-6 md:px-8 md:py-7">
-                    <div className="absolute inset-x-0 top-0 h-20 bg-[radial-gradient(circle_at_top_left,rgba(217,119,6,0.08),transparent_58%)]" />
+                    <div className="absolute inset-x-0 top-0 h-20 bg-[radial-gradient(circle_at_top_left,rgba(107,130,255,0.12),transparent_58%)]" />
                     <div className="relative max-w-3xl">
                         <div className="flex flex-wrap items-center gap-2">
                             <span className="enterprise-chip">Dashboard</span>
@@ -301,7 +301,7 @@ export default function OverviewPage() {
                         {dashboardAlerts.map((alert) => (
                             <div
                                 key={alert}
-                                className="rounded-md border border-amber-600/20 bg-amber-600/10 px-3.5 py-3 text-sm text-amber-200"
+                                className="ui-warning-banner rounded-md px-3.5 py-3 text-sm"
                             >
                                 {alert}
                             </div>

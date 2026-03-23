@@ -91,7 +91,7 @@ function StepHeader({
 }) {
     return (
         <div className="mb-4">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-600">
+            <div className="ui-accent-text text-[10px] font-semibold uppercase tracking-[0.18em]">
                 {step}
             </div>
             <h2 className="mt-1.5 text-lg font-semibold text-[var(--enterprise-text)]">
@@ -249,7 +249,7 @@ export default function ProjectSetupPage() {
                     >
                         <div className="space-y-3">
                             {projectsError ? (
-                                <div className="rounded-md border border-amber-600/20 bg-amber-600/10 px-3.5 py-3 text-sm text-amber-200">
+                                <div className="ui-warning-banner rounded-md px-3.5 py-3 text-sm">
                                     {projectsError}
                                 </div>
                             ) : null}
@@ -366,14 +366,14 @@ export default function ProjectSetupPage() {
                         <div className="min-w-0 max-w-3xl">
                             <div className="flex flex-wrap items-center gap-2">
                                 <span className="enterprise-chip">Project Setup</span>
-                                <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-200">
+                                <span className="ui-accent-badge rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]">
                                     {getPlatformLabel(project.platform)}
                                 </span>
                                 <span className="rounded-full border border-[var(--enterprise-border)] bg-[#16181b] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--enterprise-text-muted)]">
                                     {getRuntimeTypeLabel(project.runtimeType)}
                                 </span>
                                 {project.isDraft ? (
-                                    <span className="rounded-full border border-amber-600/20 bg-amber-600/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-200">
+                                    <span className="ui-warning-badge rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]">
                                         Draft
                                     </span>
                                 ) : null}
@@ -402,7 +402,7 @@ export default function ProjectSetupPage() {
                 </section>
 
                 {projectsError ? (
-                    <div className="rounded-md border border-amber-600/20 bg-amber-600/10 px-3.5 py-3 text-sm text-amber-200">
+                    <div className="ui-warning-banner rounded-md px-3.5 py-3 text-sm">
                         {projectsError}
                     </div>
                 ) : null}
@@ -466,7 +466,7 @@ export default function ProjectSetupPage() {
                             <div className="mt-4 rounded-md border border-[var(--enterprise-border)] bg-[#16181b] p-4">
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                     <div>
-                                        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-600">
+                                        <div className="ui-accent-text text-[10px] font-semibold uppercase tracking-[0.16em]">
                                             Current API key
                                         </div>
                                         <div className="mt-1.5 break-all font-mono text-xs text-[var(--enterprise-text)]">

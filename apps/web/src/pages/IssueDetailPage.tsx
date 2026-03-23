@@ -154,9 +154,9 @@ function getSeverityValueClass(severity: EventAiAnalysis['severity']) {
         case 'critical':
             return 'text-red-300';
         case 'high':
-            return 'text-orange-300';
+            return 'ui-accent-text';
         case 'medium':
-            return 'text-orange-200';
+            return 'text-sky-200';
         case 'low':
             return 'text-emerald-200';
         default:
@@ -182,7 +182,7 @@ function getConfidenceValueClass(confidence: EventAiAnalysis['confidence']) {
         case 'high':
             return 'text-slate-50';
         case 'medium':
-            return 'text-orange-200';
+            return 'ui-accent-text';
         case 'low':
             return 'text-slate-300';
         default:
@@ -780,7 +780,7 @@ export default function IssueDetailPage() {
                                     <ActionButton
                                         loading={actionLoading === 'resolve'}
                                         onClick={openResolveDialog}
-                                        className="border-orange-500 bg-orange-500 text-white hover:bg-orange-400 hover:border-orange-400"
+                                        className="ui-primary-button text-white"
                                         label="Resolve"
                                     />
                                     <ActionButton
@@ -795,7 +795,7 @@ export default function IssueDetailPage() {
                                 <ActionButton
                                     loading={actionLoading === 'open'}
                                     onClick={() => void handleAction('open')}
-                                    className="border-orange-500 bg-orange-500 text-white hover:bg-orange-400 hover:border-orange-400"
+                                    className="ui-primary-button text-white"
                                     label="Reopen Issue"
                                 />
                             )}
@@ -923,7 +923,7 @@ function IssueDetailTopTabs({
                             onClick={() => onChange(tab.value)}
                             className={`border-b-2 px-0 pb-4 pt-1 text-base transition-colors ${
                                 isActive
-                                    ? 'border-orange-500 text-white'
+                                    ? 'border-[#6b82ff] text-white'
                                     : 'border-transparent text-slate-400 hover:text-slate-200'
                             }`}
                         >
@@ -984,7 +984,7 @@ function InvestigationTabContent({
                     </div>
                     <div className="space-y-1 text-sm">
                         <Row label="Status">
-                            <span className="text-lg font-bold capitalize text-orange-400">
+                            <span className="ui-accent-text text-lg font-bold capitalize">
                                 {group.status}
                             </span>
                         </Row>
@@ -1025,7 +1025,7 @@ function InvestigationTabContent({
                             <button
                                 type="button"
                                 onClick={onCopyFingerprint}
-                                className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-orange-400 transition-colors hover:text-orange-300"
+                                className="ui-accent-text mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] transition-colors hover:text-white"
                             >
                                 {copiedFingerprint ? 'Copied fingerprint' : 'Copy fingerprint'}
                             </button>
@@ -1157,7 +1157,7 @@ function GuidanceTabContent({
                                     {events.length} {events.length === 1 ? 'event' : 'events'} loaded
                                 </span>
                                 {selectedAnalysis?.severity ? (
-                                    <span className="rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1 text-[11px] font-medium text-orange-200">
+                                    <span className="ui-accent-badge rounded-full px-3 py-1 text-[11px] font-medium">
                                         {getSeveritySummary(selectedAnalysis.severity)}
                                     </span>
                                 ) : null}
@@ -1227,7 +1227,7 @@ function GuidanceTabContent({
                                         }}
                                         disabled={events.length === 0}
                                         style={{ colorScheme: 'dark' }}
-                                        className="w-full rounded-xl border border-[#2c2c2e] bg-[#111] px-4 py-3 text-sm text-slate-100 outline-none transition-colors focus:border-orange-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                        className="w-full rounded-xl border border-[#2c2c2e] bg-[#111] px-4 py-3 text-sm text-slate-100 outline-none transition-colors focus:border-[rgba(107,130,255,0.4)] disabled:cursor-not-allowed disabled:opacity-60"
                                     >
                                         {events.map((event) => (
                                             <option key={event.id} value={event.id}>
@@ -1240,7 +1240,7 @@ function GuidanceTabContent({
                                 <ActionButton
                                     loading={aiAnalyzing}
                                     onClick={onAnalyze}
-                                    className="border-orange-500 bg-orange-500 text-white hover:bg-orange-400 hover:border-orange-400"
+                                    className="ui-primary-button text-white"
                                     label="Analyze Selected Event"
                                 />
                             </div>
@@ -1351,7 +1351,7 @@ function GuidanceWorkspaceSectionTabs({
                             onClick={() => onChange(section.value)}
                             className={`rounded-[14px] px-4 py-2.5 text-sm font-medium transition-colors ${
                                 isActive
-                                    ? 'bg-orange-500 text-white shadow-[0_0_0_1px_rgba(249,115,22,0.22)]'
+                                    ? 'bg-[var(--enterprise-accent-primary)] text-white shadow-[0_0_0_1px_rgba(107,130,255,0.22)]'
                                     : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-100'
                             }`}
                         >
@@ -1446,7 +1446,7 @@ function getGuidanceRepeatRiskTone(risk: PreventionInsights['repeatRisk'] | null
         case 'medium':
             return {
                 label: 'Elevated',
-                className: 'border-orange-500/25 bg-orange-500/10 text-orange-200',
+                className: 'ui-accent-badge',
             };
         case 'low':
             return {
@@ -1475,7 +1475,7 @@ function GuidanceEventNavButton({
             aria-label={label}
             onClick={onClick}
             disabled={disabled}
-            className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#2c2c2e] bg-[#111] text-slate-300 transition-colors hover:border-orange-500/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-45"
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#2c2c2e] bg-[#111] text-slate-300 transition-colors hover:border-[rgba(107,130,255,0.28)] hover:text-white disabled:cursor-not-allowed disabled:opacity-45"
         >
             {children}
         </button>
@@ -1681,7 +1681,7 @@ function ResolveIssueDialog({
                             onChange={(event) => onChangeNote(event.target.value)}
                             rows={5}
                             placeholder="Added null guard before rendering checkout summary."
-                            className="mt-2 w-full resize-y rounded-xl border border-[#2c2c2c] bg-black px-3 py-2.5 text-sm text-slate-100 outline-none transition-colors placeholder:text-slate-600 focus:border-orange-500/60"
+                            className="mt-2 w-full resize-y rounded-xl border border-[#2c2c2c] bg-black px-3 py-2.5 text-sm text-slate-100 outline-none transition-colors placeholder:text-slate-600 focus:border-[rgba(107,130,255,0.6)]"
                         />
                     </label>
 
@@ -1705,7 +1705,7 @@ function ResolveIssueDialog({
                         type="button"
                         onClick={onSubmit}
                         disabled={loading}
-                        className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-400 disabled:opacity-50"
+                        className="ui-primary-button inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                     >
                         {loading ? <Spinner /> : null}
                         {loading ? 'Resolving...' : 'Resolve Issue'}
@@ -1801,7 +1801,7 @@ function AnalysisSectionCard({
             </div>
 
             {codeValue ? (
-                <div className="mt-5 rounded-xl border border-[#2b2b2b] bg-black px-4 py-3.5 font-mono text-[15px] leading-7 text-orange-300">
+                <div className="ui-accent-text mt-5 rounded-xl border border-[#2b2b2b] bg-black px-4 py-3.5 font-mono text-[15px] leading-7">
                     {value}
                 </div>
             ) : (
@@ -1887,7 +1887,7 @@ function AiAnalysisPanel({
         <div className="guidance-panel relative overflow-hidden rounded-[30px] border border-[#2b241f] ring-1 ring-white/5">
             <div className="border-b border-[#252525] px-7 pb-6 pt-7">
                 <div className="flex items-start gap-4">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] bg-orange-500/12 text-orange-300">
+                    <div className="ui-accent-surface flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px]">
                         <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path
                                 strokeLinecap="round"
@@ -1906,7 +1906,7 @@ function AiAnalysisPanel({
                         </h2>
                         <p className="mt-2 max-w-4xl text-[16px] leading-8 text-slate-400">
                             {selectedEvent
-                                ? <>Decision support for event <span className="font-mono text-orange-300">{truncateIdentifier(selectedEvent.id, 12, 4)}</span>. Start with the summary below, confirm the likely failure path, then use the immediate next step to validate the diagnosis against the current event context.</>
+                                ? <>Decision support for event <span className="ui-accent-text font-mono">{truncateIdentifier(selectedEvent.id, 12, 4)}</span>. Start with the summary below, confirm the likely failure path, then use the immediate next step to validate the diagnosis against the current event context.</>
                                 : 'Choose an event from the list to generate structured debugging guidance. This workspace is designed to help you move from suspicion to confirmation faster by highlighting the most actionable parts of the analysis first.'}
                         </p>
                     </div>
@@ -1923,7 +1923,7 @@ function AiAnalysisPanel({
 
                 {showLoadingState ? (
                     <div className="py-16 text-center">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[0.2em] text-orange-200">
+                        <div className="ui-accent-badge inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[0.2em]">
                             <Spinner />
                             Analyzing selected event
                         </div>
@@ -1955,7 +1955,7 @@ function AiAnalysisPanel({
                 ) : (
                     <div className="space-y-6">
                         {analyzing && (
-                            <div className="rounded-2xl border border-orange-500/20 bg-orange-500/10 px-5 py-4 text-[15px] text-orange-100 ring-1 ring-orange-500/10">
+                            <div className="ui-accent-surface rounded-2xl px-5 py-4 text-[15px]">
                                 Refreshing guidance for the selected event.
                             </div>
                         )}
@@ -1982,8 +1982,8 @@ function AiAnalysisPanel({
                                             label="Root Cause"
                                             value={analysis.rootCause}
                                             supportingText="This is the strongest current explanation for why the event failed. Validate it against the exact code path, event payload, and runtime conditions before applying a permanent fix."
-                                            iconClassName="border-orange-500/20 bg-orange-500/10 text-orange-300"
-                                            toneClassName="border-orange-500/15 bg-orange-500/[0.08]"
+                                            iconClassName="ui-accent-surface"
+                                            toneClassName="ui-accent-panel"
                                             icon={(
                                                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path
@@ -2001,8 +2001,8 @@ function AiAnalysisPanel({
                                             label="Immediate Next Step"
                                             value={analysis.nextStep}
                                             supportingText="Use this as the fastest confirmation step. The goal here is to prove or disprove the suspected failure path with the least amount of extra debugging work."
-                                            iconClassName="border-amber-500/20 bg-amber-500/10 text-amber-200"
-                                            toneClassName="border-amber-500/15 bg-amber-500/[0.07]"
+                                            iconClassName="ui-warning-badge"
+                                            toneClassName="ui-warning-panel"
                                             icon={(
                                                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path
@@ -2044,9 +2044,9 @@ function AiAnalysisPanel({
                             </div>
 
                             {analysis?.preventionTip ? (
-                                <div className="rounded-[26px] border border-orange-500/20 bg-orange-500/[0.08] px-7 py-6 text-[16px] ring-1 ring-orange-500/10">
-                                    <div className="flex items-start gap-4 text-orange-100">
-                                        <span className="flex h-11 w-11 items-center justify-center rounded-full border border-orange-400/20 bg-orange-400/10 text-orange-200">
+                                <div className="ui-accent-panel rounded-[26px] px-7 py-6 text-[16px] ring-1 ring-white/5">
+                                    <div className="flex items-start gap-4 text-[var(--enterprise-text)]">
+                                        <span className="ui-accent-surface flex h-11 w-11 items-center justify-center rounded-full">
                                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path
                                                     strokeLinecap="round"
@@ -2057,13 +2057,13 @@ function AiAnalysisPanel({
                                             </svg>
                                         </span>
                                             <div>
-                                                <div className="text-[13px] font-semibold uppercase tracking-[0.22em] text-orange-300">
+                                                <div className="ui-accent-text text-[13px] font-semibold uppercase tracking-[0.22em]">
                                                     Pro-tip
                                                 </div>
-                                                <p className="mt-2 max-w-5xl leading-8 text-orange-50/90">
+                                                <p className="mt-2 max-w-5xl leading-8 text-slate-100">
                                                     {analysis.preventionTip}
                                                 </p>
-                                                <p className="mt-3 max-w-4xl text-[15px] leading-7 text-orange-50/70">
+                                                <p className="mt-3 max-w-4xl text-[15px] leading-7 text-slate-300">
                                                     Small guardrails applied here usually pay off twice: they reduce repeat noise in the short term and improve the quality of future guidance for the same failure pattern.
                                                 </p>
                                             </div>

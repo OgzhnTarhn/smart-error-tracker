@@ -45,8 +45,8 @@ function DonutChart({
 
     const colors =
         variant === 'enterprise'
-            ? ['#f97316', '#3b82f6', '#22c55e', '#f43f5e', '#94a3b8']
-            : ['#f97316', '#6b7280', '#3b82f6', '#22c55e', '#eab308'];
+            ? ['#6b82ff', '#57a2ff', '#35c68a', '#f26d80', '#94a3b8']
+            : ['#6b82ff', '#6b7280', '#57a2ff', '#35c68a', '#e7b15c'];
     const size = variant === 'enterprise' ? 156 : 130;
     const strokeWidth = variant === 'enterprise' ? 16 : 18;
     const radius = (size - strokeWidth) / 2;
@@ -145,7 +145,7 @@ export default function DistributionListCard({
     emptyMessage,
     loading = false,
     monospaceLabels = false,
-    barClassName = 'bg-gradient-to-r from-red-500 to-rose-400',
+    barClassName = 'bg-gradient-to-r from-sky-500 to-indigo-400',
     mode = 'bar',
     showPercentage = false,
     variant = 'default',

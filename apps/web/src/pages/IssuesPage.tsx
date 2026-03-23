@@ -235,7 +235,7 @@ function IssueListCard({
         <button
             type="button"
             onClick={onOpen}
-            className="enterprise-panel-soft w-full rounded-[24px] border border-[var(--enterprise-border)] p-5 text-left transition-all hover:border-orange-500/30 hover:bg-[#18110d]"
+            className="enterprise-panel-soft ui-accent-hover-panel w-full rounded-[24px] border border-[var(--enterprise-border)] p-5 text-left transition-all"
         >
             <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                 <div className="min-w-0 flex-1">
@@ -264,7 +264,7 @@ function IssueListCard({
                             </span>
                         ) : null}
                         {issue.releaseVersion ? (
-                            <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 font-mono text-xs text-blue-200">
+                            <span className="ui-accent-badge rounded-full px-3 py-1 font-mono text-xs">
                                 {issue.releaseVersion}
                             </span>
                         ) : null}
@@ -305,7 +305,7 @@ function IssueListCard({
                             {issue.eventCount.toLocaleString()}
                         </div>
                     </div>
-                    <div className="flex items-center gap-2 text-sm font-medium text-orange-300">
+                    <div className="ui-accent-text flex items-center gap-2 text-sm font-medium">
                         Open investigation
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
@@ -583,7 +583,7 @@ export default function IssuesPage() {
                             <button
                                 type="button"
                                 onClick={() => navigate('/dashboard')}
-                                className="rounded-full border border-orange-400/20 bg-orange-500/15 px-5 py-3 text-sm font-semibold text-orange-100 transition-colors hover:border-orange-400/30 hover:bg-orange-500/20"
+                                className="ui-primary-button rounded-full px-5 py-3 text-sm font-semibold"
                             >
                                 Open Main Dashboard
                             </button>
@@ -656,12 +656,12 @@ export default function IssuesPage() {
                 ) : null}
 
                 {hasApiKey && error ? (
-                    <div className="enterprise-panel mb-6 border-l-4 border-l-amber-500 px-5 py-4">
+                    <div className="ui-warning-banner enterprise-panel mb-6 border-l-4 border-l-[var(--enterprise-accent-warning)] px-5 py-4">
                         <div className="flex items-start gap-3">
-                            <svg className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="mt-0.5 h-5 w-5 shrink-0 text-[var(--enterprise-accent-warning)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <div className="text-sm text-amber-100">
+                            <div className="text-sm text-[var(--enterprise-text)]">
                                 {issues.length > 0
                                     ? `${error}. Showing the last loaded issue set.`
                                     : `${error}. No issues are available right now.`}

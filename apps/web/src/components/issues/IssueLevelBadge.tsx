@@ -1,9 +1,9 @@
 import type { IssueLevel } from './types';
 
 const LEVEL_STYLES: Record<IssueLevel, string> = {
-    error: 'text-red-400 bg-red-500/10 border-red-500/30',
-    warn: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
-    info: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
+    error: 'ui-danger-badge',
+    warn: 'ui-warning-badge',
+    info: 'ui-accent-badge',
 };
 
 function normalizeLevel(level: string): IssueLevel | null {
@@ -29,14 +29,8 @@ export default function IssueLevelBadge({
 
     const className =
         variant === 'enterprise'
-            ? `inline-flex items-center rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
-                normalizedLevel === 'error'
-                    ? 'bg-red-500/18 text-red-300'
-                    : normalizedLevel === 'warn'
-                        ? 'bg-amber-500/18 text-amber-300'
-                        : 'bg-blue-500/18 text-blue-300'
-            }`
-            : `inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border uppercase tracking-wide ${LEVEL_STYLES[normalizedLevel]}`;
+            ? `inline-flex items-center rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${LEVEL_STYLES[normalizedLevel]}`
+            : `inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium uppercase tracking-wide ${LEVEL_STYLES[normalizedLevel]}`;
 
     return (
         <span className={className}>

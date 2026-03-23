@@ -41,7 +41,7 @@ export default function DashboardSectionCard({
                 <div className="min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
                         {icon ? (
-                            <span className={isEnterprise ? 'text-[12px] text-amber-600' : 'text-base'}>
+                            <span className={isEnterprise ? 'ui-accent-text text-[12px]' : 'text-base'}>
                                 {icon}
                             </span>
                         ) : null}

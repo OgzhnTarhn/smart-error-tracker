@@ -71,7 +71,7 @@ export default function IssueFilterBar({
                                         <button
                                             type="button"
                                             onClick={onClearFilters}
-                                            className="rounded-xl border border-[#303030] px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-300 transition-colors hover:border-slate-200 hover:text-white"
+                                            className="rounded-xl border border-[#303030] px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-300 transition-colors hover:border-[var(--enterprise-border-strong)] hover:text-white"
                                         >
                                             Clear filters
                                         </button>
@@ -105,7 +105,7 @@ export default function IssueFilterBar({
                                 placeholder="Search by title or fingerprint..."
                                 className={`w-full py-3 pl-10 pr-4 text-sm outline-none ${
                                     isEnterprise
-                                        ? 'enterprise-panel-soft rounded-2xl border border-[var(--enterprise-border)] text-white placeholder:text-[var(--enterprise-text-dim)] focus:border-orange-500/40'
+                                        ? 'ui-input enterprise-panel-soft rounded-2xl border border-[var(--enterprise-border)] text-white placeholder:text-[var(--enterprise-text-dim)]'
                                         : 'rounded-xl border border-slate-700 bg-slate-900/70 text-slate-100 placeholder:text-slate-500 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20'
                                 }`}
                             />
@@ -217,7 +217,7 @@ function FilterSelect({
             style={isEnterprise ? { colorScheme: 'dark' } : undefined}
             className={`min-w-[150px] px-3 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
                 isEnterprise
-                    ? 'enterprise-select enterprise-panel-soft rounded-xl border border-[var(--enterprise-border)] pr-8 font-medium text-white focus:border-orange-500/40 focus:outline-none'
+                    ? 'ui-input enterprise-select enterprise-panel-soft rounded-xl border border-[var(--enterprise-border)] pr-8 font-medium text-white focus:outline-none'
                     : 'rounded-lg border border-slate-700 bg-slate-900/70 text-slate-100 focus:border-blue-500/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20'
             }`}
         >

@@ -115,7 +115,7 @@ function RangeToggleButton({
             aria-pressed={active}
             className={`h-9 rounded-md border px-3 text-sm font-semibold transition-colors ${
                 active
-                    ? 'border-amber-600/30 bg-amber-600/10 text-amber-100'
+                    ? 'ui-accent-badge text-white'
                     : 'border-[var(--enterprise-border)] bg-[#16181b] text-[var(--enterprise-text-muted)] hover:bg-[#1a1d20] hover:text-[var(--enterprise-text)]'
             }`}
         >
@@ -268,7 +268,7 @@ function EventVolumeCard({
                                     <path
                                         d={path}
                                         fill="none"
-                                        stroke="#d97706"
+                                        stroke="#6b82ff"
                                         strokeWidth="3"
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
@@ -277,8 +277,8 @@ function EventVolumeCard({
 
                                 <defs>
                                     <linearGradient id="project-volume-fill" x1="0" x2="0" y1="0" y2="1">
-                                        <stop offset="0%" stopColor="rgba(217,119,6,0.35)" />
-                                        <stop offset="100%" stopColor="rgba(217,119,6,0.02)" />
+                                        <stop offset="0%" stopColor="rgba(107,130,255,0.35)" />
+                                        <stop offset="100%" stopColor="rgba(107,130,255,0.02)" />
                                     </linearGradient>
                                 </defs>
                             </svg>
@@ -544,7 +544,7 @@ export default function ProjectIssuesPage() {
                         <div className="min-w-0 max-w-4xl">
                             <div className="flex flex-wrap items-center gap-2">
                                 <span className="enterprise-chip">Project</span>
-                                <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-200">
+                                <span className="ui-accent-badge rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]">
                                     {getPlatformLabel(project.platform)}
                                 </span>
                                 <span className="rounded-full border border-[var(--enterprise-border)] bg-[#16181b] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--enterprise-text-muted)]">
@@ -595,14 +595,14 @@ export default function ProjectIssuesPage() {
                 </section>
 
                 {selectedRange === '7d' && isEmptySelectedRange ? (
-                    <div className="rounded-md border border-blue-500/20 bg-blue-500/10 px-3.5 py-3 text-sm text-blue-100">
+                    <div className="ui-info-banner rounded-md px-3.5 py-3 text-sm">
                         No activity was found in the last 7 days for this project. Switch to
                         `30d` to inspect older project telemetry.
                     </div>
                 ) : null}
 
                 {activeStatsError ? (
-                    <div className="rounded-md border border-amber-600/20 bg-amber-600/10 px-3.5 py-3 text-sm text-amber-200">
+                    <div className="ui-warning-banner rounded-md px-3.5 py-3 text-sm">
                         {activeStatsError}
                     </div>
                 ) : null}
@@ -690,7 +690,7 @@ export default function ProjectIssuesPage() {
                         emptyMessage="No route metadata has been captured yet."
                         loading={activeStatsLoading && !activeStats}
                         monospaceLabels
-                        barClassName="bg-gradient-to-r from-amber-600 to-orange-400"
+                        barClassName="bg-gradient-to-r from-sky-500 to-indigo-400"
                         variant="enterprise"
                     />
 
@@ -701,7 +701,7 @@ export default function ProjectIssuesPage() {
                         emptyMessage="No release metadata has been captured yet."
                         loading={activeStatsLoading && !activeStats}
                         monospaceLabels
-                        barClassName="bg-gradient-to-r from-amber-500 to-yellow-400"
+                        barClassName="bg-gradient-to-r from-cyan-500 to-sky-400"
                         variant="enterprise"
                     />
                 </div>

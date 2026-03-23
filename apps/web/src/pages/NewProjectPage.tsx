@@ -233,7 +233,7 @@ export default function NewProjectPage() {
                             </div>
 
                             {!hasAdminConsoleAccess ? (
-                                <div className="rounded-md border border-amber-600/20 bg-amber-600/10 px-3.5 py-3 text-sm leading-6 text-amber-200">
+                                <div className="ui-warning-banner rounded-md px-3.5 py-3 text-sm leading-6">
                                     <code className="font-mono text-amber-100">
                                         VITE_ADMIN_TOKEN
                                     </code>{' '}

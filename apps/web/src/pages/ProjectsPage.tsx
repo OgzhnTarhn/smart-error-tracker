@@ -87,7 +87,7 @@ function ProjectCard({
                                 </span>
                             ) : null}
                             {project.isDraft ? (
-                                <span className="rounded-full border border-amber-600/20 bg-amber-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-200">
+                                <span className="ui-warning-badge rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]">
                                     Draft
                                 </span>
                             ) : null}
@@ -95,7 +95,7 @@ function ProjectCard({
                     </div>
 
                     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-xs">
-                        <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-blue-200">
+                        <span className="ui-accent-badge rounded-full px-2.5 py-1">
                             {getPlatformLabel(project.platform)}
                         </span>
                         <span className="rounded-full border border-[var(--enterprise-border)] bg-[#16181b] px-2.5 py-1 text-[var(--enterprise-text-muted)]">
@@ -180,7 +180,7 @@ export default function ProjectsPage() {
                 </section>
 
                 {error ? (
-                    <div className="rounded-md border border-amber-600/20 bg-amber-600/10 px-3.5 py-3 text-sm text-amber-200">
+                    <div className="ui-warning-banner rounded-md px-3.5 py-3 text-sm">
                         {error}
                     </div>
                 ) : null}

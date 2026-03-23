@@ -37,7 +37,7 @@ export default function EnterpriseTopNavigation({
                         onClick={() => navigate('/dashboard')}
                         className="flex shrink-0 items-center gap-2.5 text-left"
                     >
-                        <div className="flex h-7 w-7 items-center justify-center rounded-md border border-amber-600/25 bg-amber-600/10 text-amber-600">
+                        <div className="ui-accent-surface flex h-7 w-7 items-center justify-center rounded-md">
                             <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path
                                     strokeLinecap="round"
@@ -114,7 +114,7 @@ export default function EnterpriseTopNavigation({
                         type="button"
                         className="relative flex h-8 w-8 items-center justify-center rounded-md border border-[var(--enterprise-border)] bg-[#16181b] text-[var(--enterprise-text-muted)] transition-colors hover:bg-[#1a1d20] hover:text-[var(--enterprise-text)]"
                     >
-                        <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-amber-600" />
+                        <span className="ui-accent-dot absolute right-2 top-2 h-2 w-2 rounded-full" />
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path
                                 strokeLinecap="round"

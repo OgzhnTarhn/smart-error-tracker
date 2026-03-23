@@ -137,7 +137,7 @@ export default function TopIssuesCard({
                             onClick={() => onSelectIssue(issue.id)}
                             className={`w-full cursor-pointer text-left transition-all ${
                                 isEnterprise
-                                    ? 'enterprise-panel-soft rounded-[20px] border border-[var(--enterprise-border)] p-4 hover:border-orange-500/30 hover:bg-[#18110d]'
+                                    ? 'enterprise-panel-soft ui-accent-hover-panel rounded-[20px] border border-[var(--enterprise-border)] p-4'
                                     : 'dash-card-inner p-4 hover:border-white/10 hover:bg-[#1a1a28]'
                             }`}
                         >
