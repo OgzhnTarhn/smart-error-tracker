@@ -196,7 +196,7 @@ export default function SimilarPastIssuesPanel({
             </div>
             <Link
                 to="/issues"
-                className="inline-flex items-center gap-2 self-start text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-300 transition-colors hover:text-orange-200"
+                className="ui-accent-link inline-flex items-center gap-2 self-start text-[11px] font-semibold uppercase tracking-[0.22em]"
             >
                 View All Matches
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -223,7 +223,7 @@ export default function SimilarPastIssuesPanel({
                 <li key={item.id}>
                     <Link
                         to={`/issues/${item.id}`}
-                        className={`guidance-panel group block overflow-hidden rounded-[24px] border border-[#2a2a2a] ring-1 ring-white/5 transition-colors duration-200 hover:border-orange-500/40 ${compact ? 'px-4 py-4' : 'px-5 py-5'}`}
+                        className={`guidance-panel group block overflow-hidden rounded-[24px] border border-[var(--enterprise-border)] ring-1 ring-white/5 transition-colors duration-200 hover:border-[rgba(107,130,255,0.28)] ${compact ? 'px-4 py-4' : 'px-5 py-5'}`}
                     >
                         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                             <div className="min-w-0 flex-1">
@@ -231,26 +231,26 @@ export default function SimilarPastIssuesPanel({
                                     <HistoryBadge
                                         label={item.status}
                                         className={item.status === 'resolved'
-                                            ? 'border-emerald-500/20 bg-emerald-500/12 text-emerald-300'
+                                            ? 'ui-success-badge'
                                             : item.status === 'ignored'
-                                                ? 'border-amber-500/20 bg-amber-500/12 text-amber-300'
-                                                : 'border-red-500/20 bg-red-500/12 text-red-300'}
+                                                ? 'ui-warning-badge'
+                                                : 'ui-danger-badge'}
                                     />
                                     {item.isRegression ? (
                                         <HistoryBadge
                                             label="Regression"
-                                            className="border-orange-500/20 bg-orange-500/12 text-orange-300"
+                                            className="ui-accent-badge"
                                         />
                                     ) : null}
                                     {item.resolutionNote ? (
                                         <HistoryBadge
                                             label="Has Fix Note"
-                                            className="border-cyan-500/20 bg-cyan-500/12 text-cyan-300"
+                                            className="ui-accent-badge"
                                         />
                                     ) : null}
                                 </div>
 
-                                <h3 className={`mt-5 font-semibold text-white transition-colors group-hover:text-orange-50 ${compact ? 'text-[1rem] leading-7' : 'text-[1.1rem] leading-8'}`}>
+                                <h3 className={`mt-5 font-semibold text-white transition-colors group-hover:text-[#dbe6ff] ${compact ? 'text-[1rem] leading-7' : 'text-[1.1rem] leading-8'}`}>
                                     {truncateText(item.title, 160)}
                                 </h3>
                                 <p className={`mt-2 ${compact ? 'text-[13px] leading-6' : 'text-sm leading-7'} text-slate-400`}>
@@ -268,7 +268,7 @@ export default function SimilarPastIssuesPanel({
                                             ? truncateText(item.resolutionNote, 260)
                                             : 'No saved resolution note was attached to this issue.'}
                                         toneClassName={item.resolutionNote
-                                            ? 'border-emerald-500/15 bg-emerald-500/[0.05]'
+                                            ? 'ui-success-panel'
                                             : ''}
                                         mono={Boolean(item.resolutionNote)}
                                     />
@@ -276,18 +276,18 @@ export default function SimilarPastIssuesPanel({
                             </div>
 
                             <div className={compact ? 'xl:w-[190px]' : 'xl:w-[220px]'}>
-                                <div className={`rounded-[22px] border border-orange-500/20 bg-orange-500/[0.08] ring-1 ring-orange-500/10 ${compact ? 'px-4 py-4' : 'px-5 py-5'}`}>
-                                    <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-200">
+                                <div className={`ui-accent-panel rounded-[22px] ring-1 ring-white/5 ${compact ? 'px-4 py-4' : 'px-5 py-5'}`}>
+                                    <div className="ui-accent-text text-[11px] font-semibold uppercase tracking-[0.2em]">
                                         Match Score
                                     </div>
                                     <div className={`mt-3 font-semibold leading-none text-white ${compact ? 'text-[1.7rem]' : 'text-[2rem]'}`}>
                                         {formatMatchScore(item.score)}
                                     </div>
-                                    <p className={`mt-3 ${compact ? 'text-[13px] leading-6' : 'text-sm leading-6'} text-orange-50/80`}>
+                                    <p className={`mt-3 ${compact ? 'text-[13px] leading-6' : 'text-sm leading-6'} text-slate-300`}>
                                         Historical similarity based on error shape, metadata, and issue context.
                                     </p>
-                                    <div className="mt-4 border-t border-orange-500/15 pt-4">
-                                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-200">
+                                    <div className="mt-4 border-t border-[rgba(107,130,255,0.16)] pt-4">
+                                        <div className="ui-accent-text text-[11px] font-semibold uppercase tracking-[0.2em]">
                                             Last Seen
                                         </div>
                                         <div className="mt-2 text-sm font-medium text-slate-100">
@@ -305,8 +305,8 @@ export default function SimilarPastIssuesPanel({
 
     if (framed) {
         return (
-            <section className="guidance-panel overflow-hidden rounded-[24px] border border-[#2a2a2a] ring-1 ring-white/5">
-                <div className="border-b border-[#232323] px-5 pb-5 pt-5">
+            <section className="guidance-panel overflow-hidden rounded-[24px] border border-[var(--enterprise-border)] ring-1 ring-white/5">
+                <div className="border-b border-[var(--enterprise-border)] px-5 pb-5 pt-5">
                     {header}
                 </div>
                 <div className="p-5">

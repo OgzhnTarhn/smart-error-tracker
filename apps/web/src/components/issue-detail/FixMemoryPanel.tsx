@@ -17,12 +17,12 @@ function truncateText(value: string, maxLength: number) {
 function getConfidenceTone(confidence: FixMemoryConfidence) {
     switch (confidence) {
         case 'high':
-            return 'border-emerald-500/25 bg-emerald-500/12 text-emerald-200';
+            return 'ui-success-badge';
         case 'medium':
-            return 'border-orange-500/25 bg-orange-500/12 text-orange-200';
+            return 'ui-accent-badge';
         case 'low':
         default:
-            return 'border-slate-600/50 bg-slate-800/50 text-slate-200';
+            return 'ui-muted-badge';
     }
 }
 
@@ -52,7 +52,7 @@ function LoadingState() {
 
 function ErrorState({ error }: { error: string }) {
     return (
-        <div className="guidance-panel overflow-hidden rounded-[26px] border border-red-500/25 bg-red-500/10 ring-1 ring-red-500/10">
+        <div className="guidance-panel ui-danger-panel overflow-hidden rounded-[26px] ring-1 ring-white/5">
             <div className="px-6 py-6">
                 <h3 className="text-sm font-semibold text-red-100">
                     Fix Memory is unavailable
@@ -126,11 +126,11 @@ export default function FixMemoryPanel({
     }
 
     return (
-        <section className="guidance-panel overflow-hidden rounded-[26px] border border-[#2a2a2a] ring-1 ring-white/5">
-            <div className="border-b border-[#232323] px-6 pb-5 pt-6">
+        <section className="guidance-panel overflow-hidden rounded-[26px] border border-[var(--enterprise-border)] ring-1 ring-white/5">
+            <div className="border-b border-[var(--enterprise-border)] px-6 pb-5 pt-6">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="flex items-start gap-4">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-300">
+                        <div className="ui-accent-surface flex h-12 w-12 items-center justify-center rounded-2xl">
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path
                                     strokeLinecap="round"
@@ -160,7 +160,7 @@ export default function FixMemoryPanel({
             </div>
 
             <div className="space-y-6 p-6">
-                <div className="rounded-[24px] border border-[#2a2a2a] bg-black/35 px-6 py-5 ring-1 ring-white/5">
+                <div className="rounded-[24px] border border-[var(--enterprise-border)] bg-black/35 px-6 py-5 ring-1 ring-white/5">
                     <div className="text-[12px] font-semibold uppercase tracking-[0.22em] text-slate-300">
                         Summary
                     </div>
@@ -171,7 +171,7 @@ export default function FixMemoryPanel({
 
                 <div className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
                     <div className="space-y-5">
-                        <div className="guidance-panel-soft rounded-[22px] border border-[#262626] p-5 ring-1 ring-white/5">
+                        <div className="guidance-panel-soft rounded-[22px] border border-[var(--enterprise-border)] p-5 ring-1 ring-white/5">
                             <div className="flex items-center justify-between gap-3">
                                 <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                                     Signals
@@ -184,7 +184,7 @@ export default function FixMemoryPanel({
                                 <ul className="mt-4 space-y-3">
                                     {memory.signals.map((signal) => (
                                         <li key={signal} className="flex items-start gap-3">
-                                            <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-cyan-400" />
+                                            <span className="ui-accent-dot mt-2 h-2 w-2 shrink-0 rounded-full" />
                                             <span className="text-sm leading-7 text-slate-200">{signal}</span>
                                         </li>
                                     ))}
@@ -196,7 +196,7 @@ export default function FixMemoryPanel({
                             )}
                         </div>
 
-                        <div className="guidance-panel-soft rounded-[22px] border border-[#262626] p-5 ring-1 ring-white/5">
+                        <div className="guidance-panel-soft rounded-[22px] border border-[var(--enterprise-border)] p-5 ring-1 ring-white/5">
                             <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                                 Recommended Reusable Actions
                             </div>
@@ -207,25 +207,25 @@ export default function FixMemoryPanel({
                                             key={action}
                                             className={`rounded-[18px] border px-4 py-4 ring-1 ${
                                                 index === 0
-                                                    ? 'border-emerald-500/25 bg-emerald-500/[0.08] ring-emerald-500/10'
+                                                    ? 'ui-accent-panel ring-white/5'
                                                     : 'border-[#252525] bg-[#0b0b0b] ring-white/5'
                                             }`}
                                         >
                                             <div className="flex items-start gap-3">
                                                 <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${
                                                     index === 0
-                                                        ? 'border-emerald-400/30 bg-emerald-500 text-white'
+                                                        ? 'ui-accent-surface text-white'
                                                         : 'border-[#555] text-slate-400'
                                                 }`}>
                                                     {index + 1}
                                                 </span>
                                                 <div className="min-w-0">
                                                     {index === 0 ? (
-                                                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-200">
+                                                        <div className="ui-accent-text text-[11px] font-semibold uppercase tracking-[0.2em]">
                                                             Best reusable move
                                                         </div>
                                                     ) : null}
-                                                    <p className={`text-sm leading-7 ${index === 0 ? 'mt-2 text-emerald-50' : 'text-slate-300'}`}>
+                                                    <p className={`text-sm leading-7 ${index === 0 ? 'mt-2 text-slate-100' : 'text-slate-300'}`}>
                                                         {action}
                                                     </p>
                                                 </div>
@@ -262,20 +262,20 @@ export default function FixMemoryPanel({
                                     <Link
                                         key={item.id}
                                         to={`/issues/${item.id}`}
-                                        className="guidance-panel-soft group block rounded-[22px] border border-[#262626] px-5 py-5 ring-1 ring-white/5 transition-colors hover:border-cyan-500/30"
+                                        className="guidance-panel-soft group block rounded-[22px] border border-[var(--enterprise-border)] px-5 py-5 ring-1 ring-white/5 transition-colors hover:border-[rgba(107,130,255,0.28)]"
                                     >
                                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                             <div className="min-w-0">
                                                 <div className="flex flex-wrap items-center gap-2">
-                                                    <span className="rounded-full border border-emerald-500/20 bg-emerald-500/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-300">
+                                                    <span className="ui-success-badge rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]">
                                                         Resolved
                                                     </span>
-                                                    <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300">
+                                                    <span className="ui-accent-badge rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]">
                                                         Fix reference
                                                     </span>
                                                 </div>
 
-                                                <h3 className="mt-4 text-[1rem] font-semibold leading-7 text-white transition-colors group-hover:text-cyan-50">
+                                                <h3 className="mt-4 text-[1rem] font-semibold leading-7 text-white transition-colors group-hover:text-[#dbe6ff]">
                                                     {truncateText(item.title, 140)}
                                                 </h3>
                                                 <p className="mt-2 text-sm leading-7 text-slate-400">

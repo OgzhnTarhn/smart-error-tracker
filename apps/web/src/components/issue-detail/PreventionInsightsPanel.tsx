@@ -21,25 +21,25 @@ function getRiskTone(risk: PreventionRepeatRisk) {
         case 'high':
             return {
                 label: 'Critical',
-                badgeClassName: 'border-red-500/30 bg-red-500/12 text-red-200',
-                surfaceClassName: 'border-red-500/20 bg-red-500/[0.08]',
-                meterClassName: 'w-[88%] bg-gradient-to-r from-orange-400 via-orange-500 to-red-500',
+                badgeClassName: 'ui-danger-badge',
+                surfaceClassName: 'ui-danger-panel',
+                meterClassName: 'w-[88%] bg-gradient-to-r from-rose-400 via-rose-500 to-red-500',
                 description: 'This pattern has enough historical signal to treat repeat risk as urgent.',
             };
         case 'medium':
             return {
                 label: 'Elevated',
-                badgeClassName: 'border-orange-500/30 bg-orange-500/12 text-orange-200',
-                surfaceClassName: 'border-orange-500/20 bg-orange-500/[0.08]',
-                meterClassName: 'w-[66%] bg-gradient-to-r from-amber-300 via-orange-400 to-orange-500',
+                badgeClassName: 'ui-warning-badge',
+                surfaceClassName: 'ui-warning-panel',
+                meterClassName: 'w-[66%] bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-400',
                 description: 'There is meaningful history here, but the pattern is not yet dominant.',
             };
         case 'low':
         default:
             return {
                 label: 'Guarded',
-                badgeClassName: 'border-emerald-500/30 bg-emerald-500/12 text-emerald-200',
-                surfaceClassName: 'border-emerald-500/20 bg-emerald-500/[0.08]',
+                badgeClassName: 'ui-success-badge',
+                surfaceClassName: 'ui-success-panel',
                 meterClassName: 'w-[40%] bg-gradient-to-r from-emerald-300 via-emerald-400 to-teal-400',
                 description: 'Current prevention history suggests lower repeat risk, but not zero risk.',
             };
@@ -91,7 +91,7 @@ function PanelShell({
     className?: string;
 }) {
     return (
-        <section className={`guidance-panel overflow-hidden rounded-[24px] border border-[#2a2a2a] ring-1 ring-white/5 ${className}`}>
+        <section className={`guidance-panel overflow-hidden rounded-[24px] border border-[var(--enterprise-border)] ring-1 ring-white/5 ${className}`}>
             {children}
         </section>
     );
@@ -107,7 +107,7 @@ function StatCard({
     detail: string;
 }) {
     return (
-        <div className="guidance-panel-soft rounded-[20px] border border-[#262626] px-4 py-4 ring-1 ring-white/5">
+        <div className="guidance-panel-soft rounded-[20px] border border-[var(--enterprise-border)] px-4 py-4 ring-1 ring-white/5">
             <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                 {label}
             </div>
@@ -159,7 +159,7 @@ function LoadingState() {
 
 function ErrorState({ error }: { error: string }) {
     return (
-        <PanelShell className="border-red-500/25 bg-red-500/10">
+        <PanelShell className="ui-danger-panel">
             <div className="p-5">
                 <h3 className="text-sm font-semibold text-red-100">
                     Prevention insight is unavailable
@@ -213,7 +213,7 @@ function RecommendedActionCard({
         <div
             className={`rounded-[20px] border px-4 py-4 ring-1 ${
                 highlight
-                    ? 'border-emerald-500/30 bg-emerald-500/[0.08] text-emerald-50 ring-emerald-500/10'
+                    ? 'ui-accent-panel text-slate-100 ring-white/5'
                     : 'border-[#252525] bg-[#0b0b0b] text-slate-300 ring-white/5'
             }`}
         >
@@ -221,7 +221,7 @@ function RecommendedActionCard({
                 <span
                     className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${
                         highlight
-                            ? 'border-emerald-400/30 bg-emerald-500 text-white'
+                            ? 'ui-accent-surface text-white'
                             : 'border-[#555] bg-transparent text-slate-400'
                     }`}
                 >
@@ -247,7 +247,7 @@ function RecommendedActionCard({
                 </span>
                 <div className="min-w-0">
                     {highlight ? (
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-200">
+                        <div className="ui-accent-text text-[11px] font-semibold uppercase tracking-[0.2em]">
                             Best next prevention move
                         </div>
                     ) : null}
@@ -310,7 +310,7 @@ function ActionsErrorState({
 }) {
     if (framed) {
         return (
-            <div className="rounded-[18px] border border-red-500/25 bg-red-500/10 px-4 py-4">
+            <div className="ui-danger-panel rounded-[18px] px-4 py-4">
                 <h3 className="text-sm font-semibold text-red-100">
                     Recommended actions are unavailable
                 </h3>
@@ -322,7 +322,7 @@ function ActionsErrorState({
     }
 
     return (
-        <PanelShell className="border-red-500/25 bg-red-500/10">
+        <PanelShell className="ui-danger-panel">
             <div className={compact ? 'p-4' : 'p-5'}>
                 <h3 className="text-sm font-semibold text-red-100">
                     Recommended actions are unavailable
@@ -416,7 +416,7 @@ export function PreventionRecommendedActionsPanel({
     if (framed) {
         return (
             <PanelShell>
-                <div className="border-b border-[#232323] px-5 pb-5 pt-5">
+                <div className="border-b border-[var(--enterprise-border)] px-5 pb-5 pt-5">
                     {header}
                 </div>
                 <div className="p-5">
@@ -466,10 +466,10 @@ export default function PreventionInsightsPanel({
     return (
         <div className="space-y-5">
             <PanelShell>
-                <div className="border-b border-[#232323] px-5 pb-5 pt-5">
+                <div className="border-b border-[var(--enterprise-border)] px-5 pb-5 pt-5">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div className="flex items-start gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-500/12 text-orange-300">
+                            <div className="ui-accent-surface flex h-10 w-10 items-center justify-center rounded-2xl">
                                 <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path
                                         strokeLinecap="round"
@@ -540,7 +540,7 @@ export default function PreventionInsightsPanel({
 
             {reportSignals.length > 0 ? (
                 <PanelShell>
-                    <div className="border-b border-[#232323] px-5 pb-4 pt-5">
+                    <div className="border-b border-[var(--enterprise-border)] px-5 pb-4 pt-5">
                         <h3 className="text-[1.3rem] font-semibold tracking-tight text-white">
                             Report Signals
                         </h3>
@@ -552,10 +552,10 @@ export default function PreventionInsightsPanel({
                         {reportSignals.map((item) => (
                             <div
                                 key={item}
-                                className="guidance-panel-soft rounded-[18px] border border-[#252525] px-4 py-4 ring-1 ring-white/5"
+                                className="guidance-panel-soft rounded-[18px] border border-[var(--enterprise-border)] px-4 py-4 ring-1 ring-white/5"
                             >
                                 <div className="flex items-start gap-3">
-                                    <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-orange-400" />
+                                    <span className="ui-accent-dot mt-2 h-2 w-2 shrink-0 rounded-full" />
                                     <p className="text-sm leading-7 text-slate-200">
                                         {item}
                                     </p>

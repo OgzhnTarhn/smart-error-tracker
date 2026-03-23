@@ -37,7 +37,7 @@ export default function EventList({
     }
 
     return (
-        <ul className="divide-y divide-[#2a2a2a]">
+        <ul className="divide-y divide-[var(--enterprise-border)]">
             {events.map((event) => {
                 const isSelected = selectedEventId === event.id;
                 const levelLabel = event.level?.toUpperCase() ?? 'EVENT';
@@ -62,7 +62,7 @@ export default function EventList({
                                     {levelLabel}
                                 </span>
                                 {event.environment && (
-                                    <span className="rounded border border-violet-500/20 bg-violet-500/12 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-violet-300">
+                                    <span className="ui-accent-badge rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em]">
                                         {event.environment}
                                     </span>
                                 )}

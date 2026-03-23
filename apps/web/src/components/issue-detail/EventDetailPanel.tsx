@@ -74,8 +74,14 @@ function formatStackLocation(value: string) {
 
 function getLocationClassName(location: string) {
     return /https?:\/\//.test(location) || location.includes('/src/')
-        ? 'text-blue-400'
+        ? 'text-[var(--enterprise-accent-blue)]'
         : 'text-slate-600';
+}
+
+function getLevelValueClass(level: string | null | undefined) {
+    if (level === 'warn') return 'text-[var(--enterprise-accent-warning)] font-bold';
+    if (level === 'info') return 'ui-accent-text font-bold';
+    return 'text-red-400 font-bold';
 }
 
 function StackTraceView({ stack }: { stack: string }) {
@@ -216,7 +222,7 @@ export default function EventDetailPanel({
         : 'Not checked';
 
     return (
-        <div className="guidance-panel h-full overflow-hidden rounded-[24px] border border-[#2c2c2e] ring-1 ring-white/5">
+        <div className="guidance-panel h-full overflow-hidden rounded-[24px] border border-[var(--enterprise-border)] ring-1 ring-white/5">
             <div className="flex flex-wrap items-start justify-between gap-3 px-5 pb-5 pt-5">
                 <div className="min-w-0">
                     <h2 className="text-[1.1rem] font-semibold text-white">
@@ -251,7 +257,7 @@ export default function EventDetailPanel({
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     <MetaItem label="Timestamp" value={metaValues.timestamp} />
                     <MetaItem label="Source" value={metaValues.source} />
-                    <MetaItem label="Level" value={metaValues.level} valueClassName="text-red-400 font-bold" />
+                    <MetaItem label="Level" value={metaValues.level} valueClassName={getLevelValueClass(event.level)} />
                     <MetaItem label="Environment" value={metaValues.environment} />
                     <MetaItem label="Release" value={metaValues.release} />
                     <MetaItem label="SDK" value={metaValues.sdk} truncate />
@@ -265,7 +271,7 @@ export default function EventDetailPanel({
                         type="button"
                         onClick={() => onTabChange(tab)}
                         className={`border-b-2 px-0 pb-3 text-sm font-semibold capitalize transition-colors ${activeTab === tab
-                            ? 'border-orange-500 text-orange-400'
+                            ? 'border-[var(--enterprise-accent-primary)] text-[#cbd7ff]'
                             : 'border-transparent text-slate-500 hover:text-slate-300'
                             }`}
                     >
@@ -284,13 +290,13 @@ export default function EventDetailPanel({
                                     hint={sourceMapResult?.hint ?? null}
                                 />
                             ) : (
-                                <div className="mb-4 flex flex-col gap-4 rounded-[18px] border border-blue-500/20 bg-blue-500/[0.06] p-4 lg:flex-row lg:items-center lg:justify-between">
+                                <div className="ui-accent-panel mb-4 flex flex-col gap-4 rounded-[18px] p-4 lg:flex-row lg:items-center lg:justify-between">
                                     <div>
                                         <div className="flex flex-wrap items-center gap-3">
                                             <div className="text-sm font-semibold text-white">
                                                 Source map
                                             </div>
-                                            <span className="rounded bg-[#1a1a1a] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                                            <span className="ui-muted-badge rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]">
                                                 {sourceMapStatusLabel}
                                             </span>
                                         </div>
@@ -309,7 +315,7 @@ export default function EventDetailPanel({
                                         type="button"
                                         onClick={onResolveSourceMap}
                                         disabled={resolvingSourceMap}
-                                        className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="ui-primary-button rounded-xl px-5 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         {resolvingSourceMap ? 'Resolving...' : sourceMapButtonLabel}
                                     </button>

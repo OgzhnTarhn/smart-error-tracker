@@ -702,7 +702,7 @@ export default function IssueDetailPage() {
     if (loading) {
         return (
             <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 border-2 border-[var(--enterprise-accent-primary)] border-t-transparent rounded-full animate-spin" />
             </div>
         );
     }
@@ -733,7 +733,7 @@ export default function IssueDetailPage() {
                     <button
                         type="button"
                         onClick={() => navigate('/issues')}
-                        className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
+                        className="ui-primary-button px-4 py-2 text-white"
                     >
                         Back to Issues
                     </button>
@@ -871,10 +871,10 @@ export default function IssueDetailPage() {
 
 function IssueHeaderStatusBadge({ status }: { status: string }) {
     const classes = status === 'resolved'
-        ? 'bg-emerald-500/18 text-emerald-300'
+        ? 'ui-success-badge'
         : status === 'ignored'
-            ? 'bg-amber-500/18 text-amber-300'
-            : 'bg-red-500/18 text-red-300';
+            ? 'ui-warning-badge'
+            : 'ui-danger-badge';
 
     return (
         <span className={`rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${classes}`}>
@@ -1019,7 +1019,7 @@ function InvestigationTabContent({
                             <div className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-slate-500">
                                 Fingerprint
                             </div>
-                            <code className="block rounded-xl border border-[#2c2c2e] bg-[#090909] px-4 py-4 font-mono text-[13px] leading-8 break-all text-blue-400">
+                            <code className="ui-accent-text block rounded-xl border border-[#2c2c2e] bg-[#090909] px-4 py-4 font-mono text-[13px] leading-8 break-all">
                                 {group.fingerprint}
                             </code>
                             <button
