@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { getAuthAvatarLabel } from '../../lib/authSession';
 
 type NavItemKey = 'dashboard' | 'projects' | 'issues' | 'settings';
 
@@ -25,7 +26,7 @@ export default function EnterpriseTopNavigation({
     activeItem,
     projectName,
     showSearch = true,
-    avatarLabel = 'OG',
+    avatarLabel,
 }: EnterpriseTopNavigationProps) {
     const location = useLocation();
     const navigate = useNavigate();
@@ -33,6 +34,7 @@ export default function EnterpriseTopNavigation({
     const [searchQuery, setSearchQuery] = useState('');
 
     const activeNavItem = NAV_ITEMS.find((item) => item.key === activeItem) ?? NAV_ITEMS[0];
+    const resolvedAvatarLabel = avatarLabel ?? getAuthAvatarLabel('OG');
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -191,7 +193,7 @@ export default function EnterpriseTopNavigation({
                             aria-label="Account"
                             className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--enterprise-border)] bg-[#1a1d20] text-[11px] font-semibold text-[var(--enterprise-text)]"
                         >
-                            {avatarLabel}
+                            {resolvedAvatarLabel}
                         </button>
                         <button
                             type="button"
@@ -304,7 +306,7 @@ export default function EnterpriseTopNavigation({
                                         Workspace
                                     </div>
                                     <div className="mt-1 text-sm font-medium text-[var(--enterprise-text)]">
-                                        {avatarLabel} session active
+                                        {resolvedAvatarLabel} session active
                                     </div>
                                 </div>
                                 <button

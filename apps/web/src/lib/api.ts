@@ -41,12 +41,13 @@ export function clearDashboardApiKey() {
     window.localStorage.removeItem(DASHBOARD_API_KEY_STORAGE_KEY);
 }
 
-export const apiFetch = async <T = unknown>(
+const requestJson = async <T = unknown>(
     endpoint: string,
+    apiKeyOverride: string | null,
     options: RequestInit = {},
 ): Promise<T> => {
     const headers = new Headers(options.headers || {});
-    const apiKey = getDashboardApiKey();
+    const apiKey = apiKeyOverride ?? getDashboardApiKey();
     if (apiKey) {
         headers.set('x-api-key', apiKey);
     } else {
@@ -68,6 +69,17 @@ export const apiFetch = async <T = unknown>(
 
     return response.json() as Promise<T>;
 };
+
+export const apiFetch = async <T = unknown>(
+    endpoint: string,
+    options: RequestInit = {},
+): Promise<T> => requestJson<T>(endpoint, null, options);
+
+export const apiFetchWithApiKey = async <T = unknown>(
+    endpoint: string,
+    apiKey: string,
+    options: RequestInit = {},
+): Promise<T> => requestJson<T>(endpoint, apiKey, options);
 
 export const hasAdminConsoleAccess = Boolean(ADMIN_TOKEN);
 
@@ -188,6 +200,9 @@ export interface ProjectContextResponse {
 
 export const getProjectContext = () =>
     apiFetch<ProjectContextResponse>('/project-context');
+
+export const getProjectContextForApiKey = (apiKey: string) =>
+    apiFetchWithApiKey<ProjectContextResponse>('/project-context', apiKey);
 
 export interface DashboardBreakdownItem {
     name: string;
