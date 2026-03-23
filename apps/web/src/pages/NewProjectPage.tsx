@@ -237,9 +237,9 @@ export default function NewProjectPage() {
                                     <code className="font-mono text-amber-100">
                                         VITE_ADMIN_TOKEN
                                     </code>{' '}
-                                    is not configured, so this submit will create a temporary local
-                                    draft instead of a backend project. The setup page will still
-                                    render the full onboarding flow.
+                                    is not configured, so this submit will create a local draft
+                                    instead of a backend project. You can continue through setup and
+                                    connect a real project later.
                                 </div>
                             ) : null}
 

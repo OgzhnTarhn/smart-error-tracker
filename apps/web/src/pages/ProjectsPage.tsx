@@ -189,8 +189,8 @@ export default function ProjectsPage() {
                     title="Project List"
                     description={
                         hasAdminConsoleAccess
-                            ? 'Projects are read from the local admin endpoints and enriched with browser-side onboarding metadata.'
-                            : 'Admin listing is unavailable, so this view falls back to connected projects and local drafts.'
+                            ? 'Projects synced from the admin workspace with saved onboarding context.'
+                            : 'Showing connected projects and local drafts until admin access is enabled.'
                     }
                     contentClassName="p-0"
                     variant="enterprise"

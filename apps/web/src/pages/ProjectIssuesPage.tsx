@@ -42,6 +42,10 @@ function formatDate(value: string | null) {
     return DATE_FORMATTER.format(date);
 }
 
+function formatEventCountLabel(count: number) {
+    return `${count.toLocaleString()} event${count === 1 ? '' : 's'}`;
+}
+
 function formatRelativeTime(value: string) {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return 'recently';
@@ -154,6 +158,7 @@ function EventVolumeCard({
     loading: boolean;
     rangeLabel: string;
 }) {
+    const [activePointIndex, setActivePointIndex] = useState<number | null>(null);
     const total = trend.reduce((sum, point) => sum + point.count, 0);
     const peak = computePeakTrendPoint(trend);
     const maxCount = Math.max(...trend.map((point) => point.count), 0);
@@ -180,6 +185,13 @@ function EventVolumeCard({
     const areaPath = points.length
         ? `${path} L ${points[points.length - 1].x} ${chartHeight} L 0 ${chartHeight} Z`
         : '';
+    const activePoint = activePointIndex === null ? null : points[activePointIndex] ?? null;
+    const tooltipLeftPercent = activePoint ? (activePoint.x / chartWidth) * 100 : 0;
+    const tooltipTransform = tooltipLeftPercent < 14
+        ? 'translateX(0)'
+        : tooltipLeftPercent > 86
+            ? 'translateX(-100%)'
+            : 'translateX(-50%)';
 
     return (
         <DashboardSectionCard
@@ -236,7 +248,38 @@ function EventVolumeCard({
                     </div>
 
                     <div className="enterprise-panel-soft rounded-md px-4 py-4">
-                        <div className="h-[220px]">
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                            <div className="text-[11px] font-medium text-[var(--enterprise-text-dim)]">
+                                Hover over the line to inspect daily event counts.
+                            </div>
+                            {activePoint ? (
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#cbd7ff]">
+                                    {formatDate(activePoint.date)} · {formatEventCountLabel(activePoint.count)}
+                                </div>
+                            ) : null}
+                        </div>
+
+                        <div
+                            className="relative h-[220px]"
+                            onMouseLeave={() => setActivePointIndex(null)}
+                        >
+                            {activePoint ? (
+                                <div
+                                    className="pointer-events-none absolute left-0 top-2 z-10 rounded-xl border border-[rgba(107,130,255,0.28)] bg-[#0f1622]/96 px-3 py-2 shadow-[0_14px_30px_rgba(2,6,23,0.35)]"
+                                    style={{
+                                        left: `${tooltipLeftPercent}%`,
+                                        transform: tooltipTransform,
+                                    }}
+                                >
+                                    <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--enterprise-text-dim)]">
+                                        {formatDate(activePoint.date)}
+                                    </div>
+                                    <div className="mt-1 text-sm font-semibold text-white">
+                                        {formatEventCountLabel(activePoint.count)}
+                                    </div>
+                                </div>
+                            ) : null}
+
                             <svg
                                 viewBox={`0 0 ${chartWidth} ${chartHeight}`}
                                 className="h-full w-full"
@@ -257,6 +300,18 @@ function EventVolumeCard({
                                     );
                                 })}
 
+                                {activePoint ? (
+                                    <line
+                                        x1={activePoint.x}
+                                        x2={activePoint.x}
+                                        y1="10"
+                                        y2={chartHeight}
+                                        stroke="rgba(107,130,255,0.35)"
+                                        strokeDasharray="5 5"
+                                        strokeWidth="1.5"
+                                    />
+                                ) : null}
+
                                 {areaPath ? (
                                     <path
                                         d={areaPath}
@@ -273,6 +328,44 @@ function EventVolumeCard({
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
                                     />
+                                ) : null}
+
+                                {points.map((point, index) => {
+                                    const previousX = index === 0 ? 0 : (points[index - 1].x + point.x) / 2;
+                                    const nextX = index === points.length - 1
+                                        ? chartWidth
+                                        : (point.x + points[index + 1].x) / 2;
+
+                                    return (
+                                        <rect
+                                            key={`${point.date}-hitbox`}
+                                            x={previousX}
+                                            y="0"
+                                            width={Math.max(nextX - previousX, 12)}
+                                            height={chartHeight}
+                                            fill="transparent"
+                                            onMouseEnter={() => setActivePointIndex(index)}
+                                        />
+                                    );
+                                })}
+
+                                {activePoint ? (
+                                    <>
+                                        <circle
+                                            cx={activePoint.x}
+                                            cy={activePoint.y}
+                                            r="6"
+                                            fill="rgba(107,130,255,0.18)"
+                                        />
+                                        <circle
+                                            cx={activePoint.x}
+                                            cy={activePoint.y}
+                                            r="3.5"
+                                            fill="#8ea0ff"
+                                            stroke="#f6f8ff"
+                                            strokeWidth="1.5"
+                                        />
+                                    </>
                                 ) : null}
 
                                 <defs>
@@ -464,12 +557,12 @@ export default function ProjectIssuesPage() {
                                 </h2>
                                 <p className="mt-2 text-sm leading-6 text-[var(--enterprise-text-muted)]">
                                     {project?.isDraft
-                                        ? 'This is a local draft. Generate a real project and API key before analytics can load from the backend.'
+                                        ? 'This is a local draft. Create the backend project and attach a real API key before loading analytics.'
                                         : storedProject?.apiKey
                                             ? 'A saved API key exists for this project, but the dashboard could not reconnect with it.'
                                             : hasAdminConsoleAccess
                                                 ? 'A new API key should have been generated automatically for this project, but the workspace still could not connect.'
-                                                : 'This project does not have a saved raw API key in the browser yet. Open setup and generate or paste one before entering the project workspace.'}
+                                                : 'No saved API key was found for this project yet. Open setup to generate one or connect an existing key before entering the workspace.'}
                                 </p>
                             </div>
 

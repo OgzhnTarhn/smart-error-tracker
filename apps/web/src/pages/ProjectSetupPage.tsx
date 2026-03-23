@@ -448,7 +448,7 @@ export default function ProjectSetupPage() {
 
                         <DashboardSectionCard
                             title="Step 3: Add API key"
-                            description="Use a real key when available. Otherwise the setup keeps a placeholder visible."
+                            description="Use a real key when available. Draft projects keep a placeholder until backend access is ready."
                             contentClassName="p-4"
                             variant="enterprise"
                         >
@@ -481,12 +481,12 @@ export default function ProjectSetupPage() {
 
                                 <p className="mt-3 text-sm leading-6 text-[var(--enterprise-text-muted)]">
                                     {projectApiKey
-                                        ? 'A real API key is saved in this browser session and can be used by the dashboard immediately.'
+                                        ? 'A real API key is already connected in this browser session.'
                                         : project.isDraft
-                                            ? 'This draft has no backend key yet. Complete the real project creation path to replace the placeholder.'
+                                            ? 'This draft is still using a placeholder key. Create the backend project to replace it.'
                                             : hasAdminConsoleAccess
-                                                ? 'Generate a fresh API key below if you need a real value for this project.'
-                                                : 'Key generation requires local admin access, so the placeholder remains visible for now.'}
+                                                ? 'Generate a fresh API key below when you need a new live key.'
+                                                : 'Admin access is required before a real key can be generated here.'}
                                 </p>
 
                                 {!project.isDraft && hasAdminConsoleAccess ? (
