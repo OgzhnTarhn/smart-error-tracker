@@ -185,6 +185,7 @@ function EventVolumeCard({
     const areaPath = points.length
         ? `${path} L ${points[points.length - 1].x} ${chartHeight} L 0 ${chartHeight} Z`
         : '';
+    const chartAnimationKey = `${rangeLabel}-${trend.map((point) => `${point.date}:${point.count}`).join('|')}`;
     const activePoint = activePointIndex === null ? null : points[activePointIndex] ?? null;
     const tooltipLeftPercent = activePoint ? (activePoint.x / chartWidth) * 100 : 0;
     const tooltipTransform = tooltipLeftPercent < 14
@@ -265,7 +266,7 @@ function EventVolumeCard({
                         >
                             {activePoint ? (
                                 <div
-                                    className="pointer-events-none absolute left-0 top-2 z-10 rounded-xl border border-[rgba(107,130,255,0.28)] bg-[#0f1622]/96 px-3 py-2 shadow-[0_14px_30px_rgba(2,6,23,0.35)]"
+                                    className="chart-tooltip-enter pointer-events-none absolute left-0 top-2 z-10 rounded-xl border border-[rgba(107,130,255,0.28)] bg-[#0f1622]/96 px-3 py-2 shadow-[0_14px_30px_rgba(2,6,23,0.35)]"
                                     style={{
                                         left: `${tooltipLeftPercent}%`,
                                         transform: tooltipTransform,
@@ -281,6 +282,7 @@ function EventVolumeCard({
                             ) : null}
 
                             <svg
+                                key={chartAnimationKey}
                                 viewBox={`0 0 ${chartWidth} ${chartHeight}`}
                                 className="h-full w-full"
                                 preserveAspectRatio="none"
@@ -314,6 +316,7 @@ function EventVolumeCard({
 
                                 {areaPath ? (
                                     <path
+                                        className="chart-area-enter"
                                         d={areaPath}
                                         fill="url(#project-volume-fill)"
                                         opacity="0.95"
@@ -321,12 +324,14 @@ function EventVolumeCard({
                                 ) : null}
                                 {path ? (
                                     <path
+                                        className="chart-line-enter"
                                         d={path}
                                         fill="none"
                                         stroke="#6b82ff"
                                         strokeWidth="3"
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
+                                        pathLength="1"
                                     />
                                 ) : null}
 
@@ -356,6 +361,7 @@ function EventVolumeCard({
                                             cy={activePoint.y}
                                             r="6"
                                             fill="rgba(107,130,255,0.18)"
+                                            className="chart-point-pulse"
                                         />
                                         <circle
                                             cx={activePoint.x}
