@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useWorkspaceNotifications } from '../../hooks/useWorkspaceNotifications';
 import { getAuthAvatarLabel } from '../../lib/authSession';
 
 type NavItemKey =
@@ -39,6 +40,7 @@ export default function EnterpriseTopNavigation({
     const location = useLocation();
     const navigate = useNavigate();
     const { isAuthenticated, logout } = useAuth();
+    const { actionableCount, hasSignalIndicator } = useWorkspaceNotifications();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -49,6 +51,11 @@ export default function EnterpriseTopNavigation({
     const activeLabel = isNotificationsRoute
         ? 'Notifications'
         : activeNavItem?.label ?? 'Workspace';
+    const showNotificationCount = actionableCount > 0;
+    const showNotificationDot = !showNotificationCount && hasSignalIndicator;
+    const notificationButtonLabel = showNotificationCount
+        ? `Notifications (${actionableCount} active alerts)`
+        : 'Notifications';
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -196,7 +203,7 @@ export default function EnterpriseTopNavigation({
                         <button
                             type="button"
                             onClick={() => handleNavigate('/notifications')}
-                            aria-label="Notifications"
+                            aria-label={notificationButtonLabel}
                             aria-current={isNotificationsRoute ? 'page' : undefined}
                             className={`relative flex h-8 w-8 items-center justify-center rounded-md border transition-colors ${
                                 isNotificationsRoute
@@ -204,7 +211,11 @@ export default function EnterpriseTopNavigation({
                                     : 'border-[var(--enterprise-border)] bg-[#16181b] text-[var(--enterprise-text-muted)] hover:bg-[#1a1d20] hover:text-[var(--enterprise-text)]'
                             }`}
                         >
-                            {!isNotificationsRoute ? (
+                            {showNotificationCount ? (
+                                <span className="absolute -right-1.5 -top-1.5 min-w-[18px] rounded-full border border-[var(--enterprise-border-strong)] bg-[var(--enterprise-accent-strong)] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-[#04131f]">
+                                    {actionableCount > 9 ? '9+' : actionableCount}
+                                </span>
+                            ) : showNotificationDot && !isNotificationsRoute ? (
                                 <span className="ui-accent-dot absolute right-2 top-2 h-2 w-2 rounded-full" />
                             ) : null}
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

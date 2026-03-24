@@ -42,8 +42,9 @@ NestJS ingest API
 
 - The issue list and issue detail flows are backed by the live API and database.
 - The main dashboard is now productized around project creation, setup guidance, and a cleaner first-run experience.
-- Project and API key bootstrapping are available through the seed script and local-only admin endpoints.
-- When admin endpoints are not enabled in the frontend, the dashboard still supports draft project setup flows in browser-local state.
+- Authenticated workspace sessions can create projects, rotate API keys, manage project members, and edit account details from the dashboard.
+- A notifications workspace is available for regressions, open-issue pressure, and release or environment hotspots derived from live analytics.
+- Local-only admin endpoints still exist as an optional development fallback.
 
 ## Dashboard Flow
 
@@ -68,7 +69,9 @@ Primary routes:
 | `/projects/:id/issues` | Project-aware bridge into the issues workspace |
 | `/issues` | Main live issue list for the currently connected dashboard project |
 | `/issues/:id` | Issue detail and investigation workspace |
-| `/settings` | Minimal workspace settings surface |
+| `/notifications` | Derived alert feed for regressions, triage pressure, and hotspots |
+| `/settings` | Workspace settings, connection details, and next actions |
+| `/profile` | Account profile and password management |
 
 ## Repository Layout
 
@@ -148,7 +151,7 @@ The script prints:
 
 Keep the API key. It is only shown once and is required by the dashboard and SDKs.
 
-You can also create projects from the dashboard after startup if `VITE_ADMIN_TOKEN` is configured in the web app and matches the API `ADMIN_TOKEN`.
+You can also create projects directly from the dashboard after signing in with a member account.
 
 ### 6. Configure the dashboard
 
@@ -160,14 +163,15 @@ VITE_API_BASE_URL="http://localhost:3000"
 # Optional: connects the dashboard to a project immediately
 # VITE_API_KEY="set_your_generated_api_key"
 
-# Optional: enables local dashboard project creation and key generation
+# Optional: enables legacy local-only `/admin/*` fallback endpoints
 # VITE_ADMIN_TOKEN="dev-admin-token"
 ```
 
 Notes:
 
 - `VITE_API_KEY` is optional. Without it, the dashboard still loads and guides the user through project creation and setup.
-- `VITE_ADMIN_TOKEN` is optional. Without it, the dashboard falls back to local draft setup flows instead of calling admin endpoints.
+- `VITE_ADMIN_TOKEN` is optional. Member sessions can already create projects and rotate API keys through authenticated workspace endpoints.
+- `VITE_ADMIN_TOKEN` is only useful if you want to exercise the legacy local-only `/admin/*` development endpoints.
 - You can paste or generate a project API key from the setup flow to switch the browser workspace without rebuilding the frontend.
 
 ### 7. Run the core services
@@ -295,7 +299,7 @@ For the full SDK APIs, DSN mode, and advanced usage, see:
 | --- | --- | --- |
 | `VITE_API_BASE_URL` | No | API base URL, defaults to `http://localhost:3000` |
 | `VITE_API_KEY` | No | Project API key sent as `x-api-key` for dashboard requests |
-| `VITE_ADMIN_TOKEN` | No | Enables local dashboard project creation and API key generation through `/admin/*` |
+| `VITE_ADMIN_TOKEN` | No | Enables legacy local-only `/admin/*` fallback flows for development |
 
 ## Development Commands
 

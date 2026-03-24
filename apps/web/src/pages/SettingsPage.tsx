@@ -110,7 +110,7 @@ export default function SettingsPage() {
                     </h1>
                     <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--enterprise-text-muted)]">
                         Review how this dashboard authenticates, which API target it uses, and
-                        whether admin project management is available in the current workspace.
+                        whether this workspace can manage projects, members, and notification flows.
                     </p>
                 </section>
 
@@ -237,8 +237,12 @@ export default function SettingsPage() {
                                     value="Reads workspace projects tied to the signed-in session."
                                 />
                                 <DetailRow
-                                    label="Local admin console"
-                                    value={hasAdminConsoleAccess ? 'Enabled for development-only endpoints.' : 'Not configured for this browser session.'}
+                                    label="Legacy admin endpoints"
+                                    value={
+                                        hasAdminConsoleAccess
+                                            ? 'Enabled as a development-only fallback.'
+                                            : 'Not configured for this browser session.'
+                                    }
                                 />
                             </div>
                         </div>
@@ -295,6 +299,14 @@ export default function SettingsPage() {
                             >
                                 <span>Review issue stream</span>
                                 <span className="text-[10px] uppercase tracking-[0.18em] text-[var(--enterprise-text-dim)]">Issues</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => navigate('/notifications')}
+                                className="ui-secondary-button flex items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-semibold text-[var(--enterprise-text)]"
+                            >
+                                <span>Open notifications feed</span>
+                                <span className="text-[10px] uppercase tracking-[0.18em] text-[var(--enterprise-text-dim)]">Alerts</span>
                             </button>
                         </div>
                     </DashboardSectionCard>
