@@ -8,12 +8,14 @@ import {
 } from 'react';
 import {
     clearDashboardApiKey,
+    changeAuthPassword,
     getAuthMe,
     loginDemoUser,
     loginUser,
     logoutUser,
     registerUser,
     setDashboardApiKey,
+    updateAuthProfile,
     type AuthResponse,
 } from '../lib/api';
 import {
@@ -30,6 +32,11 @@ interface AuthContextValue {
     login: (input: { email: string; password: string }) => Promise<StoredAuthSession>;
     register: (input: { name: string; email: string; password: string }) => Promise<StoredAuthSession>;
     loginDemo: () => Promise<StoredAuthSession>;
+    updateProfile: (input: { name: string; email: string }) => Promise<StoredAuthSession>;
+    changePassword: (input: {
+        currentPassword: string;
+        newPassword: string;
+    }) => Promise<void>;
     logout: () => Promise<void>;
     refreshSession: () => Promise<StoredAuthSession | null>;
 }
@@ -48,8 +55,16 @@ function formatAuthErrorMessage(code: string) {
             return 'Password must be at least 8 characters.';
         case 'name_too_short':
             return 'Name must be at least 2 characters.';
+        case 'current_password_required':
+            return 'Enter your current password.';
+        case 'invalid_current_password':
+            return 'Current password is incorrect.';
+        case 'password_unchanged':
+            return 'Choose a different password.';
         case 'demo_project_not_found':
             return 'No demo project is currently bound for demo access.';
+        case 'demo_account_locked':
+            return 'Demo account details cannot be changed.';
         case 'unauthorized':
             return 'Your session is no longer valid. Please sign in again.';
         default:
@@ -64,6 +79,27 @@ function buildSessionFromAuthResponse(response: AuthResponse): StoredAuthSession
 
     return {
         token: response.sessionToken,
+        user: response.user,
+        mode: response.mode,
+        project: response.project ?? null,
+    };
+}
+
+function buildSessionFromIdentityResponse(
+    token: string,
+    response: {
+        user?: StoredAuthSession['user'];
+        mode?: StoredAuthSession['mode'];
+        project?: StoredAuthSession['project'];
+        error?: string;
+    },
+): StoredAuthSession {
+    if (!token || !response.user || !response.mode) {
+        throw new Error(response.error ?? 'auth_response_incomplete');
+    }
+
+    return {
+        token,
         user: response.user,
         mode: response.mode,
         project: response.project ?? null,
@@ -107,12 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return null;
             }
 
-            const nextSession: StoredAuthSession = {
-                token: stored.token,
-                user: response.user,
-                mode: response.mode,
-                project: response.project ?? null,
-            };
+            const nextSession = buildSessionFromIdentityResponse(stored.token, response);
 
             applySession(nextSession);
             return nextSession;
@@ -147,6 +178,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             login: (input) => authenticate(loginUser(input)),
             register: (input) => authenticate(registerUser(input)),
             loginDemo: () => authenticate(loginDemoUser()),
+            updateProfile: async (input) => {
+                const currentToken = session?.token ?? getStoredAuthSession()?.token ?? '';
+                const response = await updateAuthProfile(input, currentToken);
+                if (!response.ok) {
+                    throw new Error(formatAuthErrorMessage(response.error ?? 'profile_update_failed'));
+                }
+
+                const nextSession = buildSessionFromIdentityResponse(currentToken, response);
+                applySession(nextSession);
+                return nextSession;
+            },
+            changePassword: async (input) => {
+                const currentToken = session?.token ?? getStoredAuthSession()?.token ?? '';
+                const response = await changeAuthPassword(input, currentToken);
+                if (!response.ok) {
+                    throw new Error(formatAuthErrorMessage(response.error ?? 'password_change_failed'));
+                }
+            },
             logout: async () => {
                 const currentToken = session?.token ?? getStoredAuthSession()?.token ?? '';
 

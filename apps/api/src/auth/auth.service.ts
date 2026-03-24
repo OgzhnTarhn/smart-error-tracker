@@ -68,6 +68,35 @@ type ProjectCandidate = {
 export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private isDemoEmail(email: string | null | undefined) {
+    return normalizeEmail(email) === this.getDemoIdentity().email;
+  }
+
+  private buildSessionIdentityPayload(
+    session: Awaited<ReturnType<AuthService['getSessionFromToken']>>,
+  ) {
+    if (!session) {
+      return null;
+    }
+
+    return {
+      user: {
+        id: session.user.id,
+        name: session.user.name,
+        email: session.user.email,
+      },
+      mode: this.isDemoEmail(session.user.email) ? ('demo' as const) : ('member' as const),
+      project: session.dashboardApiKey?.project
+        ? {
+            id: session.dashboardApiKey.project.id,
+            name: session.dashboardApiKey.project.name,
+            key: session.dashboardApiKey.project.key,
+          }
+        : null,
+      dashboardApiKeyAvailable: Boolean(session.dashboardApiKeyId),
+    };
+  }
+
   private getDemoIdentity() {
     return {
       email: normalizeEmail(process.env.DEMO_USER_EMAIL || 'demo@smarterror.dev'),
@@ -425,10 +454,12 @@ export class AuthService {
     if (session.revokedAt) return null;
     if (session.expiresAt.getTime() <= Date.now()) return null;
 
+    const lastSeenAt = new Date();
     await this.prisma.session.update({
       where: { id: session.id },
-      data: { lastSeenAt: new Date() },
+      data: { lastSeenAt },
     });
+    session.lastSeenAt = lastSeenAt;
 
     return session;
   }
@@ -439,25 +470,127 @@ export class AuthService {
       return { ok: false, error: 'unauthorized' };
     }
 
-    const demoEmail = this.getDemoIdentity().email;
+    const identity = this.buildSessionIdentityPayload(session);
+    if (!identity) {
+      return { ok: false, error: 'unauthorized' };
+    }
 
     return {
       ok: true,
-      user: {
-        id: session.user.id,
-        name: session.user.name,
-        email: session.user.email,
-      },
-      mode: session.user.email === demoEmail ? 'demo' : 'member',
-      project: session.dashboardApiKey?.project
-        ? {
-            id: session.dashboardApiKey.project.id,
-            name: session.dashboardApiKey.project.name,
-            key: session.dashboardApiKey.project.key,
-          }
-        : null,
-      dashboardApiKeyAvailable: Boolean(session.dashboardApiKeyId),
+      ...identity,
     };
+  }
+
+  async getProfile(token: string | undefined | null) {
+    const session = await this.getSessionFromToken(token);
+    if (!session) {
+      return { ok: false, error: 'unauthorized' };
+    }
+
+    const identity = this.buildSessionIdentityPayload(session);
+    if (!identity) {
+      return { ok: false, error: 'unauthorized' };
+    }
+
+    return {
+      ok: true,
+      ...identity,
+      currentSession: {
+        createdAt: session.createdAt,
+        lastSeenAt: session.lastSeenAt,
+        expiresAt: session.expiresAt,
+      },
+    };
+  }
+
+  async updateProfile(
+    token: string | undefined | null,
+    input: { name?: string; email?: string },
+  ) {
+    const session = await this.getSessionFromToken(token);
+    if (!session) {
+      return { ok: false, error: 'unauthorized' };
+    }
+
+    if (this.isDemoEmail(session.user.email)) {
+      return { ok: false, error: 'demo_account_locked' };
+    }
+
+    const name = normalizeName(input.name);
+    const email = normalizeEmail(input.email);
+
+    if (name.length < 2) {
+      return { ok: false, error: 'name_too_short' };
+    }
+    if (!isValidEmail(email)) {
+      return { ok: false, error: 'invalid_email' };
+    }
+
+    const existing = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existing && existing.id !== session.userId) {
+      return { ok: false, error: 'email_in_use' };
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id: session.userId },
+      data: {
+        name,
+        email,
+      },
+    });
+
+    session.user = user;
+    const identity = this.buildSessionIdentityPayload(session);
+    if (!identity) {
+      return { ok: false, error: 'unauthorized' };
+    }
+
+    return {
+      ok: true,
+      ...identity,
+    };
+  }
+
+  async changePassword(
+    token: string | undefined | null,
+    input: { currentPassword?: string; newPassword?: string },
+  ) {
+    const session = await this.getSessionFromToken(token);
+    if (!session) {
+      return { ok: false, error: 'unauthorized' };
+    }
+
+    if (this.isDemoEmail(session.user.email)) {
+      return { ok: false, error: 'demo_account_locked' };
+    }
+
+    const currentPassword = input.currentPassword ?? '';
+    const newPassword = input.newPassword ?? '';
+
+    if (!currentPassword) {
+      return { ok: false, error: 'current_password_required' };
+    }
+    if (newPassword.length < 8) {
+      return { ok: false, error: 'password_too_short' };
+    }
+    if (!verifyPassword(currentPassword, session.user.passwordHash)) {
+      return { ok: false, error: 'invalid_current_password' };
+    }
+    if (verifyPassword(newPassword, session.user.passwordHash)) {
+      return { ok: false, error: 'password_unchanged' };
+    }
+
+    await this.prisma.user.update({
+      where: { id: session.userId },
+      data: {
+        passwordHash: hashPassword(newPassword),
+      },
+    });
+
+    return { ok: true };
   }
 
   async bindTokenToProject(

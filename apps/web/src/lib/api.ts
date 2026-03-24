@@ -266,6 +266,26 @@ export interface AuthMeResponse {
     dashboardApiKeyAvailable?: boolean;
 }
 
+export interface AuthCurrentSession {
+    createdAt: string;
+    lastSeenAt: string;
+    expiresAt: string;
+}
+
+export interface AuthProfileResponse extends AuthMeResponse {
+    currentSession?: AuthCurrentSession;
+}
+
+export interface UpdateAuthProfileRequest {
+    name: string;
+    email: string;
+}
+
+export interface ChangeAuthPasswordRequest {
+    currentPassword: string;
+    newPassword: string;
+}
+
 export interface DemoAccessResponse {
     ok: boolean;
     enabled?: boolean;
@@ -296,6 +316,35 @@ export const getDemoAccess = () =>
 
 export const getAuthMe = (authToken?: string) =>
     authRequest<AuthMeResponse>('/auth/me', {}, authToken ?? null);
+
+export const getAuthProfile = (authToken?: string) =>
+    authRequest<AuthProfileResponse>('/auth/profile', {}, authToken ?? null);
+
+export const updateAuthProfile = (
+    body: UpdateAuthProfileRequest,
+    authToken?: string,
+) =>
+    authRequest<AuthProfileResponse>(
+        '/auth/profile',
+        {
+            method: 'PATCH',
+            body: JSON.stringify(body),
+        },
+        authToken ?? null,
+    );
+
+export const changeAuthPassword = (
+    body: ChangeAuthPasswordRequest,
+    authToken?: string,
+) =>
+    authRequest<{ ok: boolean; error?: string }>(
+        '/auth/change-password',
+        {
+            method: 'POST',
+            body: JSON.stringify(body),
+        },
+        authToken ?? null,
+    );
 
 export const logoutUser = (authToken?: string) =>
     authRequest<{ ok: boolean; error?: string }>('/auth/logout', {

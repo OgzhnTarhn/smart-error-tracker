@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Post } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Patch, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
 
 function getBearerToken(authorization: string | undefined) {
@@ -54,6 +54,41 @@ export class AuthController {
   @Get('me')
   getMe(@Headers('authorization') authorization: string | undefined) {
     return this.authService.getMe(getBearerToken(authorization));
+  }
+
+  @Get('profile')
+  getProfile(@Headers('authorization') authorization: string | undefined) {
+    return this.authService.getProfile(getBearerToken(authorization));
+  }
+
+  @Patch('profile')
+  updateProfile(
+    @Headers('authorization') authorization: string | undefined,
+    @Body()
+    body: {
+      name?: string;
+      email?: string;
+    },
+  ) {
+    return this.authService.updateProfile(getBearerToken(authorization), {
+      name: body?.name ?? '',
+      email: body?.email ?? '',
+    });
+  }
+
+  @Post('change-password')
+  changePassword(
+    @Headers('authorization') authorization: string | undefined,
+    @Body()
+    body: {
+      currentPassword?: string;
+      newPassword?: string;
+    },
+  ) {
+    return this.authService.changePassword(getBearerToken(authorization), {
+      currentPassword: body?.currentPassword ?? '',
+      newPassword: body?.newPassword ?? '',
+    });
   }
 
   @Post('logout')

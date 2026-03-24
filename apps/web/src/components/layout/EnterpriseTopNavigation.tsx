@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getAuthAvatarLabel } from '../../lib/authSession';
 
-type NavItemKey = 'dashboard' | 'projects' | 'issues' | 'settings';
+type NavItemKey = 'dashboard' | 'projects' | 'issues' | 'settings' | 'profile';
 
 interface EnterpriseTopNavigationProps {
     activeItem: NavItemKey;
@@ -21,6 +21,7 @@ const NAV_ITEMS: Array<{
     { key: 'projects', label: 'Projects', path: '/projects' },
     { key: 'issues', label: 'Issues', path: '/issues' },
     { key: 'settings', label: 'Settings', path: '/settings' },
+    { key: 'profile', label: 'Profile', path: '/profile' },
 ];
 
 export default function EnterpriseTopNavigation({
@@ -37,6 +38,7 @@ export default function EnterpriseTopNavigation({
 
     const activeNavItem = NAV_ITEMS.find((item) => item.key === activeItem) ?? NAV_ITEMS[0];
     const resolvedAvatarLabel = avatarLabel ?? getAuthAvatarLabel('OG');
+    const isProfileRoute = location.pathname === '/profile';
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -198,8 +200,13 @@ export default function EnterpriseTopNavigation({
                         </button>
                         <button
                             type="button"
-                            aria-label="Account"
-                            className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--enterprise-border)] bg-[#1a1d20] text-[11px] font-semibold text-[var(--enterprise-text)]"
+                            onClick={() => handleNavigate('/profile')}
+                            aria-label="Open profile"
+                            className={`flex h-8 w-8 items-center justify-center rounded-md border text-[11px] font-semibold transition-colors ${
+                                isProfileRoute
+                                    ? 'border-[var(--enterprise-border-strong)] bg-[#1f2226] text-[var(--enterprise-text)]'
+                                    : 'border-[var(--enterprise-border)] bg-[#1a1d20] text-[var(--enterprise-text)] hover:bg-[#1f2226]'
+                            }`}
                         >
                             {resolvedAvatarLabel}
                         </button>
