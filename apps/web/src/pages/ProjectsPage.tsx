@@ -232,7 +232,11 @@ export default function ProjectsPage() {
                                 <ProjectCard
                                     key={project.id}
                                     project={project}
-                                    onOpenProject={() => navigate(`/projects/${project.id}`)}
+                                    onOpenProject={() =>
+                                        navigate(`/projects/${project.id}`, {
+                                            state: { projectPreview: project },
+                                        })
+                                    }
                                     onOpenSetup={() =>
                                         navigate(`/projects/${project.id}/setup`)
                                     }

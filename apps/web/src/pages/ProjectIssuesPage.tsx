@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import DashboardSectionCard from '../components/dashboard/DashboardSectionCard';
 import DistributionListCard from '../components/dashboard/DistributionListCard';
 import OverviewMetricCard from '../components/dashboard/OverviewMetricCard';
@@ -399,6 +399,7 @@ function EventVolumeCard({
 
 export default function ProjectIssuesPage() {
     const { id } = useParams();
+    const location = useLocation();
     const navigate = useNavigate();
     const {
         projects: adminProjects,
@@ -417,9 +418,15 @@ export default function ProjectIssuesPage() {
     const [attemptedAutoConnect, setAttemptedAutoConnect] = useState(false);
     const [connectionLoading, setConnectionLoading] = useState(false);
     const [connectError, setConnectError] = useState<string | null>(null);
+    const routeProjectPreview = (
+        location.state as { projectPreview?: ReturnType<typeof buildProjectCatalog>[number] } | null
+    )?.projectPreview ?? null;
 
     useEffect(() => {
         setStoredProject(id ? getStoredProjectRecord(id) : null);
+        setAttemptedAutoConnect(false);
+        setConnectionLoading(false);
+        setConnectError(null);
     }, [id]);
 
     const catalog = useMemo(
@@ -432,12 +439,14 @@ export default function ProjectIssuesPage() {
     );
 
     const project = useMemo(
-        () => catalog.find((item) => item.id === id) ?? null,
-        [catalog, id],
+        () =>
+            catalog.find((item) => item.id === id)
+            ?? (routeProjectPreview?.id === id ? routeProjectPreview : null),
+        [catalog, id, routeProjectPreview],
     );
 
     useEffect(() => {
-        if (!id || connectedProject?.id === id || attemptedAutoConnect) {
+        if (!id || workspaceLoading || connectedProject?.id === id || attemptedAutoConnect) {
             return;
         }
 
@@ -512,6 +521,7 @@ export default function ProjectIssuesPage() {
         connectedProject?.id,
         id,
         project,
+        workspaceLoading,
         refreshWorkspace,
         storedProject?.apiKey,
     ]);

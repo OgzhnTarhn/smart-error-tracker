@@ -470,7 +470,11 @@ export default function OverviewPage() {
                                             platform={getPlatformLabel(project.platform)}
                                             runtimeType={getRuntimeTypeLabel(project.runtimeType)}
                                             createdAt={project.createdAt}
-                                            onOpen={() => navigate(`/projects/${project.id}`)}
+                                            onOpen={() =>
+                                                navigate(`/projects/${project.id}`, {
+                                                    state: { projectPreview: project },
+                                                })
+                                            }
                                         />
                                     ))}
                                 </div>

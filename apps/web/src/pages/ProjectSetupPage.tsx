@@ -349,7 +349,11 @@ export default function ProjectSetupPage() {
             await refreshWorkspace();
         }
 
-        navigate(`/projects/${id}`);
+        navigate(`/projects/${id}`, {
+            state: {
+                projectPreview: project,
+            },
+        });
     };
 
     return (
