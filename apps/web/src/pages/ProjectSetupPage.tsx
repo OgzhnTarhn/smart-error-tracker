@@ -6,12 +6,17 @@ import CopyButton from '../components/onboarding/CopyButton';
 import EnterpriseTopNavigation from '../components/layout/EnterpriseTopNavigation';
 import { useAdminProjects } from '../hooks/useAdminProjects';
 import { useDashboardProjectContext } from '../hooks/useDashboardProjectContext';
+import { useAuth } from '../context/AuthContext';
 import {
+    addWorkspaceProjectMember,
     createAdminProjectApiKey,
     getAdminProjectApiKeys,
-    hasAdminConsoleAccess,
+    getWorkspaceProjectMembers,
+    removeWorkspaceProjectMember,
     setDashboardApiKey,
+    updateWorkspaceProjectMember,
     type AdminProjectApiKeyListItem,
+    type WorkspaceProjectMember,
 } from '../lib/api';
 import { getProjectSetupGuide } from '../lib/projectOnboarding';
 import {
@@ -80,6 +85,27 @@ function SecondaryButton({
     );
 }
 
+function DangerButton({
+    label,
+    onClick,
+    disabled = false,
+}: {
+    label: string;
+    onClick: () => void;
+    disabled?: boolean;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            className="h-9 rounded-md border border-red-500/20 bg-red-500/10 px-3 text-sm font-semibold text-red-100 transition hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+            {label}
+        </button>
+    );
+}
+
 function StepHeader({
     step,
     title,
@@ -128,6 +154,162 @@ function KeyHistoryRow({ item }: { item: AdminProjectApiKeyListItem }) {
     );
 }
 
+const MEMBER_ROLE_LABELS: Record<string, string> = {
+    owner: 'Owner',
+    member: 'Member',
+    demo: 'Demo',
+};
+
+const MANAGEABLE_MEMBER_ROLE_OPTIONS = [
+    { value: 'owner', label: 'Owner' },
+    { value: 'member', label: 'Member' },
+] as const;
+
+const MEMBER_ROLE_BADGES: Record<string, string> = {
+    owner: 'ui-success-badge',
+    member: 'ui-accent-badge',
+    demo: 'ui-warning-badge',
+};
+
+function formatMemberRole(role: string) {
+    return MEMBER_ROLE_LABELS[role] ?? role;
+}
+
+function sortMembers(items: WorkspaceProjectMember[]) {
+    const roleWeight = new Map<string, number>([
+        ['owner', 0],
+        ['member', 1],
+        ['demo', 2],
+    ]);
+
+    return [...items].sort((left, right) => {
+        const leftWeight = roleWeight.get(left.role) ?? 99;
+        const rightWeight = roleWeight.get(right.role) ?? 99;
+        if (leftWeight !== rightWeight) return leftWeight - rightWeight;
+        return left.user.name.localeCompare(right.user.name);
+    });
+}
+
+function isManageableMemberRole(role: string) {
+    return role === 'owner' || role === 'member';
+}
+
+function upsertMember(
+    items: WorkspaceProjectMember[],
+    updatedMember: WorkspaceProjectMember,
+) {
+    return sortMembers([
+        ...items.filter((item) => item.id !== updatedMember.id),
+        updatedMember,
+    ]);
+}
+
+function formatMemberErrorMessage(error: string) {
+    switch (error) {
+        case 'missing_email':
+            return 'Enter the email of an existing workspace user.';
+        case 'user_not_found':
+            return 'No registered workspace user exists with that email.';
+        case 'forbidden':
+            return 'Only project owners can manage members.';
+        case 'demo_access_read_only':
+            return 'Demo access is read-only.';
+        case 'invalid_role':
+            return 'Choose a valid project role.';
+        case 'member_not_found':
+            return 'That project member could not be found.';
+        case 'last_owner_must_remain':
+            return 'This project must keep at least one owner.';
+        case 'managed_role_not_supported':
+            return 'This member role cannot be changed from the workspace UI.';
+        default:
+            return error.replace(/_/g, ' ');
+    }
+}
+
+function MemberRow({
+    item,
+    canManage = false,
+    isCurrentUser = false,
+    pendingAction = null,
+    onRoleChange,
+    onRemove,
+}: {
+    item: WorkspaceProjectMember;
+    canManage?: boolean;
+    isCurrentUser?: boolean;
+    pendingAction?: 'update' | 'remove' | null;
+    onRoleChange?: (nextRole: string) => void;
+    onRemove?: () => void;
+}) {
+    const showManagementControls = canManage && isManageableMemberRole(item.role);
+
+    return (
+        <div className="flex flex-col gap-3 py-3">
+            <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="truncate text-sm font-semibold text-[var(--enterprise-text)]">
+                        {item.user.name}
+                    </div>
+                    {isCurrentUser ? (
+                        <span className="rounded-full border border-[var(--enterprise-border)] bg-[#16181b] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--enterprise-text-dim)]">
+                            You
+                        </span>
+                    ) : null}
+                    {!showManagementControls ? (
+                        <span
+                            className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${MEMBER_ROLE_BADGES[item.role] ?? 'ui-warning-badge'}`}
+                        >
+                            {formatMemberRole(item.role)}
+                        </span>
+                    ) : null}
+                </div>
+                <div className="mt-1 text-xs text-[var(--enterprise-text-dim)]">
+                    {item.user.email}
+                </div>
+                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--enterprise-text-dim)]">
+                    <span>Joined {formatDateTime(item.createdAt ?? null)}</span>
+                    <span>
+                        {item.lastAccessedAt
+                            ? `Last active ${formatDateTime(item.lastAccessedAt)}`
+                            : 'No recorded project activity yet'}
+                    </span>
+                </div>
+            </div>
+
+            {showManagementControls ? (
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <select
+                        value={item.role}
+                        onChange={(event) => onRoleChange?.(event.target.value)}
+                        disabled={pendingAction !== null}
+                        className="ui-input enterprise-select h-9 min-w-[120px] px-3 text-sm"
+                    >
+                        {MANAGEABLE_MEMBER_ROLE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                                {option.label}
+                            </option>
+                        ))}
+                    </select>
+                    <DangerButton
+                        label={
+                            pendingAction === 'remove'
+                                ? isCurrentUser
+                                    ? 'Leaving...'
+                                    : 'Removing...'
+                                : isCurrentUser
+                                    ? 'Leave Project'
+                                    : 'Remove Access'
+                        }
+                        onClick={() => onRemove?.()}
+                        disabled={pendingAction !== null}
+                    />
+                </div>
+            ) : null}
+        </div>
+    );
+}
+
 export default function ProjectSetupPage() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -142,6 +324,7 @@ export default function ProjectSetupPage() {
         loading: workspaceLoading,
         refresh: refreshWorkspace,
     } = useDashboardProjectContext();
+    const { session } = useAuth();
     const [storedProject, setStoredProject] = useState(() =>
         id ? getStoredProjectRecord(id) : null,
     );
@@ -153,6 +336,17 @@ export default function ProjectSetupPage() {
     const [connecting, setConnecting] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
     const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+    const [members, setMembers] = useState<WorkspaceProjectMember[]>([]);
+    const [membersLoading, setMembersLoading] = useState(false);
+    const [membersError, setMembersError] = useState<string | null>(null);
+    const [memberActionError, setMemberActionError] = useState<string | null>(null);
+    const [memberEmail, setMemberEmail] = useState('');
+    const [memberRole, setMemberRole] = useState('member');
+    const [addingMember, setAddingMember] = useState(false);
+    const [pendingMemberId, setPendingMemberId] = useState<string | null>(null);
+    const [pendingMemberAction, setPendingMemberAction] = useState<'update' | 'remove' | null>(null);
+    const [memberNotice, setMemberNotice] = useState<string | null>(null);
+    const canManageProject = session?.mode === 'member';
 
     useEffect(() => {
         setStoredProject(id ? getStoredProjectRecord(id) : null);
@@ -177,6 +371,8 @@ export default function ProjectSetupPage() {
     );
 
     const projectApiKey = project?.apiKey ?? storedProject?.apiKey ?? '';
+    const viewerRole = members.find((item) => item.user.id === session?.user.id)?.role ?? null;
+    const canManageMembers = canManageProject && viewerRole === 'owner';
     const setupGuide = getProjectSetupGuide(
         project?.platform ?? storedProject?.platform ?? 'other',
         project?.runtimeType ?? storedProject?.runtimeType ?? 'backend',
@@ -184,7 +380,7 @@ export default function ProjectSetupPage() {
     );
 
     useEffect(() => {
-        if (!id || !project || project.isDraft || !hasAdminConsoleAccess) {
+        if (!id || !project || project.isDraft) {
             setApiKeys([]);
             setKeyHistoryLoading(false);
             setKeyHistoryError(null);
@@ -213,6 +409,48 @@ export default function ProjectSetupPage() {
             })
             .finally(() => {
                 if (active) setKeyHistoryLoading(false);
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [id, project]);
+
+    useEffect(() => {
+        if (!id || !project || project.isDraft) {
+            setMembers([]);
+            setMembersLoading(false);
+            setMembersError(null);
+            setMemberActionError(null);
+            setMemberNotice(null);
+            setMemberRole('member');
+            setPendingMemberId(null);
+            setPendingMemberAction(null);
+            return;
+        }
+
+        let active = true;
+        setMembersLoading(true);
+        setMembersError(null);
+
+        void getWorkspaceProjectMembers(id)
+            .then((response) => {
+                if (!active) return;
+                if (!response.ok) {
+                    throw new Error(response.error ?? 'Failed to load project members.');
+                }
+
+                setMembers(sortMembers(response.members ?? []));
+            })
+            .catch((err: unknown) => {
+                if (!active) return;
+                setMembersError(
+                    err instanceof Error ? formatMemberErrorMessage(err.message) : 'Failed to load project members.',
+                );
+                setMembers([]);
+            })
+            .finally(() => {
+                if (active) setMembersLoading(false);
             });
 
         return () => {
@@ -272,6 +510,11 @@ export default function ProjectSetupPage() {
 
     const handleGenerateKey = async () => {
         if (!id || project.isDraft) return;
+        if (!canManageProject) {
+            setActionSuccess(null);
+            setActionError('Demo access is read-only. Sign in with a member account to generate API keys.');
+            return;
+        }
 
         setGeneratingKey(true);
         setActionError(null);
@@ -354,6 +597,163 @@ export default function ProjectSetupPage() {
                 projectPreview: project,
             },
         });
+    };
+
+    const handleAddMember = async () => {
+        if (!id || !project || project.isDraft) return;
+        if (!canManageMembers) {
+            setMemberNotice(null);
+            setMemberActionError('Only project owners can manage members.');
+            return;
+        }
+
+        const normalizedEmail = memberEmail.trim();
+        if (!normalizedEmail) {
+            setMemberNotice(null);
+            setMemberActionError('Enter the email of an existing workspace user.');
+            return;
+        }
+
+        setAddingMember(true);
+        setMemberActionError(null);
+        setMemberNotice(null);
+
+        try {
+            const response = await addWorkspaceProjectMember(id, {
+                email: normalizedEmail,
+                role: memberRole,
+            });
+
+            if (!response.ok || !response.member) {
+                throw new Error(response.error ?? 'Project member could not be added.');
+            }
+            const addedMember = response.member;
+
+            setMembers((current) => upsertMember(
+                current.filter((item) => item.user.id !== addedMember.user.id),
+                addedMember,
+            ));
+            setMemberEmail('');
+            setMemberRole('member');
+            setMemberNotice(
+                response.created === false
+                    ? 'That user already has access to this project.'
+                    : 'Project member added successfully.',
+            );
+        } catch (err: unknown) {
+            setMemberActionError(
+                err instanceof Error ? formatMemberErrorMessage(err.message) : 'Project member could not be added.',
+            );
+        } finally {
+            setAddingMember(false);
+        }
+    };
+
+    const handleUpdateMemberRole = async (
+        member: WorkspaceProjectMember,
+        nextRole: string,
+    ) => {
+        if (!id || !project || project.isDraft) return;
+        if (!canManageMembers) {
+            setMemberNotice(null);
+            setMemberActionError('Only project owners can manage members.');
+            return;
+        }
+        if (!isManageableMemberRole(member.role) || member.role === nextRole) {
+            return;
+        }
+
+        setPendingMemberId(member.id);
+        setPendingMemberAction('update');
+        setMemberActionError(null);
+        setMemberNotice(null);
+
+        try {
+            const response = await updateWorkspaceProjectMember(id, member.id, {
+                role: nextRole,
+            });
+
+            if (!response.ok || !response.member) {
+                throw new Error(response.error ?? 'Project member role could not be updated.');
+            }
+            const updatedMember = response.member;
+
+            setMembers((current) => upsertMember(current, updatedMember));
+            await refreshProjects();
+            setMemberNotice(
+                updatedMember.user.id === session?.user.id
+                    ? `Your access level is now ${formatMemberRole(updatedMember.role)}.`
+                    : `${updatedMember.user.name} is now ${formatMemberRole(updatedMember.role)}.`,
+            );
+        } catch (err: unknown) {
+            setMemberActionError(
+                err instanceof Error
+                    ? formatMemberErrorMessage(err.message)
+                    : 'Project member role could not be updated.',
+            );
+        } finally {
+            setPendingMemberId(null);
+            setPendingMemberAction(null);
+        }
+    };
+
+    const handleRemoveMember = async (member: WorkspaceProjectMember) => {
+        if (!id || !project || project.isDraft) return;
+        if (!canManageMembers) {
+            setMemberNotice(null);
+            setMemberActionError('Only project owners can manage members.');
+            return;
+        }
+        if (!isManageableMemberRole(member.role)) {
+            setMemberNotice(null);
+            setMemberActionError('This member role cannot be changed from the workspace UI.');
+            return;
+        }
+
+        if (
+            typeof window !== 'undefined' &&
+            !window.confirm(
+                member.user.id === session?.user.id
+                    ? 'Leave this project workspace?'
+                    : `Remove ${member.user.name} from this project workspace?`,
+            )
+        ) {
+            return;
+        }
+
+        setPendingMemberId(member.id);
+        setPendingMemberAction('remove');
+        setMemberActionError(null);
+        setMemberNotice(null);
+
+        try {
+            const response = await removeWorkspaceProjectMember(id, member.id);
+            if (!response.ok) {
+                throw new Error(response.error ?? 'Project member could not be removed.');
+            }
+
+            const removedSelf = member.user.id === session?.user.id;
+            setMembers((current) => sortMembers(current.filter((item) => item.id !== member.id)));
+            await refreshProjects();
+            setMemberNotice(
+                removedSelf
+                    ? 'You no longer have access to this project.'
+                    : `${member.user.name} was removed from this project.`,
+            );
+
+            if (removedSelf) {
+                navigate('/projects', { replace: true });
+            }
+        } catch (err: unknown) {
+            setMemberActionError(
+                err instanceof Error
+                    ? formatMemberErrorMessage(err.message)
+                    : 'Project member could not be removed.',
+            );
+        } finally {
+            setPendingMemberId(null);
+            setPendingMemberAction(null);
+        }
     };
 
     return (
@@ -488,12 +888,12 @@ export default function ProjectSetupPage() {
                                         ? 'A real API key is already connected in this browser session.'
                                         : project.isDraft
                                             ? 'This draft is still using a placeholder key. Create the backend project to replace it.'
-                                            : hasAdminConsoleAccess
+                                            : canManageProject
                                                 ? 'Generate a fresh API key below when you need a new live key.'
-                                                : 'Admin access is required before a real key can be generated here.'}
+                                                : 'Demo access cannot generate new API keys.'}
                                 </p>
 
-                                {!project.isDraft && hasAdminConsoleAccess ? (
+                                {!project.isDraft && canManageProject ? (
                                     <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
                                         <input
                                             type="text"
@@ -614,7 +1014,7 @@ export default function ProjectSetupPage() {
                             </div>
                         </DashboardSectionCard>
 
-                        {!project.isDraft && hasAdminConsoleAccess ? (
+                        {!project.isDraft ? (
                             <DashboardSectionCard
                                 title="API Key History"
                                 description="Recent keys created for this project."
@@ -645,6 +1045,103 @@ export default function ProjectSetupPage() {
                                         ))}
                                     </div>
                                 )}
+                            </DashboardSectionCard>
+                        ) : null}
+
+                        {!project.isDraft ? (
+                            <DashboardSectionCard
+                                title="Project Members"
+                                description="People who can access this project workspace."
+                                contentClassName="p-4"
+                                variant="enterprise"
+                            >
+                                {membersLoading ? (
+                                    <div className="space-y-2 animate-pulse">
+                                        {[0, 1].map((index) => (
+                                            <div
+                                                key={index}
+                                                className="enterprise-panel-soft h-16 rounded-md"
+                                            />
+                                        ))}
+                                    </div>
+                                ) : membersError ? (
+                                    <div className="rounded-md border border-red-500/20 bg-red-500/10 px-3.5 py-3 text-sm text-red-100">
+                                        {membersError}
+                                    </div>
+                                ) : members.length === 0 ? (
+                                    <div className="rounded-md border border-[var(--enterprise-border)] bg-[#16181b] px-3.5 py-3 text-sm text-[var(--enterprise-text-muted)]">
+                                        No project members were found.
+                                    </div>
+                                ) : (
+                                    <div className="divide-y divide-[var(--enterprise-border)]">
+                                        {members.map((item) => (
+                                            <MemberRow
+                                                key={item.id}
+                                                item={item}
+                                                canManage={canManageMembers}
+                                                isCurrentUser={item.user.id === session?.user.id}
+                                                pendingAction={
+                                                    pendingMemberId === item.id
+                                                        ? pendingMemberAction
+                                                        : null
+                                                }
+                                                onRoleChange={(nextRole) =>
+                                                    void handleUpdateMemberRole(item, nextRole)
+                                                }
+                                                onRemove={() => void handleRemoveMember(item)}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+
+                                {!membersLoading && !membersError && !canManageMembers ? (
+                                    <div className="mt-4 rounded-md border border-[var(--enterprise-border)] bg-[#16181b] px-3.5 py-3 text-sm text-[var(--enterprise-text-muted)]">
+                                        Only project owners can change member roles or remove access.
+                                    </div>
+                                ) : null}
+
+                                {canManageMembers ? (
+                                    <div className="mt-4 space-y-3 rounded-md border border-[var(--enterprise-border)] bg-[#16181b] p-4">
+                                        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--enterprise-text-dim)]">
+                                            Add member
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_140px]">
+                                            <input
+                                                type="email"
+                                                value={memberEmail}
+                                                onChange={(event) => setMemberEmail(event.target.value)}
+                                                placeholder="name@company.com"
+                                                className="ui-input h-9 w-full px-3 text-sm"
+                                            />
+                                            <select
+                                                value={memberRole}
+                                                onChange={(event) => setMemberRole(event.target.value)}
+                                                className="ui-input enterprise-select h-9 w-full px-3 text-sm"
+                                            >
+                                                {MANAGEABLE_MEMBER_ROLE_OPTIONS.map((option) => (
+                                                    <option key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <PrimaryButton
+                                            label={addingMember ? 'Adding...' : 'Add Member'}
+                                            onClick={() => void handleAddMember()}
+                                            disabled={addingMember || pendingMemberId !== null}
+                                        />
+                                        {memberActionError ? (
+                                            <div className="rounded-md border border-red-500/20 bg-red-500/10 px-3.5 py-3 text-sm text-red-100">
+                                                {memberActionError}
+                                            </div>
+                                        ) : null}
+                                        {memberNotice ? (
+                                            <div className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-3 text-sm text-emerald-200">
+                                                {memberNotice}
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                ) : null}
                             </DashboardSectionCard>
                         ) : null}
                     </div>

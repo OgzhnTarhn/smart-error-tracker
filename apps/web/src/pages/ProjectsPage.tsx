@@ -4,7 +4,7 @@ import DashboardSectionCard from '../components/dashboard/DashboardSectionCard';
 import EnterpriseTopNavigation from '../components/layout/EnterpriseTopNavigation';
 import { useAdminProjects } from '../hooks/useAdminProjects';
 import { useDashboardProjectContext } from '../hooks/useDashboardProjectContext';
-import { hasAdminConsoleAccess } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import {
     buildProjectCatalog,
     getPlatformLabel,
@@ -128,6 +128,8 @@ export default function ProjectsPage() {
         refresh,
     } = useAdminProjects();
     const { project: connectedProject } = useDashboardProjectContext();
+    const { session } = useAuth();
+    const canCreateProjects = session?.mode === 'member';
 
     const catalog = useMemo(
         () =>
@@ -165,14 +167,12 @@ export default function ProjectsPage() {
                         </div>
 
                         <div className="flex shrink-0 flex-wrap items-center gap-2">
-                            {hasAdminConsoleAccess ? (
-                                <SecondaryButton
-                                    label={loading ? 'Refreshing...' : 'Refresh'}
-                                    onClick={() => void refresh()}
-                                />
-                            ) : null}
+                            <SecondaryButton
+                                label={loading ? 'Refreshing...' : 'Refresh'}
+                                onClick={() => void refresh()}
+                            />
                             <PrimaryButton
-                                label="New Project"
+                                label={canCreateProjects ? 'New Project' : 'Demo Read Only'}
                                 onClick={() => navigate('/projects/new')}
                             />
                         </div>
@@ -188,9 +188,9 @@ export default function ProjectsPage() {
                 <DashboardSectionCard
                     title="Project List"
                     description={
-                        hasAdminConsoleAccess
-                            ? 'Projects synced from the admin workspace with saved onboarding context.'
-                            : 'Showing connected projects and local drafts until admin access is enabled.'
+                        canCreateProjects
+                            ? 'Projects available to this authenticated workspace with saved onboarding context.'
+                            : 'Projects available to the current demo session.'
                     }
                     contentClassName="p-0"
                     variant="enterprise"

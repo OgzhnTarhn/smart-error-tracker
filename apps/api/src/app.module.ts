@@ -11,10 +11,16 @@ import { SimilarIssuesService } from './events/similar-issues.service';
 import { PreventionInsightsService } from './events/prevention-insights.service';
 import { FixMemoryService } from './events/fix-memory.service';
 import { AuthModule } from './auth/auth.module';
+import { WorkspaceController } from './workspace/workspace.controller';
 
 @Module({
   imports: [PrismaModule, AuthModule],
-  controllers: [AppController, EventsController, AdminController],
+  controllers: [
+    AppController,
+    EventsController,
+    AdminController,
+    WorkspaceController,
+  ],
   providers: [
     AppService,
     IngestRateLimitGuard,

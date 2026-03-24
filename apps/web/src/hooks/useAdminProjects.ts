@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
     getAdminProjects,
-    hasAdminConsoleAccess,
     type AdminProjectListItem,
 } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 
 interface UseAdminProjectsResult {
     projects: AdminProjectListItem[];
@@ -13,12 +13,13 @@ interface UseAdminProjectsResult {
 }
 
 export function useAdminProjects(): UseAdminProjectsResult {
+    const { isAuthenticated, session } = useAuth();
     const [projects, setProjects] = useState<AdminProjectListItem[]>([]);
-    const [loading, setLoading] = useState(hasAdminConsoleAccess);
+    const [loading, setLoading] = useState(isAuthenticated);
     const [error, setError] = useState<string | null>(null);
 
     const refresh = useCallback(async () => {
-        if (!hasAdminConsoleAccess) {
+        if (!isAuthenticated) {
             setProjects([]);
             setError(null);
             setLoading(false);
@@ -43,7 +44,7 @@ export function useAdminProjects(): UseAdminProjectsResult {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [isAuthenticated, session?.token]);
 
     useEffect(() => {
         void refresh();

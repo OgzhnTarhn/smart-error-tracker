@@ -6,7 +6,7 @@ import EnterpriseTopNavigation from '../components/layout/EnterpriseTopNavigatio
 import { useAdminProjects } from '../hooks/useAdminProjects';
 import { useDashboardProjectContext } from '../hooks/useDashboardProjectContext';
 import { useDashboardStats } from '../hooks/useDashboardStats';
-import { hasAdminConsoleAccess } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import {
     buildProjectCatalog,
     getPlatformLabel,
@@ -214,6 +214,8 @@ export default function OverviewPage() {
         loading: statsLoading,
         error: statsError,
     } = useDashboardStats('7d', hasApiKey);
+    const { session } = useAuth();
+    const canCreateProjects = session?.mode === 'member';
 
     const catalog = useMemo(
         () =>
@@ -316,9 +318,9 @@ export default function OverviewPage() {
                         accentClass="enterprise-metric-accent-orange"
                         loading={projectsLoading && catalog.length === 0}
                         supportingText={
-                            hasAdminConsoleAccess
-                                ? 'Visible in the local admin workspace.'
-                                : 'Counting drafts and connected projects stored in this browser.'
+                            canCreateProjects
+                                ? 'Visible in the authenticated workspace.'
+                                : 'Visible in the current demo workspace.'
                         }
                         variant="enterprise"
                     />

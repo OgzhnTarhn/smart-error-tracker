@@ -1,5 +1,5 @@
 import type { AuthProjectSummary, AuthUser } from './authSession';
-import { getStoredAuthToken } from './authSession';
+import { getStoredAuthSession, getStoredAuthToken } from './authSession';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 const API_KEY = import.meta.env.VITE_API_KEY || '';
@@ -93,6 +93,10 @@ export const apiFetchWithApiKey = async <T = unknown>(
 
 export const hasAdminConsoleAccess = Boolean(ADMIN_TOKEN);
 
+export function canManageWorkspace() {
+    return getStoredAuthSession()?.mode === 'member';
+}
+
 export const adminFetch = async <T = unknown>(
     endpoint: string,
     options: RequestInit = {},
@@ -156,13 +160,13 @@ export interface CreateAdminProjectResponse {
 }
 
 export const createAdminProject = (body: CreateAdminProjectRequest) =>
-    adminFetch<CreateAdminProjectResponse>('/admin/projects', {
+    authRequest<CreateAdminProjectResponse>('/workspace/projects', {
         method: 'POST',
         body: JSON.stringify(body),
     });
 
 export const getAdminProjects = () =>
-    adminFetch<AdminProjectsResponse>('/admin/projects');
+    authRequest<AdminProjectsResponse>('/workspace/projects');
 
 export interface AdminProjectApiKeyListItem {
     id: string;
@@ -189,16 +193,91 @@ export interface CreateAdminProjectApiKeyResponse {
 }
 
 export const getAdminProjectApiKeys = (projectId: string) =>
-    adminFetch<AdminProjectApiKeysResponse>(`/admin/projects/${projectId}/keys`);
+    authRequest<AdminProjectApiKeysResponse>(`/workspace/projects/${projectId}/keys`);
 
 export const createAdminProjectApiKey = (
     projectId: string,
     body: CreateAdminProjectApiKeyRequest,
 ) =>
-    adminFetch<CreateAdminProjectApiKeyResponse>(`/admin/projects/${projectId}/keys`, {
+    authRequest<CreateAdminProjectApiKeyResponse>(`/workspace/projects/${projectId}/keys`, {
         method: 'POST',
         body: JSON.stringify(body),
     });
+
+export interface WorkspaceProjectMember {
+    id: string;
+    role: string;
+    createdAt?: string;
+    lastAccessedAt?: string | null;
+    user: AuthUser;
+}
+
+export interface WorkspaceProjectMembersResponse {
+    ok?: boolean;
+    members?: WorkspaceProjectMember[];
+    error?: string;
+}
+
+export interface AddWorkspaceProjectMemberRequest {
+    email: string;
+    role?: string;
+}
+
+export interface UpdateWorkspaceProjectMemberRequest {
+    role: string;
+}
+
+export interface AddWorkspaceProjectMemberResponse {
+    ok?: boolean;
+    member?: WorkspaceProjectMember;
+    created?: boolean;
+    error?: string;
+}
+
+export interface UpdateWorkspaceProjectMemberResponse {
+    ok?: boolean;
+    member?: WorkspaceProjectMember;
+    error?: string;
+}
+
+export interface RemoveWorkspaceProjectMemberResponse {
+    ok?: boolean;
+    removedMemberId?: string;
+    error?: string;
+}
+
+export const getWorkspaceProjectMembers = (projectId: string) =>
+    authRequest<WorkspaceProjectMembersResponse>(`/workspace/projects/${projectId}/members`);
+
+export const addWorkspaceProjectMember = (
+    projectId: string,
+    body: AddWorkspaceProjectMemberRequest,
+) =>
+    authRequest<AddWorkspaceProjectMemberResponse>(`/workspace/projects/${projectId}/members`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+    });
+
+export const updateWorkspaceProjectMember = (
+    projectId: string,
+    memberId: string,
+    body: UpdateWorkspaceProjectMemberRequest,
+) =>
+    authRequest<UpdateWorkspaceProjectMemberResponse>(
+        `/workspace/projects/${projectId}/members/${memberId}`,
+        {
+            method: 'PATCH',
+            body: JSON.stringify(body),
+        },
+    );
+
+export const removeWorkspaceProjectMember = (projectId: string, memberId: string) =>
+    authRequest<RemoveWorkspaceProjectMemberResponse>(
+        `/workspace/projects/${projectId}/members/${memberId}`,
+        {
+            method: 'DELETE',
+        },
+    );
 
 export interface ProjectContext {
     id: string;

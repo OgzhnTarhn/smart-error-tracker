@@ -5,12 +5,12 @@ import DistributionListCard from '../components/dashboard/DistributionListCard';
 import OverviewMetricCard from '../components/dashboard/OverviewMetricCard';
 import TopIssuesCard from '../components/dashboard/TopIssuesCard';
 import EnterpriseTopNavigation from '../components/layout/EnterpriseTopNavigation';
+import { useAuth } from '../context/AuthContext';
 import { useAdminProjects } from '../hooks/useAdminProjects';
 import { useDashboardProjectContext } from '../hooks/useDashboardProjectContext';
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import {
     createAdminProjectApiKey,
-    hasAdminConsoleAccess,
     setDashboardApiKey,
     type DashboardStatsData,
     type DashboardRange,
@@ -411,6 +411,7 @@ export default function ProjectIssuesPage() {
         refresh: refreshWorkspace,
         hasApiKey,
     } = useDashboardProjectContext();
+    const { session } = useAuth();
     const [storedProject, setStoredProject] = useState(() =>
         id ? getStoredProjectRecord(id) : null,
     );
@@ -421,6 +422,7 @@ export default function ProjectIssuesPage() {
     const routeProjectPreview = (
         location.state as { projectPreview?: ReturnType<typeof buildProjectCatalog>[number] } | null
     )?.projectPreview ?? null;
+    const canManageProject = session?.mode === 'member';
 
     useEffect(() => {
         setStoredProject(id ? getStoredProjectRecord(id) : null);
@@ -470,7 +472,7 @@ export default function ProjectIssuesPage() {
                     return;
                 }
 
-                if (project && !project.isDraft && hasAdminConsoleAccess) {
+                if (project && !project.isDraft && canManageProject) {
                     const response = await createAdminProjectApiKey(id, {
                         label: project.keyLabel ?? 'dashboard',
                     });
@@ -518,6 +520,7 @@ export default function ProjectIssuesPage() {
         };
     }, [
         attemptedAutoConnect,
+        canManageProject,
         connectedProject?.id,
         id,
         project,
@@ -576,9 +579,9 @@ export default function ProjectIssuesPage() {
                                         ? 'This is a local draft. Create the backend project and attach a real API key before loading analytics.'
                                         : storedProject?.apiKey
                                             ? 'A saved API key exists for this project, but the dashboard could not reconnect with it.'
-                                            : hasAdminConsoleAccess
+                                            : canManageProject
                                                 ? 'A new API key should have been generated automatically for this project, but the workspace still could not connect.'
-                                                : 'No saved API key was found for this project yet. Open setup to generate one or connect an existing key before entering the workspace.'}
+                                                : 'Demo access could not create a new API key automatically. Open setup with a member account to connect this workspace.'}
                                 </p>
                             </div>
 

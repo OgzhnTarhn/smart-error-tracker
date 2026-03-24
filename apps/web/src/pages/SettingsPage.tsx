@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardSectionCard from '../components/dashboard/DashboardSectionCard';
 import EnterpriseTopNavigation from '../components/layout/EnterpriseTopNavigation';
+import { useAuth } from '../context/AuthContext';
 import {
     clearDashboardApiKey,
     getDashboardApiKeyOverride,
@@ -77,12 +78,14 @@ function DetailRow({
 
 export default function SettingsPage() {
     const navigate = useNavigate();
+    const { session } = useAuth();
     const [apiKeySource, setApiKeySource] = useState<DashboardApiKeySource>(getDashboardApiKeySource());
     const [runtimeOverride, setRuntimeOverride] = useState(getDashboardApiKeyOverride());
 
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
     const isLocalApiTarget = apiBaseUrl.includes('localhost') || apiBaseUrl.includes('127.0.0.1');
     const hasRuntimeOverride = Boolean(runtimeOverride);
+    const canManageProjects = session?.mode === 'member';
 
     const handleClearRuntimeOverride = () => {
         clearDashboardApiKey();
@@ -98,8 +101,8 @@ export default function SettingsPage() {
                 <section className="border-b border-[var(--enterprise-border-strong)] pb-7">
                     <div className="flex flex-wrap items-center gap-3">
                         <span className="enterprise-chip">Settings</span>
-                        <span className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${hasAdminConsoleAccess ? 'ui-success-badge' : 'ui-warning-badge'}`}>
-                            {hasAdminConsoleAccess ? 'Admin Enabled' : 'Local Draft Mode'}
+                        <span className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${canManageProjects ? 'ui-success-badge' : 'ui-warning-badge'}`}>
+                            {canManageProjects ? 'Member Workspace' : 'Demo Read Only'}
                         </span>
                     </div>
                     <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white md:text-[2.5rem]">
@@ -131,14 +134,14 @@ export default function SettingsPage() {
                         toneClassName={isLocalApiTarget ? 'ui-accent-badge' : 'ui-success-badge'}
                     />
                     <MetricCard
-                        eyebrow="Admin Console"
-                        value={hasAdminConsoleAccess ? 'Connected' : 'Unavailable'}
+                        eyebrow="Project Management"
+                        value={canManageProjects ? 'Enabled' : 'Read Only'}
                         detail={
-                            hasAdminConsoleAccess
-                                ? 'Project creation and API key generation can run against admin endpoints.'
-                                : 'Project creation stays in draft mode until an admin token is configured.'
+                            canManageProjects
+                                ? 'Authenticated member sessions can create projects and generate API keys directly.'
+                                : 'Demo sessions can inspect the workspace but cannot create projects or rotate keys.'
                         }
-                        toneClassName={hasAdminConsoleAccess ? 'ui-success-badge' : 'ui-warning-badge'}
+                        toneClassName={canManageProjects ? 'ui-success-badge' : 'ui-warning-badge'}
                     />
                 </div>
 
@@ -198,40 +201,44 @@ export default function SettingsPage() {
                     </DashboardSectionCard>
 
                     <DashboardSectionCard
-                        title="Admin console"
-                        description="Controls project creation, API key generation, and admin listing."
+                        title="Project management"
+                        description="Workspace members can create projects and rotate API keys without admin endpoints."
                         variant="enterprise"
                         contentClassName="p-6"
                     >
                         <div className="space-y-4">
-                            <div className={`rounded-[22px] border p-5 ${hasAdminConsoleAccess ? 'ui-success-panel' : 'ui-warning-panel'}`}>
+                            <div className={`rounded-[22px] border p-5 ${canManageProjects ? 'ui-success-panel' : 'ui-warning-panel'}`}>
                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                     <div className="text-lg font-semibold text-white">
-                                        {hasAdminConsoleAccess ? 'Admin access is available' : 'Admin access is not configured'}
+                                        {canManageProjects ? 'Project management is available' : 'Project management is read-only'}
                                     </div>
-                                    <span className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${hasAdminConsoleAccess ? 'ui-success-badge' : 'ui-warning-badge'}`}>
-                                        {hasAdminConsoleAccess ? 'Ready' : 'Draft Only'}
+                                    <span className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${canManageProjects ? 'ui-success-badge' : 'ui-warning-badge'}`}>
+                                        {canManageProjects ? 'Ready' : 'Read Only'}
                                     </span>
                                 </div>
                                 <p className="mt-3 text-sm leading-6 text-[var(--enterprise-text-muted)]">
-                                    {hasAdminConsoleAccess
-                                        ? 'Project setup can generate real API keys and sync project records from the admin workspace.'
-                                        : 'Project creation will stay local until VITE_ADMIN_TOKEN is configured for this dashboard.'}
+                                    {canManageProjects
+                                        ? 'The dashboard can create backend projects immediately and save the returned API keys into this browser session.'
+                                        : 'Use a member account if you need to create projects or generate fresh API keys from the dashboard.'}
                                 </p>
                             </div>
 
                             <div className="rounded-[22px] border border-[var(--enterprise-border)] bg-black/30 p-5">
                                 <DetailRow
                                     label="Project creation"
-                                    value={hasAdminConsoleAccess ? 'Creates backend projects immediately.' : 'Creates local drafts only.'}
+                                    value={canManageProjects ? 'Creates backend projects immediately.' : 'Unavailable in demo mode.'}
                                 />
                                 <DetailRow
                                     label="API key generation"
-                                    value={hasAdminConsoleAccess ? 'Available from setup screens.' : 'Blocked until admin access is enabled.'}
+                                    value={canManageProjects ? 'Available from setup screens.' : 'Blocked in demo mode.'}
                                 />
                                 <DetailRow
                                     label="Projects listing"
-                                    value={hasAdminConsoleAccess ? 'Reads from admin endpoints and merges local onboarding state.' : 'Shows connected projects and local drafts only.'}
+                                    value="Reads workspace projects tied to the signed-in session."
+                                />
+                                <DetailRow
+                                    label="Local admin console"
+                                    value={hasAdminConsoleAccess ? 'Enabled for development-only endpoints.' : 'Not configured for this browser session.'}
                                 />
                             </div>
                         </div>

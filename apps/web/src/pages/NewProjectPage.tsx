@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardSectionCard from '../components/dashboard/DashboardSectionCard';
 import EnterpriseTopNavigation from '../components/layout/EnterpriseTopNavigation';
-import { createAdminProject, hasAdminConsoleAccess } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import { createAdminProject } from '../lib/api';
 import {
-    createDraftProjectRecord,
     PLATFORM_OPTIONS,
     RUNTIME_TYPE_OPTIONS,
     type ProjectPlatform,
@@ -53,11 +53,13 @@ function SecondaryButton({
 
 export default function NewProjectPage() {
     const navigate = useNavigate();
+    const { session } = useAuth();
     const [projectName, setProjectName] = useState('');
     const [platform, setPlatform] = useState<ProjectPlatform>('react');
     const [runtimeType, setRuntimeType] = useState<ProjectRuntimeType>('frontend');
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const canCreateProjects = session?.mode === 'member';
 
     const handleSubmit = async () => {
         const trimmedName = projectName.trim();
@@ -65,43 +67,36 @@ export default function NewProjectPage() {
             setError('Project name is required.');
             return;
         }
+        if (!canCreateProjects) {
+            setError('Demo access is read-only. Sign in with a member account to create projects.');
+            return;
+        }
 
         setSubmitting(true);
         setError(null);
 
         try {
-            if (hasAdminConsoleAccess) {
-                const response = await createAdminProject({
-                    name: trimmedName,
-                    label: runtimeType,
-                });
-
-                if (!response.ok || !response.project) {
-                    throw new Error(response.error ?? 'Project could not be created.');
-                }
-
-                upsertStoredProjectRecord(response.project.id, {
-                    name: response.project.name,
-                    key: response.project.key,
-                    platform,
-                    runtimeType,
-                    apiKey: response.apiKey,
-                    keyLabel: runtimeType,
-                    createdAt: new Date().toISOString(),
-                    isDraft: false,
-                });
-
-                navigate(`/projects/${response.project.id}/setup`);
-                return;
-            }
-
-            const draftProject = createDraftProjectRecord({
+            const response = await createAdminProject({
                 name: trimmedName,
-                platform,
-                runtimeType,
+                label: runtimeType,
             });
 
-            navigate(`/projects/${draftProject.projectId}/setup`);
+            if (!response.ok || !response.project) {
+                throw new Error(response.error ?? 'Project could not be created.');
+            }
+
+            upsertStoredProjectRecord(response.project.id, {
+                name: response.project.name,
+                key: response.project.key,
+                platform,
+                runtimeType,
+                apiKey: response.apiKey,
+                keyLabel: runtimeType,
+                createdAt: new Date().toISOString(),
+                isDraft: false,
+            });
+
+            navigate(`/projects/${response.project.id}/setup`);
         } catch (err: unknown) {
             setError(
                 err instanceof Error ? err.message : 'Project could not be created.',
@@ -232,14 +227,10 @@ export default function NewProjectPage() {
                                 </div>
                             </div>
 
-                            {!hasAdminConsoleAccess ? (
+                            {!canCreateProjects ? (
                                 <div className="ui-warning-banner rounded-md px-3.5 py-3 text-sm leading-6">
-                                    <code className="font-mono text-amber-100">
-                                        VITE_ADMIN_TOKEN
-                                    </code>{' '}
-                                    is not configured, so this submit will create a local draft
-                                    instead of a backend project. You can continue through setup and
-                                    connect a real project later.
+                                    Demo access is read-only. Use a member account if you want to
+                                    create a new backend project from the dashboard.
                                 </div>
                             ) : null}
 

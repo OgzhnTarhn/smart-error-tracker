@@ -68,7 +68,7 @@ type ProjectCandidate = {
 export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private isDemoEmail(email: string | null | undefined) {
+  isDemoUserEmail(email: string | null | undefined) {
     return normalizeEmail(email) === this.getDemoIdentity().email;
   }
 
@@ -85,7 +85,9 @@ export class AuthService {
         name: session.user.name,
         email: session.user.email,
       },
-      mode: this.isDemoEmail(session.user.email) ? ('demo' as const) : ('member' as const),
+      mode: this.isDemoUserEmail(session.user.email)
+        ? ('demo' as const)
+        : ('member' as const),
       project: session.dashboardApiKey?.project
         ? {
             id: session.dashboardApiKey.project.id,
@@ -512,7 +514,7 @@ export class AuthService {
       return { ok: false, error: 'unauthorized' };
     }
 
-    if (this.isDemoEmail(session.user.email)) {
+    if (this.isDemoUserEmail(session.user.email)) {
       return { ok: false, error: 'demo_account_locked' };
     }
 
@@ -563,7 +565,7 @@ export class AuthService {
       return { ok: false, error: 'unauthorized' };
     }
 
-    if (this.isDemoEmail(session.user.email)) {
+    if (this.isDemoUserEmail(session.user.email)) {
       return { ok: false, error: 'demo_account_locked' };
     }
 
