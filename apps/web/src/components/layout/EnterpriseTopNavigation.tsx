@@ -3,7 +3,13 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getAuthAvatarLabel } from '../../lib/authSession';
 
-type NavItemKey = 'dashboard' | 'projects' | 'issues' | 'settings' | 'profile';
+type NavItemKey =
+    | 'dashboard'
+    | 'projects'
+    | 'issues'
+    | 'settings'
+    | 'profile'
+    | 'notifications';
 
 interface EnterpriseTopNavigationProps {
     activeItem: NavItemKey;
@@ -36,9 +42,13 @@ export default function EnterpriseTopNavigation({
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
-    const activeNavItem = NAV_ITEMS.find((item) => item.key === activeItem) ?? NAV_ITEMS[0];
+    const activeNavItem = NAV_ITEMS.find((item) => item.key === activeItem) ?? null;
     const resolvedAvatarLabel = avatarLabel ?? getAuthAvatarLabel('OG');
     const isProfileRoute = location.pathname === '/profile';
+    const isNotificationsRoute = location.pathname === '/notifications';
+    const activeLabel = isNotificationsRoute
+        ? 'Notifications'
+        : activeNavItem?.label ?? 'Workspace';
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -121,7 +131,7 @@ export default function EnterpriseTopNavigation({
                                     Enterprise Monitor
                                 </div>
                                 <div className="sm:hidden mt-1 text-[9px] uppercase tracking-[0.18em] text-[var(--enterprise-text-dim)]">
-                                    {activeNavItem.label}
+                                    {activeLabel}
                                 </div>
                             </div>
                         </button>
@@ -185,10 +195,18 @@ export default function EnterpriseTopNavigation({
                         ) : null}
                         <button
                             type="button"
+                            onClick={() => handleNavigate('/notifications')}
                             aria-label="Notifications"
-                            className="relative flex h-8 w-8 items-center justify-center rounded-md border border-[var(--enterprise-border)] bg-[#16181b] text-[var(--enterprise-text-muted)] transition-colors hover:bg-[#1a1d20] hover:text-[var(--enterprise-text)]"
+                            aria-current={isNotificationsRoute ? 'page' : undefined}
+                            className={`relative flex h-8 w-8 items-center justify-center rounded-md border transition-colors ${
+                                isNotificationsRoute
+                                    ? 'border-[var(--enterprise-border-strong)] bg-[#1f2226] text-[var(--enterprise-text)]'
+                                    : 'border-[var(--enterprise-border)] bg-[#16181b] text-[var(--enterprise-text-muted)] hover:bg-[#1a1d20] hover:text-[var(--enterprise-text)]'
+                            }`}
                         >
-                            <span className="ui-accent-dot absolute right-2 top-2 h-2 w-2 rounded-full" />
+                            {!isNotificationsRoute ? (
+                                <span className="ui-accent-dot absolute right-2 top-2 h-2 w-2 rounded-full" />
+                            ) : null}
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path
                                     strokeLinecap="round"
@@ -260,7 +278,7 @@ export default function EnterpriseTopNavigation({
                                         Navigation
                                     </div>
                                     <div className="mt-1 text-sm font-semibold text-[var(--enterprise-text)]">
-                                        {activeNavItem.label}
+                                        {activeLabel}
                                     </div>
                                 </div>
                                 {projectName ? (
